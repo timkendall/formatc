@@ -4,22 +4,23 @@ Measured 2026-10-13 on an Apple M5 Pro (18 cores), macOS, scriptc 0.3.0, Bun can
 
 ## 1. The numbers
 
-`--check`, wall time, idle machine, interleaved runs:
+`--check`, wall time, idle machine, interleaved runs, min of 3. Perf rounds 1–2 (2026-10-13, commits e45b1c0 and 995159a;
+before → after):
 
 | threads | formatc | `bun fmt` | gap |
 | ------- | ------- | --------- | --- |
-| 1       | 8.42 s  | 2.41 s    | 3.5× |
-| 8       | 1.25 s  | 0.44 s    | 2.85× |
-| 18      | 0.75 s  | 0.30 s    | 2.5× |
+| 1       | 8.42 → 7.75 s | 2.39 s | 3.5× → 3.2× |
+| 8       | 1.25 → 1.15 s | 0.43 s | 2.85× → 2.67× |
+| 18      | 0.75 → 0.70 s | 0.30 s | 2.5× → 2.3× |
 
 Whole run, one thread, from `/usr/bin/time -l` (instructions retired are stable when the machine is busy; wall time is not):
 
 | | instructions retired | cycles | IPC | peak RSS |
 | - | - | - | - | - |
-| formatc | 156.7 G (first build) – 170.5 G (current tree, partial work of paused agents included) | 36.4 – 38.2 G | ~4.4 | 325 MB |
+| formatc | 170.6 G before the perf rounds → **161.9 G** after round 2 (156.7 G was the first build) | 38.6 → 34.5 G | ~4.7 | 307 MB |
 | `bun fmt` | 35.9 G | 10.8 G | 3.3 | 124 MB |
 
-**We execute 4.4–4.7× more instructions than Bun.** They are cheap ones (IPC 4.4 vs 3.3), so the cycle gap is ~3.4×. The
+**We execute 4.5× more instructions than Bun.** They are cheap ones (IPC 4.7 vs 3.3), so the cycle gap is ~3.2×. The
 problem is instruction count, not cache misses or stalls.
 
 Per-language throughput, measured by the porting agents (compiled, single thread, in-process, MB/s; Bun estimated from `bun fmt
