@@ -258,41 +258,79 @@ function setStmtParent(s: number, tag: number, a: number): void {
 function setType(t: number): void {
   if (t >= 0) bound.typeReached[t] = 1;
 }
+// `setTypes`, `setTypeParams`, `setList` and `setProps` inline `setType` / `setExprParent` on hoisted columns (same stores,
+// same `>= 0` guards), so that the `bound` and `hir` lookups are not repeated on every iteration.
 function setTypes(start: number, len: number): void {
   const ids = hir.ids;
-  for (let i = 0; i < len; i++) setType(ids[(start + i) | 0] | 0);
+  const typeReached = bound.typeReached;
+  for (let i = 0; i < len; i++) {
+    const t = ids[(start + i) | 0] | 0;
+    if (t >= 0) typeReached[t] = 1;
+  }
 }
 function setTypeParams(start: number, len: number): void {
   const ids = hir.ids;
+  const typeParamReached = bound.typeParamReached;
+  const typeReached = bound.typeReached;
+  const typeParamConstraint = hir.typeParamConstraint;
+  const typeParamDefault = hir.typeParamDefault;
   for (let i = 0; i < len; i++) {
     const p = ids[(start + i) | 0] | 0;
     if (p < 0) continue;
-    bound.typeParamReached[p] = 1;
-    setType(hir.typeParamConstraint[p] | 0);
-    setType(hir.typeParamDefault[p] | 0);
+    typeParamReached[p] = 1;
+    const c = typeParamConstraint[p] | 0;
+    if (c >= 0) typeReached[c] = 1;
+    const d = typeParamDefault[p] | 0;
+    if (d >= 0) typeReached[d] = 1;
   }
 }
 /** `decorators!`: every decorator among the modifiers `(start, len)` gets the parent `(tag, a)`. */
 function setDecorators(start: number, len: number, tag: number, a: number): void {
   const ids = hir.ids;
+  const modifierKind = hir.modifierKind;
+  const modifierValue = hir.modifierValue;
   for (let i = 0; i < len; i++) {
     const m = ids[(start + i) | 0] | 0;
-    if ((hir.modifierKind[m] | 0) === MODK_DECORATOR) setExprParent(hir.modifierValue[m] | 0, tag, a);
+    if ((modifierKind[m] | 0) === MODK_DECORATOR) setExprParent(modifierValue[m] | 0, tag, a);
   }
 }
 function setList(start: number, len: number, tag: number, a: number): void {
   const ids = hir.ids;
-  for (let i = 0; i < len; i++) setExprParent(ids[(start + i) | 0] | 0, tag, a);
+  const exprParentTag = bound.exprParentTag;
+  const exprParentA = bound.exprParentA;
+  for (let i = 0; i < len; i++) {
+    const e = ids[(start + i) | 0] | 0;
+    if (e >= 0) {
+      exprParentTag[e] = tag;
+      exprParentA[e] = a | 0;
+    }
+  }
 }
 /** `props!` of an object literal `id` or the attributes of a JSX element. */
 function setProps(start: number, len: number, id: number): void {
   const ids = hir.ids;
+  const propOwner = bound.propOwner;
+  const exprParentTag = bound.exprParentTag;
+  const exprParentA = bound.exprParentA;
+  const propValue = hir.propValue;
+  const propKeyKind = hir.propKeyKind;
+  const propKeyVal = hir.propKeyVal;
   for (let i = 0; i < len; i++) {
     const p = ids[(start + i) | 0] | 0;
     if (p < 0) continue;
-    bound.propOwner[p] = id;
-    setExprParent(hir.propValue[p] | 0, P_PROP, p);
-    if ((hir.propKeyKind[p] | 0) === PK_COMPUTED) setExprParent(hir.propKeyVal[p] | 0, P_PROP, p);
+    propOwner[p] = id;
+    const v = propValue[p] | 0;
+    if (v >= 0) {
+      exprParentTag[v] = P_PROP;
+      exprParentA[v] = p | 0;
+    }
+    if ((propKeyKind[p] | 0) === PK_COMPUTED) {
+      const k = propKeyVal[p] | 0;
+      if (k >= 0) {
+        exprParentTag[k] = P_PROP;
+        exprParentA[k] = p | 0;
+      }
+    }
   }
 }
 
@@ -359,78 +397,208 @@ export function fillParents(): boolean {
 }
 
 function fill(): boolean {
-  const b = bound;
   const ids = hir.ids;
+  // The HIR and `bound` columns that the loops below read or write, read once here: in worker mode a module-level
+  // `hir` / `bound` is a thread-local lookup, and `hir.col[i]` in a loop repeats it on every iteration. None of them is
+  // reallocated in here: only `refill()` grows the `bound` columns (`typeQueryOperands` is not hoisted).
+  const aliasTy = hir.aliasTy;
+  const aliasTypeParamsLen = hir.aliasTypeParamsLen;
+  const aliasTypeParamsStart = hir.aliasTypeParamsStart;
+  const callArgsLen = hir.callArgsLen;
+  const callArgsStart = hir.callArgsStart;
+  const callCallee = hir.callCallee;
+  const callTemplate = hir.callTemplate;
+  const callTypeArgsLen = hir.callTypeArgsLen;
+  const callTypeArgsStart = hir.callTypeArgsStart;
+  const caseBodyLen = hir.caseBodyLen;
+  const caseBodyStart = hir.caseBodyStart;
+  const caseTest = hir.caseTest;
+  const classExtends = hir.classExtends;
+  const classExtendsArgsLen = hir.classExtendsArgsLen;
+  const classExtendsArgsStart = hir.classExtendsArgsStart;
+  const classImplementsLen = hir.classImplementsLen;
+  const classImplementsStart = hir.classImplementsStart;
+  const classMembersLen = hir.classMembersLen;
+  const classMembersStart = hir.classMembersStart;
+  const classModLen = hir.classModLen;
+  const classModStart = hir.classModStart;
+  const classOtherExtendsLen = hir.classOtherExtendsLen;
+  const classOtherExtendsStart = hir.classOtherExtendsStart;
+  const classOtherImplementsLen = hir.classOtherImplementsLen;
+  const classOtherImplementsStart = hir.classOtherImplementsStart;
+  const classTypeParamsLen = hir.classTypeParamsLen;
+  const classTypeParamsStart = hir.classTypeParamsStart;
+  const enumMemberComputedName = hir.enumMemberComputedName;
+  const enumMemberInit = hir.enumMemberInit;
+  const enumMembersLen = hir.enumMembersLen;
+  const enumMembersStart = hir.enumMembersStart;
+  const exprA = hir.exprA;
+  const exprB = hir.exprB;
+  const exprC = hir.exprC;
+  const exprTag = hir.exprTag;
+  const fnBodyA = hir.fnBodyA;
+  const fnBodyB = hir.fnBodyB;
+  const fnBodyKind = hir.fnBodyKind;
+  const fnParamsLen = hir.fnParamsLen;
+  const fnParamsStart = hir.fnParamsStart;
+  const fnRet = hir.fnRet;
+  const fnThisParam = hir.fnThisParam;
+  const fnTypeParamsLen = hir.fnTypeParamsLen;
+  const fnTypeParamsStart = hir.fnTypeParamsStart;
+  const importAttributes = hir.importAttributes;
+  const importCallTypeArgs = hir.importCallTypeArgs;
+  const importEqualsExpression = hir.importEqualsExpression;
+  const interfaceExtendsLen = hir.interfaceExtendsLen;
+  const interfaceExtendsStart = hir.interfaceExtendsStart;
+  const interfaceMembersLen = hir.interfaceMembersLen;
+  const interfaceMembersStart = hir.interfaceMembersStart;
+  const interfaceOtherHeritageLen = hir.interfaceOtherHeritageLen;
+  const interfaceOtherHeritageStart = hir.interfaceOtherHeritageStart;
+  const interfaceTypeParamsLen = hir.interfaceTypeParamsLen;
+  const interfaceTypeParamsStart = hir.interfaceTypeParamsStart;
+  const jsxAttrsLen = hir.jsxAttrsLen;
+  const jsxAttrsStart = hir.jsxAttrsStart;
+  const jsxChildrenLen = hir.jsxChildrenLen;
+  const jsxChildrenStart = hir.jsxChildrenStart;
+  const jsxCloseTag = hir.jsxCloseTag;
+  const jsxTag = hir.jsxTag;
+  const jsxTypeArgsLen = hir.jsxTypeArgsLen;
+  const jsxTypeArgsStart = hir.jsxTypeArgsStart;
+  const mappedMembersLen = hir.mappedMembersLen;
+  const mappedMembersStart = hir.mappedMembersStart;
+  const mappedNameTy = hir.mappedNameTy;
+  const mappedParam = hir.mappedParam;
+  const mappedTy = hir.mappedTy;
+  const memberFunc = hir.memberFunc;
+  const memberInit = hir.memberInit;
+  const memberKeyKind = hir.memberKeyKind;
+  const memberKeyVal = hir.memberKeyVal;
+  const memberModLen = hir.memberModLen;
+  const memberModStart = hir.memberModStart;
+  const memberTy = hir.memberTy;
+  const moduleBodyLen = hir.moduleBodyLen;
+  const moduleBodyStart = hir.moduleBodyStart;
+  const paramDefault = hir.paramDefault;
+  const paramModLen = hir.paramModLen;
+  const paramModStart = hir.paramModStart;
+  const paramPat = hir.paramPat;
+  const paramTy = hir.paramTy;
+  const patA = hir.patA;
+  const patB = hir.patB;
+  const patElemDefault = hir.patElemDefault;
+  const patElemPat = hir.patElemPat;
+  const patPropDefault = hir.patPropDefault;
+  const patPropKeyKind = hir.patPropKeyKind;
+  const patPropKeyVal = hir.patPropKeyVal;
+  const patPropValue = hir.patPropValue;
+  const patTag = hir.patTag;
+  const specifierExpressions = hir.specifierExpressions;
+  const stmtA = hir.stmtA;
+  const stmtB = hir.stmtB;
+  const stmtC = hir.stmtC;
+  const stmtD = hir.stmtD;
+  const stmtModLen = hir.stmtModLen;
+  const stmtModStart = hir.stmtModStart;
+  const stmtTag = hir.stmtTag;
+  const tupleElemMemberType = hir.tupleElemMemberType;
+  const tupleElemTy = hir.tupleElemTy;
+  const tupleElemWritten = hir.tupleElemWritten;
+  const typeA = hir.typeA;
+  const typeB = hir.typeB;
+  const typeC = hir.typeC;
+  const typeD = hir.typeD;
+  const typeE = hir.typeE;
+  const typeParamConstraint = hir.typeParamConstraint;
+  const typeParamDefault = hir.typeParamDefault;
+  const typeTag = hir.typeTag;
+  const varDeclInit = hir.varDeclInit;
+  const varDeclPat = hir.varDeclPat;
+  const varDeclTy = hir.varDeclTy;
+  const caseStmt = bound.caseStmt;
+  const classOwnerA = bound.classOwnerA;
+  const classOwnerTag = bound.classOwnerTag;
+  const classReached = bound.classReached;
+  const enumMemberOwner = bound.enumMemberOwner;
+  const fnOwnerA = bound.fnOwnerA;
+  const fnOwnerTag = bound.fnOwnerTag;
+  const memberOwnerA = bound.memberOwnerA;
+  const memberOwnerTag = bound.memberOwnerTag;
+  const paramFn = bound.paramFn;
+  const patParentA = bound.patParentA;
+  const patParentB = bound.patParentB;
+  const patParentTag = bound.patParentTag;
+  const typeParamReached = bound.typeParamReached;
+  const varStmt = bound.varStmt;
 
   // The expressions come first. What the parser has left behind are expressions, like the `A<T>` of `extends A<T>` and the
   // `a = 1` of `({ a = 1 }) => 0`, whose operands are part of something that is not an expression. Of two expressions, the one
   // that is made later is the one that is kept.
   const ne = hir.nExprs | 0;
   for (let id = 0; id < ne; id++) {
-    const tag = hir.exprTag[id] | 0;
+    const tag = exprTag[id] | 0;
     switch (tag) {
       case EXPR_DOT:
-        setExprParent(hir.exprA[id] | 0, P_EXPR, id);
+        setExprParent(exprA[id] | 0, P_EXPR, id);
         break;
       case EXPR_INDEX:
-        setExprParent(hir.exprA[id] | 0, P_EXPR, id);
-        setExprParent(hir.exprB[id] | 0, P_EXPR, id);
+        setExprParent(exprA[id] | 0, P_EXPR, id);
+        setExprParent(exprB[id] | 0, P_EXPR, id);
         break;
       case EXPR_CALL:
       case EXPR_NEW:
       case EXPR_TAGGED_TEMPLATE: {
-        const c = hir.exprA[id] | 0;
+        const c = exprA[id] | 0;
         if (c >= 0) {
-          setExprParent(hir.callCallee[c] | 0, P_EXPR, id);
-          setExprParent(hir.callTemplate[c] | 0, P_EXPR, id);
-          setList(hir.callArgsStart[c] | 0, hir.callArgsLen[c] | 0, P_EXPR, id);
-          setTypes(hir.callTypeArgsStart[c] | 0, hir.callTypeArgsLen[c] | 0);
+          setExprParent(callCallee[c] | 0, P_EXPR, id);
+          setExprParent(callTemplate[c] | 0, P_EXPR, id);
+          setList(callArgsStart[c] | 0, callArgsLen[c] | 0, P_EXPR, id);
+          setTypes(callTypeArgsStart[c] | 0, callTypeArgsLen[c] | 0);
         }
         break;
       }
       case EXPR_TEMPLATE:
       case EXPR_ARRAY:
-        setList(hir.exprA[id] | 0, hir.exprB[id] | 0, P_EXPR, id);
+        setList(exprA[id] | 0, exprB[id] | 0, P_EXPR, id);
         break;
       case EXPR_IMPORT_CALL: {
-        const start = hir.exprA[id] | 0;
-        const len = hir.exprB[id] | 0;
+        const start = exprA[id] | 0;
+        const len = exprB[id] | 0;
         setList(start, len, P_EXPR, id);
         if (hir.importCallTypeArgsLen > 0 && len > 0) {
           const row = importCallTypeArgsRow(ids[start] | 0);
-          if (row >= 0) setTypes(hir.importCallTypeArgs[row + 1] | 0, hir.importCallTypeArgs[row + 2] | 0);
+          if (row >= 0) setTypes(importCallTypeArgs[row + 1] | 0, importCallTypeArgs[row + 2] | 0);
         }
         break;
       }
       case EXPR_OBJECT:
-        setProps(hir.exprA[id] | 0, hir.exprB[id] | 0, id);
+        setProps(exprA[id] | 0, exprB[id] | 0, id);
         break;
       case EXPR_FN: {
-        const f = hir.exprA[id] | 0;
+        const f = exprA[id] | 0;
         if (f >= 0) {
-          b.fnOwnerTag[f] = FO_EXPR;
-          b.fnOwnerA[f] = id;
+          fnOwnerTag[f] = FO_EXPR;
+          fnOwnerA[f] = id;
         }
         break;
       }
       case EXPR_CLASS: {
-        const c = hir.exprA[id] | 0;
+        const c = exprA[id] | 0;
         if (c >= 0) {
-          b.classOwnerTag[c] = CO_EXPR;
-          b.classOwnerA[c] = id;
-          b.classReached[c] = 1;
+          classOwnerTag[c] = CO_EXPR;
+          classOwnerA[c] = id;
+          classReached[c] = 1;
         }
         break;
       }
       case EXPR_BINARY:
       case EXPR_ASSIGN:
-        setExprParent(hir.exprA[id] | 0, P_EXPR, id);
-        setExprParent(hir.exprB[id] | 0, P_EXPR, id);
+        setExprParent(exprA[id] | 0, P_EXPR, id);
+        setExprParent(exprB[id] | 0, P_EXPR, id);
         break;
       case EXPR_COND:
-        setExprParent(hir.exprA[id] | 0, P_EXPR, id);
-        setExprParent(hir.exprB[id] | 0, P_EXPR, id);
-        setExprParent(hir.exprC[id] | 0, P_EXPR, id);
+        setExprParent(exprA[id] | 0, P_EXPR, id);
+        setExprParent(exprB[id] | 0, P_EXPR, id);
+        setExprParent(exprC[id] | 0, P_EXPR, id);
         break;
       case EXPR_UNARY:
       case EXPR_SPREAD:
@@ -438,25 +606,25 @@ function fill(): boolean {
       case EXPR_AS_CONST:
       case EXPR_NON_NULL:
       case EXPR_YIELD:
-        setExprParent(hir.exprA[id] | 0, P_EXPR, id);
+        setExprParent(exprA[id] | 0, P_EXPR, id);
         break;
       case EXPR_AS:
       case EXPR_SATISFIES:
-        setExprParent(hir.exprA[id] | 0, P_EXPR, id);
-        setType(hir.exprB[id] | 0);
+        setExprParent(exprA[id] | 0, P_EXPR, id);
+        setType(exprB[id] | 0);
         break;
       case EXPR_INSTANTIATION:
-        setExprParent(hir.exprA[id] | 0, P_EXPR, id);
-        setTypes(hir.exprB[id] | 0, hir.exprC[id] | 0);
+        setExprParent(exprA[id] | 0, P_EXPR, id);
+        setTypes(exprB[id] | 0, exprC[id] | 0);
         break;
       case EXPR_JSX: {
-        const j = hir.exprA[id] | 0;
+        const j = exprA[id] | 0;
         if (j >= 0) {
-          setExprParent(hir.jsxTag[j] | 0, P_EXPR, id);
-          setExprParent(hir.jsxCloseTag[j] | 0, P_EXPR, id);
-          setTypes(hir.jsxTypeArgsStart[j] | 0, hir.jsxTypeArgsLen[j] | 0);
-          setProps(hir.jsxAttrsStart[j] | 0, hir.jsxAttrsLen[j] | 0, id);
-          setList(hir.jsxChildrenStart[j] | 0, hir.jsxChildrenLen[j] | 0, P_EXPR, id);
+          setExprParent(jsxTag[j] | 0, P_EXPR, id);
+          setExprParent(jsxCloseTag[j] | 0, P_EXPR, id);
+          setTypes(jsxTypeArgsStart[j] | 0, jsxTypeArgsLen[j] | 0);
+          setProps(jsxAttrsStart[j] | 0, jsxAttrsLen[j] | 0, id);
+          setList(jsxChildrenStart[j] | 0, jsxChildrenLen[j] | 0, P_EXPR, id);
         }
         break;
       }
@@ -467,117 +635,117 @@ function fill(): boolean {
 
   const nt = hir.nTypes | 0;
   for (let id = 0; id < nt; id++) {
-    const tag = hir.typeTag[id] | 0;
+    const tag = typeTag[id] | 0;
     switch (tag) {
       // An error (typescript-estree refuses the file), which Rust hands to the binder: its expression is part of what the type is in.
       case TYPE_HERITAGE:
-        setExprParent(hir.typeA[id] | 0, P_FILE, -1);
-        setTypes(hir.typeB[id] | 0, hir.typeC[id] | 0);
+        setExprParent(typeA[id] | 0, P_FILE, -1);
+        setTypes(typeB[id] | 0, typeC[id] | 0);
         break;
       case TYPE_TYPEOF: {
-        setTypes(hir.typeC[id] | 0, hir.typeD[id] | 0);
-        const expr = hir.typeE[id] | 0;
+        setTypes(typeC[id] | 0, typeD[id] | 0);
+        const expr = typeE[id] | 0;
         setExprParent(expr, P_FILE, -1);
         let at = expr;
         while (at >= 0 && at < ne) {
           pushTypeQueryOperand(at);
-          if ((hir.exprTag[at] | 0) !== EXPR_DOT) break;
-          at = hir.exprA[at] | 0;
+          if ((exprTag[at] | 0) !== EXPR_DOT) break;
+          at = exprA[at] | 0;
         }
         break;
       }
       case TYPE_FN: {
-        const f = hir.typeA[id] | 0;
+        const f = typeA[id] | 0;
         if (f >= 0) {
-          b.fnOwnerTag[f] = FO_TYPE;
-          b.fnOwnerA[f] = id;
+          fnOwnerTag[f] = FO_TYPE;
+          fnOwnerA[f] = id;
         }
         break;
       }
       case TYPE_OBJECT: {
-        const start = hir.typeA[id] | 0;
-        const len = hir.typeB[id] | 0;
+        const start = typeA[id] | 0;
+        const len = typeB[id] | 0;
         for (let i = 0; i < len; i++) {
           const m = ids[(start + i) | 0] | 0;
           if (m >= 0) {
-            b.memberOwnerTag[m] = MO_TYPE_LITERAL;
-            b.memberOwnerA[m] = id;
+            memberOwnerTag[m] = MO_TYPE_LITERAL;
+            memberOwnerA[m] = id;
           }
         }
         break;
       }
       case TYPE_MAPPED: {
-        const mp = hir.typeA[id] | 0;
+        const mp = typeA[id] | 0;
         if (mp >= 0) {
-          const param = hir.mappedParam[mp] | 0;
+          const param = mappedParam[mp] | 0;
           if (param >= 0) {
-            b.typeParamReached[param] = 1;
-            setType(hir.typeParamConstraint[param] | 0);
-            setType(hir.typeParamDefault[param] | 0);
+            typeParamReached[param] = 1;
+            setType(typeParamConstraint[param] | 0);
+            setType(typeParamDefault[param] | 0);
           }
-          setType(hir.mappedNameTy[mp] | 0);
-          setType(hir.mappedTy[mp] | 0);
-          const start = hir.mappedMembersStart[mp] | 0;
-          const len = hir.mappedMembersLen[mp] | 0;
+          setType(mappedNameTy[mp] | 0);
+          setType(mappedTy[mp] | 0);
+          const start = mappedMembersStart[mp] | 0;
+          const len = mappedMembersLen[mp] | 0;
           for (let i = 0; i < len; i++) {
             const m = ids[(start + i) | 0] | 0;
             if (m >= 0) {
-              b.memberOwnerTag[m] = MO_TYPE_LITERAL;
-              b.memberOwnerA[m] = id;
+              memberOwnerTag[m] = MO_TYPE_LITERAL;
+              memberOwnerA[m] = id;
             }
           }
         }
         break;
       }
       case TYPE_REF:
-        setTypes(hir.typeC[id] | 0, hir.typeD[id] | 0);
+        setTypes(typeC[id] | 0, typeD[id] | 0);
         break;
       case TYPE_IMPORT:
-        setTypes(hir.typeD[id] | 0, hir.typeE[id] | 0);
+        setTypes(typeD[id] | 0, typeE[id] | 0);
         break;
       case TYPE_TEMPLATE:
       case TYPE_UNION:
       case TYPE_INTERSECTION:
-        setTypes(hir.typeA[id] | 0, hir.typeB[id] | 0);
+        setTypes(typeA[id] | 0, typeB[id] | 0);
         break;
       case TYPE_ARRAY:
       case TYPE_KEYOF:
       case TYPE_READONLY:
       case TYPE_UNIQUE:
       case TYPE_JSDOC:
-        setType(hir.typeA[id] | 0);
+        setType(typeA[id] | 0);
         break;
       case TYPE_PREDICATE:
-        setType(hir.typeB[id] | 0);
+        setType(typeB[id] | 0);
         break;
       case TYPE_TUPLE: {
-        const start = hir.typeA[id] | 0;
-        const len = hir.typeB[id] | 0;
+        const start = typeA[id] | 0;
+        const len = typeB[id] | 0;
         for (let i = 0; i < len; i++) {
           const e = ids[(start + i) | 0] | 0;
           if (e < 0) continue;
           // Of `ty` and `written`, the one that contains the other.
-          if ((hir.tupleElemMemberType[e] | 0) === TM_OPTIONAL) setType(hir.tupleElemTy[e] | 0);
-          else setType(hir.tupleElemWritten[e] | 0);
+          if ((tupleElemMemberType[e] | 0) === TM_OPTIONAL) setType(tupleElemTy[e] | 0);
+          else setType(tupleElemWritten[e] | 0);
         }
         break;
       }
       case TYPE_COND:
-        setType(hir.typeA[id] | 0);
-        setType(hir.typeB[id] | 0);
-        setType(hir.typeC[id] | 0);
-        setType(hir.typeD[id] | 0);
+        setType(typeA[id] | 0);
+        setType(typeB[id] | 0);
+        setType(typeC[id] | 0);
+        setType(typeD[id] | 0);
         break;
       case TYPE_INDEXED_ACCESS:
-        setType(hir.typeA[id] | 0);
-        setType(hir.typeB[id] | 0);
+        setType(typeA[id] | 0);
+        setType(typeB[id] | 0);
         break;
       // Not its default.
       case TYPE_INFER: {
-        const p = hir.typeA[id] | 0;
+        const p = typeA[id] | 0;
         if (p >= 0) {
-          b.typeParamReached[p] = 1;
-          setType(hir.typeParamConstraint[p] | 0);
+          typeParamReached[p] = 1;
+          setType(typeParamConstraint[p] | 0);
         }
         break;
       }
@@ -588,63 +756,63 @@ function fill(): boolean {
 
   const na = hir.nAliases | 0;
   for (let i = 0; i < na; i++) {
-    setTypeParams(hir.aliasTypeParamsStart[i] | 0, hir.aliasTypeParamsLen[i] | 0);
-    setType(hir.aliasTy[i] | 0);
+    setTypeParams(aliasTypeParamsStart[i] | 0, aliasTypeParamsLen[i] | 0);
+    setType(aliasTy[i] | 0);
   }
   const ni = hir.nInterfaces | 0;
   for (let i = 0; i < ni; i++) {
-    setTypeParams(hir.interfaceTypeParamsStart[i] | 0, hir.interfaceTypeParamsLen[i] | 0);
-    setTypes(hir.interfaceExtendsStart[i] | 0, hir.interfaceExtendsLen[i] | 0);
-    setTypes(hir.interfaceOtherHeritageStart[i] | 0, hir.interfaceOtherHeritageLen[i] | 0);
-    const start = hir.interfaceMembersStart[i] | 0;
-    const len = hir.interfaceMembersLen[i] | 0;
+    setTypeParams(interfaceTypeParamsStart[i] | 0, interfaceTypeParamsLen[i] | 0);
+    setTypes(interfaceExtendsStart[i] | 0, interfaceExtendsLen[i] | 0);
+    setTypes(interfaceOtherHeritageStart[i] | 0, interfaceOtherHeritageLen[i] | 0);
+    const start = interfaceMembersStart[i] | 0;
+    const len = interfaceMembersLen[i] | 0;
     for (let k = 0; k < len; k++) {
       const m = ids[(start + k) | 0] | 0;
       if (m >= 0) {
-        b.memberOwnerTag[m] = MO_INTERFACE;
-        b.memberOwnerA[m] = i;
+        memberOwnerTag[m] = MO_INTERFACE;
+        memberOwnerA[m] = i;
       }
     }
   }
   const nc = hir.nClasses | 0;
   for (let id = 0; id < nc; id++) {
-    setDecorators(hir.classModStart[id] | 0, hir.classModLen[id] | 0, P_CLASS, id);
-    setExprParent(hir.classExtends[id] | 0, P_CLASS, id);
-    setList(hir.classOtherExtendsStart[id] | 0, hir.classOtherExtendsLen[id] | 0, P_CLASS, id);
-    setTypeParams(hir.classTypeParamsStart[id] | 0, hir.classTypeParamsLen[id] | 0);
-    setTypes(hir.classExtendsArgsStart[id] | 0, hir.classExtendsArgsLen[id] | 0);
-    setTypes(hir.classImplementsStart[id] | 0, hir.classImplementsLen[id] | 0);
-    setTypes(hir.classOtherImplementsStart[id] | 0, hir.classOtherImplementsLen[id] | 0);
-    const start = hir.classMembersStart[id] | 0;
-    const len = hir.classMembersLen[id] | 0;
+    setDecorators(classModStart[id] | 0, classModLen[id] | 0, P_CLASS, id);
+    setExprParent(classExtends[id] | 0, P_CLASS, id);
+    setList(classOtherExtendsStart[id] | 0, classOtherExtendsLen[id] | 0, P_CLASS, id);
+    setTypeParams(classTypeParamsStart[id] | 0, classTypeParamsLen[id] | 0);
+    setTypes(classExtendsArgsStart[id] | 0, classExtendsArgsLen[id] | 0);
+    setTypes(classImplementsStart[id] | 0, classImplementsLen[id] | 0);
+    setTypes(classOtherImplementsStart[id] | 0, classOtherImplementsLen[id] | 0);
+    const start = classMembersStart[id] | 0;
+    const len = classMembersLen[id] | 0;
     for (let k = 0; k < len; k++) {
       const m = ids[(start + k) | 0] | 0;
       if (m >= 0) {
-        b.memberOwnerTag[m] = MO_CLASS;
-        b.memberOwnerA[m] = id;
+        memberOwnerTag[m] = MO_CLASS;
+        memberOwnerA[m] = id;
       }
     }
   }
   const nm = hir.nMembers | 0;
   for (let id = 0; id < nm; id++) {
-    if ((b.memberOwnerTag[id] | 0) === MO_CLASS) {
-      setDecorators(hir.memberModStart[id] | 0, hir.memberModLen[id] | 0, P_MEMBER, id);
+    if ((memberOwnerTag[id] | 0) === MO_CLASS) {
+      setDecorators(memberModStart[id] | 0, memberModLen[id] | 0, P_MEMBER, id);
     }
-    if ((hir.memberKeyKind[id] | 0) === PK_COMPUTED) setExprParent(hir.memberKeyVal[id] | 0, P_MEMBER, id);
-    const f = hir.memberFunc[id] | 0;
+    if ((memberKeyKind[id] | 0) === PK_COMPUTED) setExprParent(memberKeyVal[id] | 0, P_MEMBER, id);
+    const f = memberFunc[id] | 0;
     if (f >= 0) {
-      b.fnOwnerTag[f] = FO_MEMBER;
-      b.fnOwnerA[f] = id;
+      fnOwnerTag[f] = FO_MEMBER;
+      fnOwnerA[f] = id;
     }
-    setExprParent(hir.memberInit[id] | 0, P_MEMBER, id);
-    setType(hir.memberTy[id] | 0);
+    setExprParent(memberInit[id] | 0, P_MEMBER, id);
+    setType(memberTy[id] | 0);
   }
 
   const ns = hir.nStmts | 0;
   for (let id = 0; id < ns; id++) {
-    const tag = hir.stmtTag[id] | 0;
-    if ((hir.stmtModLen[id] | 0) !== 0 && tag !== STMT_CLASS) {
-      setDecorators(hir.stmtModStart[id] | 0, hir.stmtModLen[id] | 0, P_STMT, id);
+    const tag = stmtTag[id] | 0;
+    if ((stmtModLen[id] | 0) !== 0 && tag !== STMT_CLASS) {
+      setDecorators(stmtModStart[id] | 0, stmtModLen[id] | 0, P_STMT, id);
     }
     switch (tag) {
       case STMT_RETURN:
@@ -652,94 +820,94 @@ function fill(): boolean {
       case STMT_THROW:
       case STMT_EXPORT_DEFAULT:
       case STMT_EXPORT_ASSIGN:
-        setExprParent(hir.stmtA[id] | 0, P_STMT, id);
+        setExprParent(stmtA[id] | 0, P_STMT, id);
         break;
       case STMT_VAR: {
-        const start = hir.stmtA[id] | 0;
-        const len = hir.stmtB[id] | 0;
+        const start = stmtA[id] | 0;
+        const len = stmtB[id] | 0;
         for (let i = 0; i < len; i++) {
           const d = ids[(start + i) | 0] | 0;
-          if (d >= 0) b.varStmt[d] = id;
+          if (d >= 0) varStmt[d] = id;
         }
         break;
       }
       case STMT_FN: {
-        const f = hir.stmtA[id] | 0;
+        const f = stmtA[id] | 0;
         if (f >= 0) {
-          b.fnOwnerTag[f] = FO_STMT;
-          b.fnOwnerA[f] = id;
+          fnOwnerTag[f] = FO_STMT;
+          fnOwnerA[f] = id;
         }
         break;
       }
       case STMT_CLASS: {
-        const c = hir.stmtA[id] | 0;
+        const c = stmtA[id] | 0;
         if (c >= 0) {
-          b.classOwnerTag[c] = CO_STMT;
-          b.classOwnerA[c] = id;
-          b.classReached[c] = 1;
+          classOwnerTag[c] = CO_STMT;
+          classOwnerA[c] = id;
+          classReached[c] = 1;
         }
         break;
       }
       case STMT_IF:
-        setExprParent(hir.stmtA[id] | 0, P_STMT, id);
-        setStmtParent(hir.stmtB[id] | 0, P_STMT, id);
-        setStmtParent(hir.stmtC[id] | 0, P_STMT, id);
+        setExprParent(stmtA[id] | 0, P_STMT, id);
+        setStmtParent(stmtB[id] | 0, P_STMT, id);
+        setStmtParent(stmtC[id] | 0, P_STMT, id);
         break;
       case STMT_WHILE:
-        setExprParent(hir.stmtA[id] | 0, P_STMT, id);
-        setStmtParent(hir.stmtB[id] | 0, P_STMT, id);
+        setExprParent(stmtA[id] | 0, P_STMT, id);
+        setStmtParent(stmtB[id] | 0, P_STMT, id);
         break;
       case STMT_DO_WHILE:
-        setExprParent(hir.stmtB[id] | 0, P_STMT, id);
-        setStmtParent(hir.stmtA[id] | 0, P_STMT, id);
+        setExprParent(stmtB[id] | 0, P_STMT, id);
+        setStmtParent(stmtA[id] | 0, P_STMT, id);
         break;
       case STMT_FOR:
-        setExprParent(hir.stmtB[id] | 0, P_STMT, id);
-        setExprParent(hir.stmtC[id] | 0, P_STMT, id);
-        setStmtParent(hir.stmtA[id] | 0, P_STMT, id);
-        setStmtParent(hir.stmtD[id] | 0, P_STMT, id);
+        setExprParent(stmtB[id] | 0, P_STMT, id);
+        setExprParent(stmtC[id] | 0, P_STMT, id);
+        setStmtParent(stmtA[id] | 0, P_STMT, id);
+        setStmtParent(stmtD[id] | 0, P_STMT, id);
         break;
       case STMT_FOR_IN:
       case STMT_FOR_OF:
-        setExprParent(hir.stmtB[id] | 0, P_STMT, id);
-        setStmtParent(hir.stmtA[id] | 0, P_STMT, id);
-        setStmtParent(hir.stmtC[id] | 0, P_STMT, id);
+        setExprParent(stmtB[id] | 0, P_STMT, id);
+        setStmtParent(stmtA[id] | 0, P_STMT, id);
+        setStmtParent(stmtC[id] | 0, P_STMT, id);
         break;
       case STMT_BLOCK: {
-        const start = hir.stmtA[id] | 0;
-        const len = hir.stmtB[id] | 0;
+        const start = stmtA[id] | 0;
+        const len = stmtB[id] | 0;
         for (let i = 0; i < len; i++) setStmtParent(ids[(start + i) | 0] | 0, P_STMT, id);
         break;
       }
       case STMT_SWITCH: {
-        setExprParent(hir.stmtA[id] | 0, P_STMT, id);
-        const start = hir.stmtB[id] | 0;
-        const len = hir.stmtC[id] | 0;
+        setExprParent(stmtA[id] | 0, P_STMT, id);
+        const start = stmtB[id] | 0;
+        const len = stmtC[id] | 0;
         for (let i = 0; i < len; i++) {
           const c = ids[(start + i) | 0] | 0;
           if (c < 0) continue;
-          b.caseStmt[c] = id;
-          setExprParent(hir.caseTest[c] | 0, P_CASE, c);
-          const bs = hir.caseBodyStart[c] | 0;
-          const bl = hir.caseBodyLen[c] | 0;
+          caseStmt[c] = id;
+          setExprParent(caseTest[c] | 0, P_CASE, c);
+          const bs = caseBodyStart[c] | 0;
+          const bl = caseBodyLen[c] | 0;
           for (let k = 0; k < bl; k++) setStmtParent(ids[(bs + k) | 0] | 0, P_STMT, id);
         }
         break;
       }
       case STMT_TRY: {
-        const param = hir.stmtB[id] | 0;
-        if (param >= 0) b.varStmt[param] = id;
-        setStmtParent(hir.stmtA[id] | 0, P_STMT, id);
-        setStmtParent(hir.stmtC[id] | 0, P_STMT, id);
-        setStmtParent(hir.stmtD[id] | 0, P_STMT, id);
+        const param = stmtB[id] | 0;
+        if (param >= 0) varStmt[param] = id;
+        setStmtParent(stmtA[id] | 0, P_STMT, id);
+        setStmtParent(stmtC[id] | 0, P_STMT, id);
+        setStmtParent(stmtD[id] | 0, P_STMT, id);
         break;
       }
       case STMT_LABELED:
-        setStmtParent(hir.stmtB[id] | 0, P_STMT, id);
+        setStmtParent(stmtB[id] | 0, P_STMT, id);
         break;
       case STMT_IMPORT_EQUALS: {
-        const ie = hir.stmtA[id] | 0;
-        if (ie >= 0) setExprParent(hir.importEqualsExpression[ie] | 0, P_STMT, id);
+        const ie = stmtA[id] | 0;
+        if (ie >= 0) setExprParent(importEqualsExpression[ie] | 0, P_STMT, id);
         break;
       }
       default:
@@ -749,39 +917,39 @@ function fill(): boolean {
 
   const nf = hir.nFns | 0;
   for (let id = 0; id < nf; id++) {
-    const thisParam = hir.fnThisParam[id] | 0;
-    if (thisParam >= 0) b.paramFn[thisParam] = id;
-    setTypeParams(hir.fnTypeParamsStart[id] | 0, hir.fnTypeParamsLen[id] | 0);
-    setType(hir.fnRet[id] | 0);
-    if (thisParam >= 0) setType(hir.paramTy[thisParam] | 0);
+    const thisParam = fnThisParam[id] | 0;
+    if (thisParam >= 0) paramFn[thisParam] = id;
+    setTypeParams(fnTypeParamsStart[id] | 0, fnTypeParamsLen[id] | 0);
+    setType(fnRet[id] | 0);
+    if (thisParam >= 0) setType(paramTy[thisParam] | 0);
     // The decorators of a parameter of a member of a class are evaluated with the class.
     let hasClass = false;
-    if ((b.fnOwnerTag[id] | 0) === FO_MEMBER) {
-      const m = b.fnOwnerA[id] | 0;
-      if (m >= 0 && m < nm && (b.memberOwnerTag[m] | 0) === MO_CLASS) hasClass = true;
+    if ((fnOwnerTag[id] | 0) === FO_MEMBER) {
+      const m = fnOwnerA[id] | 0;
+      if (m >= 0 && m < nm && (memberOwnerTag[m] | 0) === MO_CLASS) hasClass = true;
     }
-    const ps = hir.fnParamsStart[id] | 0;
-    const pl = hir.fnParamsLen[id] | 0;
+    const ps = fnParamsStart[id] | 0;
+    const pl = fnParamsLen[id] | 0;
     for (let i = 0; i < pl; i++) {
       const p = ids[(ps + i) | 0] | 0;
       if (p < 0) continue;
-      b.paramFn[p] = id;
-      const pat = hir.paramPat[p] | 0;
+      paramFn[p] = id;
+      const pat = paramPat[p] | 0;
       if (pat >= 0) {
-        b.patParentTag[pat] = PP_PARAM;
-        b.patParentA[pat] = p;
+        patParentTag[pat] = PP_PARAM;
+        patParentA[pat] = p;
       }
-      setType(hir.paramTy[p] | 0);
-      setExprParent(hir.paramDefault[p] | 0, P_PARAM, p);
-      if (hasClass) setDecorators(hir.paramModStart[p] | 0, hir.paramModLen[p] | 0, P_PARAM, p);
-      else setDecorators(hir.paramModStart[p] | 0, hir.paramModLen[p] | 0, P_FN_BODY, id);
+      setType(paramTy[p] | 0);
+      setExprParent(paramDefault[p] | 0, P_PARAM, p);
+      if (hasClass) setDecorators(paramModStart[p] | 0, paramModLen[p] | 0, P_PARAM, p);
+      else setDecorators(paramModStart[p] | 0, paramModLen[p] | 0, P_FN_BODY, id);
     }
-    const bk = hir.fnBodyKind[id] | 0;
+    const bk = fnBodyKind[id] | 0;
     if (bk === BODY_EXPR) {
-      setExprParent(hir.fnBodyA[id] | 0, P_FN_BODY, id);
+      setExprParent(fnBodyA[id] | 0, P_FN_BODY, id);
     } else if (bk === BODY_BLOCK) {
-      const bs = hir.fnBodyA[id] | 0;
-      const bl = hir.fnBodyB[id] | 0;
+      const bs = fnBodyA[id] | 0;
+      const bl = fnBodyB[id] | 0;
       for (let i = 0; i < bl; i++) setStmtParent(ids[(bs + i) | 0] | 0, P_FN_BODY, id);
     }
   }
@@ -789,65 +957,65 @@ function fill(): boolean {
   // `fill_of_var_decls`
   const nv = hir.nVarDecls | 0;
   for (let id = 0; id < nv; id++) {
-    const pat = hir.varDeclPat[id] | 0;
+    const pat = varDeclPat[id] | 0;
     if (pat >= 0) {
-      b.patParentTag[pat] = PP_VAR;
-      b.patParentA[pat] = id;
+      patParentTag[pat] = PP_VAR;
+      patParentA[pat] = id;
     }
-    setExprParent(hir.varDeclInit[id] | 0, P_VAR_INIT, id);
-    setType(hir.varDeclTy[id] | 0);
+    setExprParent(varDeclInit[id] | 0, P_VAR_INIT, id);
+    setType(varDeclTy[id] | 0);
   }
 
   const np = hir.nPats | 0;
   for (let id = 0; id < np; id++) {
-    const tag = hir.patTag[id] | 0;
+    const tag = patTag[id] | 0;
     if (tag === PAT_OBJECT) {
-      const start = hir.patA[id] | 0;
-      const len = hir.patB[id] | 0;
+      const start = patA[id] | 0;
+      const len = patB[id] | 0;
       for (let i = 0; i < len; i++) {
         const p = ids[(start + i) | 0] | 0;
         if (p < 0) continue;
-        if ((hir.patPropKeyKind[p] | 0) === PK_COMPUTED) setExprParent(hir.patPropKeyVal[p] | 0, P_PAT_PROP, p);
-        setExprParent(hir.patPropDefault[p] | 0, P_PAT_PROP, p);
-        const v = hir.patPropValue[p] | 0;
+        if ((patPropKeyKind[p] | 0) === PK_COMPUTED) setExprParent(patPropKeyVal[p] | 0, P_PAT_PROP, p);
+        setExprParent(patPropDefault[p] | 0, P_PAT_PROP, p);
+        const v = patPropValue[p] | 0;
         if (v >= 0) {
-          b.patParentTag[v] = PP_PROP;
-          b.patParentA[v] = p;
-          b.patParentB[v] = id;
+          patParentTag[v] = PP_PROP;
+          patParentA[v] = p;
+          patParentB[v] = id;
         }
       }
     } else if (tag === PAT_ARRAY) {
-      const start = hir.patA[id] | 0;
-      const len = hir.patB[id] | 0;
+      const start = patA[id] | 0;
+      const len = patB[id] | 0;
       for (let i = 0; i < len; i++) {
         const e = ids[(start + i) | 0] | 0;
         if (e < 0) continue;
-        setExprParent(hir.patElemDefault[e] | 0, P_PAT_ELEM, e);
-        const pat = hir.patElemPat[e] | 0;
+        setExprParent(patElemDefault[e] | 0, P_PAT_ELEM, e);
+        const pat = patElemPat[e] | 0;
         if (pat >= 0) {
-          b.patParentTag[pat] = PP_ELEM;
-          b.patParentA[pat] = e;
-          b.patParentB[pat] = id;
+          patParentTag[pat] = PP_ELEM;
+          patParentA[pat] = e;
+          patParentB[pat] = id;
         }
       }
     }
   }
   const nen = hir.nEnums | 0;
   for (let i = 0; i < nen; i++) {
-    const start = hir.enumMembersStart[i] | 0;
-    const len = hir.enumMembersLen[i] | 0;
+    const start = enumMembersStart[i] | 0;
+    const len = enumMembersLen[i] | 0;
     for (let k = 0; k < len; k++) {
       const m = ids[(start + k) | 0] | 0;
       if (m < 0) continue;
-      b.enumMemberOwner[m] = i;
-      setExprParent(hir.enumMemberComputedName[m] | 0, P_ENUM_MEMBER, m);
-      setExprParent(hir.enumMemberInit[m] | 0, P_ENUM_MEMBER, m);
+      enumMemberOwner[m] = i;
+      setExprParent(enumMemberComputedName[m] | 0, P_ENUM_MEMBER, m);
+      setExprParent(enumMemberInit[m] | 0, P_ENUM_MEMBER, m);
     }
   }
   const nmod = hir.nModules | 0;
   for (let i = 0; i < nmod; i++) {
-    const start = hir.moduleBodyStart[i] | 0;
-    const len = hir.moduleBodyLen[i] | 0;
+    const start = moduleBodyStart[i] | 0;
+    const len = moduleBodyLen[i] | 0;
     for (let k = 0; k < len; k++) setStmtParent(ids[(start + k) | 0] | 0, P_MODULE, i);
   }
   {
@@ -855,8 +1023,8 @@ function fill(): boolean {
     const len = hir.bodyLen | 0;
     for (let k = 0; k < len; k++) setStmtParent(ids[(start + k) | 0] | 0, P_FILE, -1);
   }
-  for (let i = 0; i < hir.importAttributesLen; i += 2) setExprParent(hir.importAttributes[i + 1] | 0, P_FILE, -1);
-  for (let i = 0; i < hir.specifierExpressionsLen; i++) setExprParent(hir.specifierExpressions[i] | 0, P_FILE, -1);
+  for (let i = 0; i < hir.importAttributesLen; i += 2) setExprParent(importAttributes[i + 1] | 0, P_FILE, -1);
+  for (let i = 0; i < hir.specifierExpressionsLen; i++) setExprParent(specifierExpressions[i] | 0, P_FILE, -1);
   return true;
 }
 

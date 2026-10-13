@@ -717,3 +717,26 @@ What decides whether `bun fmt` takes a script file, and what it says when it doe
 - `utils/string.ts` `cleanStringLiteralText` is what `assignment_like`'s `is_short_argument` needs (`StringLiteral` case): `cleanedStringLiteralWidth(start, end, isSource, f)`.
 ### js-core issues
 - Seen once and gone after others' commits: `export function f<T>(ctor: { new(): T }): T` was not hugged when a `//#region` comment and an interface precede it (parameters.ts). Fine now in the vscode corpus.
+
+### perf R1 dview
+- Replaced DataView setUint32/getUint32 (unaligned byte-buffer word copies, not records) with a `putWord` byte-store helper and a byte copy loop in outSource (len<=64).
+- Instructions 170.5G -> 164.5G (1 thread); gate: 0 vscode byte mismatches, no GATE FAILED, conformance ok.
+- Files: src/format/ir/printer.ts (ov/sv fields now unused).
+
+### perf R1 width
+- Unrolled by 4 the byte loops in isAllPrintable and stringWidthAs (src/format/ir/width.ts); fewer back-edges/worker checks.
+- Instructions 170.5G -> 170.0G (-0.3%); gate: 0 mismatches, no GATE FAILED, conformance ok.
+- Tried and reverted: unroll-8 of markOddBlocks (170.7G, worse).
+
+### perf R1 fill
+- Change: fill() hoists 113 hir + 15 bound typed-array columns into const locals (drops `const b = bound`); setTypes/setTypeParams/setList/setProps inline setType/setExprParent on hoisted columns; setDecorators hoists its 2 columns. typeQueryOperands not hoisted (the one column reallocated outside refill).
+- Instructions (1 thread, vscode corpus): 170.5G -> 169.6G.
+- Gate: GATE_FAST and full both print `vscode byte mismatches (excl .html): 0`, no GATE FAILED, conformance no regression. 8-thread 1.35s (no baseline for this tree; not a gate criterion).
+- Files: src/sema/bind/parents.ts (uncommitted); docs/STATUS.md appended.
+
+### perf R1 uesc
+- Not kept (reverted). Tried jumping between backslashes with `indexOf(92, i)` in `buildUnicodeEscapes` (src/lint/ast/mod.ts).
+- `Uint8Array.indexOf` fails the build (SC2020, no scriptc 0.3.0 lowering). `(text as Buffer).indexOf` builds; runtime is a byte-by-byte memcmp loop (scr_bytes.c:2572), not memchr.
+- Buffer.indexOf attempt: 0 byte mismatches, 170.5G -> 172.2G instructions (regression). Gate run with GATE_FAST=1 only; full gate not run.
+- Files: src/lint/ast/mod.ts reverted (git checkout -- src); docs/STATUS.md appended.
+- Retry by orchestrator: the real cost was the loop counter `i = ((i | 0) + 1) | 0`, kept as a double (fcvtzs/add/scvtf chain per byte). Rewritten as `for (let i = 0; i < last; i++)`: 170.5G → 169.3G instructions, cycles 38.1G → 36.3G; 0 mismatches. File: src/lint/ast/mod.ts.

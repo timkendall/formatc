@@ -70,7 +70,8 @@ function buildUnicodeEscapes(): void {
   const text = hir.text;
   const n = hir.sourceLen | 0;
   const v = F.unicodeEscapes;
-  for (let i = 0; i + 1 < n; i = ((i | 0) + 1) | 0) {
+  const last = (n - 1) | 0;
+  for (let i = 0; i < last; i++) {
     if ((text[i] | 0) === 92 && (text[i + 1] | 0) === 117) v.push(i);
   }
   if (v.len > 0) {

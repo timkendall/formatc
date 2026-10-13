@@ -456,14 +456,22 @@ export class Printer {
     this.ov = new DataView(nd.buffer, nd.byteOffset, nd.length);
   }
 
+  putWord(p: number, w: number): void {
+    const out = this.out;
+    out[p] = w & 255;
+    out[(p + 1) | 0] = (w >>> 8) & 255;
+    out[(p + 2) | 0] = (w >>> 16) & 255;
+    out[(p + 3) | 0] = (w >>> 24) & 255;
+  }
+
   /** A token with inline bytes (kind `TOK_BASE + len`): `a`, `b`, `c` of the element at `idx` are its bytes. */
   outInlineToken(idx: number, len: number): void {
     if (this.outLen + 32 > this.out.length) this.growOut(32);
     const p = this.outLen | 0;
-    this.ov.setUint32(p, this.a[idx] | 0, true);
+    this.putWord(p, this.a[idx] | 0);
     if (len > 4) {
-      this.ov.setUint32(p + 4, this.b[idx] | 0, true);
-      if (len > 8) this.ov.setUint32(p + 8, this.c[idx] | 0, true);
+      this.putWord((p + 4) | 0, this.b[idx] | 0);
+      if (len > 8) this.putWord((p + 8) | 0, this.c[idx] | 0);
     }
     this.outLen = (p + len) | 0;
   }
@@ -495,27 +503,10 @@ export class Printer {
   outSource(start: number, len: number): void {
     if (this.outLen + len + 32 > this.out.length) this.growOut(len + 32);
     const p = this.outLen | 0;
-    if (len <= 16 && ((start + 16) | 0) <= this.srcLen) {
-      this.ov.setUint32(p, this.sv.getUint32(start, true), true);
-      if (len > 4) {
-        this.ov.setUint32((p + 4) | 0, this.sv.getUint32((start + 4) | 0, true), true);
-        if (len > 8) {
-          this.ov.setUint32((p + 8) | 0, this.sv.getUint32((start + 8) | 0, true), true);
-          if (len > 12) this.ov.setUint32((p + 12) | 0, this.sv.getUint32((start + 12) | 0, true), true);
-        }
-      }
-    } else if (len <= 64) {
-      const limit = (this.srcLen - 4) | 0;
-      let k = 0;
-      while (k < len && ((start + k) | 0) <= limit) {
-        this.ov.setUint32((p + k) | 0, this.sv.getUint32((start + k) | 0, true), true);
-        k = (k + 4) | 0;
-      }
-      // Near the end of the source.
-      while (k < len) {
-        this.out[(p + k) | 0] = this.source[(start + k) | 0] | 0;
-        k = (k + 1) | 0;
-      }
+    if (len <= 64) {
+      const out = this.out;
+      const src = this.source;
+      for (let k = 0; k < len; k++) out[(p + k) | 0] = src[(start + k) | 0] | 0;
     } else {
       this.out.set(this.source.subarray(start, start + len), p);
     }
@@ -855,10 +846,10 @@ export class Printer {
             this.movePendingMarks();
           }
         }
-        this.ov.setUint32(outLen, this.a[idx] | 0, true);
+        this.putWord(outLen, this.a[idx] | 0);
         if (len > 4) {
-          this.ov.setUint32((outLen + 4) | 0, this.b[idx] | 0, true);
-          if (len > 8) this.ov.setUint32((outLen + 8) | 0, this.c[idx] | 0, true);
+          this.putWord((outLen + 4) | 0, this.b[idx] | 0);
+          if (len > 8) this.putWord((outLen + 8) | 0, this.c[idx] | 0);
         }
         outLen = ((outLen | 0) + (len | 0)) | 0;
         lineWidth = ((lineWidth | 0) + (len | 0)) | 0;
