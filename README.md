@@ -31,6 +31,30 @@ How these were counted:
 - About 97% of all tokens are cache reads, which dominate the cost: each agent re-reads its growing context on every call.
 - The session ran on a subscription plan, so what was actually billed differs.
 
+## Swarm rounds
+
+Each round is a set of short-lived agents with one target each, measured with `tools/perf/gate.sh` (instructions retired on
+the whole corpus at 1 thread, which is stable on a busy machine; 0 byte mismatches against `bun fmt`; no Prettier conformance
+regression). A change is kept only if it passes the gate and lowers the instruction count. Bun: 35.9 G instructions, 0.43 s at 8
+threads.
+
+| round | targets | agents | API calls | cache reads | est. cost | instructions, 1 thread | 8 threads | kept |
+| ----- | ------- | ------ | --------- | ----------- | --------- | ---------------------- | --------- | ---- |
+| 0 · baseline | the port, plus a first perf pass that a usage limit paused | 32 × Sonnet 5.5 (high) + Opus 5.5 orchestrator | 5,179 | 2.23 B | ~$560–570 | 170.6 G | 1.25 s (2.85×) | output identical to `bun fmt` |
+| 1 · hot spots | `buildUnicodeEscapes`, `parents.ts fill()`, width scans, printer `DataView` | 2 × Haiku 5.5, 2 × Sonnet 5.5 (medium) | 52 | 2.8 M | ~$0.40 | 163.8 G (−4.0%) | 1.25 s¹ | 4 of 4 (one redone by the orchestrator) |
+| 2 · worker-mode state | read thread-local singletons once in the lexer, IR writer/printer and tree handles; one fused byte scan | 3 × Haiku 5.5, 2 × Sonnet 5.5 (medium) | 101 | 6.8 M | ~$0.55 | 161.9 G (−1.2%) | 1.15 s (2.67×) | 1 of 5 |
+| orchestrator, rounds 1–2 | planning, merging, gating, profiling, docs | Opus 5.5 | ~60 | ~6 M | ~$3.5 | | | |
+
+¹ Measured while other agents were running; the idle 8-thread time after round 2 is in the table below.
+
+Rounds 1–2 cost about $4.5 in total, against ~$560 for round 0. Each agent ran in its own git worktree and stopped after one
+target (after the gate passed, after two failed attempts, or at ~60 tool calls). None was resumed, so no agent re-read a long
+context. Haiku agents cost $0.02–0.11 each and Sonnet agents ~$0.18. Per-agent numbers come from `python3 -I tools/agent-cost.py
+<session-id>`. Sub-agent transcripts record only the first streaming count of output tokens, so output is estimated from the
+text and tool inputs the agents wrote. Their hidden thinking is not recorded and may add a few tenths of a dollar. What failed
+and why is logged in [docs/STATUS.md](docs/STATUS.md). For example, hoisting fields that are read once per call adds
+instructions in worker mode, and reading 4 bytes at a time does not beat a byte loop.
+
 A TypeScript port of [Bun's formatter](https://bun.com/docs/format) (`bun fmt`, Rust), compiled to a native executable with
 [scriptc](https://scriptc.dev) and parallelized with `node:worker_threads` + [`@scriptc/threads`](https://scriptc.dev/docs/threads).
 
@@ -42,13 +66,14 @@ measurements, where the time goes, and the ways we see to close the gap.
 
 ## Results
 
-`--check` over bench/vscode (18,080 files, 238 MB, 193 MB of it TypeScript), Apple M5 Pro, idle machine, Bun canary 1.4.4:
+`--check` over bench/vscode (18,080 files, 238 MB, 193 MB of it TypeScript), Apple M5 Pro, idle machine, Bun canary 1.4.4, min
+of 3 interleaved runs, after swarm round 2:
 
 | threads | formatc | `bun fmt` | gap |
 | ------- | ------- | --------- | --- |
-| 1       | 8.42 s  | 2.41 s    | 3.5× |
-| 8 (Bun's published benchmark) | 1.25 s | 0.44 s | 2.85× |
-| 18      | 0.75 s  | 0.30 s    | 2.5× |
+| 1       | 7.75 s  | 2.39 s    | 3.2× |
+| 8 (Bun's published benchmark) | 1.15 s | 0.43 s | 2.67× |
+| 18      | 0.70 s  | 0.30 s    | 2.3× |
 
 Correctness against `bun fmt` on the same tree (`bin/fmt --check --compare-to=../vscode-fmt`):
 
@@ -122,8 +147,9 @@ node tools/conformance.ts prettier [--languages=js,ts] [--filter=dir] [--report=
 
 ## How it was built
 
-By an orchestrating agent (Claude Opus 5.5) and 32 Claude Sonnet 5.5 sub-agents (see "What it took so far") working in parallel, each porting or optimizing
-one area against `bun fmt` as the oracle (differential tests, fuzzing, Prettier's fixtures).
+By an orchestrating agent (Claude Opus 5.5) and 32 Claude Sonnet 5.5 sub-agents (see "What it took so far") working in parallel,
+then short-lived Haiku 5.5 and Sonnet 5.5 agents in performance rounds (see "Swarm rounds"). Each agent ported or optimized one
+area against `bun fmt` as the oracle (differential tests, fuzzing, Prettier's fixtures).
 
 ## License and credits
 
