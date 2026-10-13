@@ -35,7 +35,7 @@ load = int(m.group(1), 16) if m else 0
 total = sum(by_function.values())
 print(f"{total} samples")
 if not names:
-    for name, count in by_function.most_common(25):
+    for name, count in by_function.most_common(int(__import__("os").environ.get("TOPN", "25"))):
         print(f"{count:6d} {100 * count / total:5.1f}%  {name}")
 for suffix in names:
     hot = sorted(((a, c) for (n, a), c in by_address.items() if n.endswith(suffix)), key=lambda t: -t[1])
