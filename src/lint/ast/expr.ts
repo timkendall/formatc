@@ -311,21 +311,24 @@ function isInJsxTagWithDots(pos: number): boolean {
 
 /** `Expr::span` into `SP`: without the parentheses around it. */
 export function exprSpan(e: number): void {
-  if (!inRange(e)) {
-    SP[0] = 0;
-    SP[1] = 0;
+  const h = hir;
+  const sp = SP;
+  if (!(e >= 0 && e < h.nExprs)) {
+    sp[0] = 0;
+    sp[1] = 0;
     return;
   }
-  const t = hir.exprTag[e] | 0;
-  const pos = hir.exprPos[e] | 0;
-  const end = hir.exprEnd[e] | 0;
+  const t = h.exprTag[e] | 0;
+  const pos = h.exprPos[e] | 0;
+  const end = h.exprEnd[e] | 0;
+  const f = F;
   let plain = false;
-  if (t === EXPR_IDENT || t === EXPR_DOT) plain = end <= F.unicodeFirst || F.unicodeLast < pos;
-  else if (t === EXPR_SPREAD || t === EXPR_STRING) plain = hir.nJsx === 0;
+  if (t === EXPR_IDENT || t === EXPR_DOT) plain = end <= f.unicodeFirst || f.unicodeLast < pos;
+  else if (t === EXPR_SPREAD || t === EXPR_STRING) plain = h.nJsx === 0;
   else plain = t !== EXPR_CLASS && t !== EXPR_FN;
   if (plain) {
-    SP[0] = pos;
-    SP[1] = end;
+    sp[0] = pos;
+    sp[1] = end;
     return;
   }
   spanThatTheHirMayNotHave(e, t, pos, end);
@@ -521,10 +524,11 @@ export function exprMemberNameStart(e: number): number {
 
 /** `Expr::chain`: its place in an optional chain (`CHAIN_NO`, `CHAIN_START`, `CHAIN_CONTINUE`). */
 export function exprChain(e: number): number {
-  if (!inRange(e)) return CHAIN_NO;
-  const t = hir.exprTag[e] | 0;
-  if (t === EXPR_DOT || t === EXPR_INDEX) return hir.exprAux[e] | 0;
-  if (t === EXPR_CALL) return hir.callChain[hir.exprA[e] | 0] | 0;
+  const h = hir;
+  if (!(e >= 0 && e < h.nExprs)) return CHAIN_NO;
+  const t = h.exprTag[e] | 0;
+  if (t === EXPR_DOT || t === EXPR_INDEX) return h.exprAux[e] | 0;
+  if (t === EXPR_CALL) return h.callChain[h.exprA[e] | 0] | 0;
   return CHAIN_NO;
 }
 
@@ -535,7 +539,8 @@ export function exprIsOptional(e: number): boolean {
 
 /** `Expr::binary_op`: the `BIN_*` of a `Binary`, else -1. */
 export function exprBinaryOpOf(e: number): number {
-  return inRange(e) && (hir.exprTag[e] | 0) === EXPR_BINARY ? hir.exprAux[e] | 0 : -1;
+  const h = hir;
+  return e >= 0 && e < h.nExprs && (h.exprTag[e] | 0) === EXPR_BINARY ? h.exprAux[e] | 0 : -1;
 }
 /** `Expr::unary_op`: the `UN_*` of a `Unary`, else -1. */
 export function exprUnaryOpOf(e: number): number {
@@ -605,9 +610,10 @@ export function exprJsxContainerSpan(e: number): boolean {
  * `undefined`. In `a?.b.c!` that is `a?.b`, `a?.b.c` and `a?.b.c!`. In `(a?.b).c` it is only `a?.b`: parentheses end a chain.
  */
 export function exprIsInOptionalChain(e: number): boolean {
+  const h = hir;
   let at = e;
-  while (inRange(at) && (hir.exprTag[at] | 0) === EXPR_NON_NULL) {
-    at = hir.exprA[at] | 0;
+  while (at >= 0 && at < h.nExprs && (h.exprTag[at] | 0) === EXPR_NON_NULL) {
+    at = h.exprA[at] | 0;
     if (fileIsParenthesized(at)) return false;
   }
   return exprChain(at) !== CHAIN_NO;

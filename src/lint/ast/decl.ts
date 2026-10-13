@@ -575,17 +575,18 @@ export function typeParamParent(p: number): number {
  * `PropKey` kind, its value, the `NameKind`, and where the name starts.
  */
 function keyFrom(pkKind: number, pkVal: number, nameKind: number, start: number): number {
+  const K = KEY;
   const text = hir.text;
   const len = hir.sourceLen | 0;
   const c = start >= 0 && start < len ? text[start] | 0 : -1;
-  KEY[KEY_NAME] = -1;
-  KEY[KEY_EXPR] = -1;
-  KEY[KEY_START] = start;
-  KEY[KEY_JSX] = 0;
+  K[KEY_NAME] = -1;
+  K[KEY_EXPR] = -1;
+  K[KEY_START] = start;
+  K[KEY_JSX] = 0;
   let kind = -1;
   if (pkKind === PK_NAME && nameKind === NK_IDENTIFIER && c >= 0 && c !== 34 && c !== 39 && !(c >= 48 && c <= 57)) {
-    KEY[KEY_NAME] = pkVal;
-    KEY[KEY_KIND] = KEY_IDENT;
+    K[KEY_NAME] = pkVal;
+    K[KEY_KIND] = KEY_IDENT;
     return KEY_IDENT;
   }
   // `new_in_general`
@@ -593,23 +594,23 @@ function keyFrom(pkKind: number, pkVal: number, nameKind: number, start: number)
     if (c === 35) {
       // `#name` that is not in a class
       const e = tokenEnd(text, len, start, false);
-      KEY[KEY_NAME] = F.names.atomOfBytes(text, start, e);
+      K[KEY_NAME] = F.names.atomOfBytes(text, start, e);
       kind = KEY_PRIVATE;
     } else {
       kind = keyOfBigint(start);
       if (kind < 0) {
-        KEY[KEY_KIND] = KEY_NONE;
+        K[KEY_KIND] = KEY_NONE;
         return KEY_NONE;
       }
     }
   } else if (pkKind === PK_PRIVATE) {
-    KEY[KEY_NAME] = pkVal;
+    K[KEY_NAME] = pkVal;
     kind = KEY_PRIVATE;
   } else if (pkKind === PK_COMPUTED) {
-    KEY[KEY_EXPR] = pkVal;
+    K[KEY_EXPR] = pkVal;
     kind = KEY_COMPUTED;
   } else {
-    KEY[KEY_NAME] = pkVal;
+    K[KEY_NAME] = pkVal;
     switch (nameKind) {
       case NK_IDENTIFIER:
         if (c === 34 || c === 39) {
@@ -619,7 +620,7 @@ function keyFrom(pkKind: number, pkVal: number, nameKind: number, start: number)
           if (k >= 0) {
             kind = k;
           } else {
-            KEY[KEY_NAME] = pkVal;
+            K[KEY_NAME] = pkVal;
             kind = KEY_IDENT;
           }
         } else {
@@ -643,8 +644,8 @@ function keyFrom(pkKind: number, pkVal: number, nameKind: number, start: number)
         break;
     }
   }
-  KEY[KEY_KIND] = kind;
-  KEY[KEY_JSX] = nameKind === NK_JSX ? 1 : 0;
+  K[KEY_KIND] = kind;
+  K[KEY_JSX] = nameKind === NK_JSX ? 1 : 0;
   return kind;
 }
 
@@ -791,7 +792,7 @@ function asciiNameLen(start: number): number {
   const c0 = text[start] | 0;
   const isPart0 = (c0 >= 65 && c0 <= 90) || (c0 >= 97 && c0 <= 122) || c0 === 95 || c0 === 36 || (c0 >= 48 && c0 <= 57);
   if (!isPart0 || (c0 >= 48 && c0 <= 57)) return -1;
-  let i = start + 1;
+  let i = (start + 1) | 0;
   while (i < len) {
     const c = text[i] | 0;
     const isPart = (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95 || c === 36 || (c >= 48 && c <= 57);

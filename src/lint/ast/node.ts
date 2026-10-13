@@ -278,27 +278,28 @@ function ofParent(tag: number, a: number): number {
 
 /** `Expr::parent`. */
 export function exprParent(e: number): number {
-  const tag = bound.exprParentTag[e] | 0;
+  const b = bound;
+  const tag = b.exprParentTag[e] | 0;
+  const a = b.exprParentA[e] | 0;
   // The binder never has an expression as the parent of the `a.b` of the type `typeof a.b`.
   if (tag === P_EXPR) {
-    const parent = bound.exprParentA[e] | 0;
-    if ((hir.exprTag[parent] | 0) !== EXPR_TAGGED_TEMPLATE) return nodeOfExpr(parent);
+    if ((hir.exprTag[a] | 0) !== EXPR_TAGGED_TEMPLATE) return nodeOfExpr(a);
   }
-  return exprParentInGeneral(e, tag);
+  return exprParentInGeneral(e, tag, a);
 }
 
 /** What most expressions are part of that are not part of an expression. */
-function exprParentInGeneral(e: number, tag: number): number {
+function exprParentInGeneral(e: number, tag: number, a: number): number {
+  const h = hir;
   const isInNoType = bound.typeQueryOperandsLen === 0;
-  const a = bound.exprParentA[e] | 0;
   switch (tag) {
     case P_VAR_INIT:
       return nodeOfVarDecl(a);
     case P_PROP:
-      if (hir.importAttributesLen === 0) return nodeOfProp(a);
+      if (h.importAttributesLen === 0) return nodeOfProp(a);
       break;
     case P_STMT:
-      if ((hir.stmtTag[a] | 0) === STMT_EXPR) {
+      if ((h.stmtTag[a] | 0) === STMT_EXPR) {
         if (isInNoType && isPlainlyNoWrapper(a)) return nodeOfStmt(a);
       } else {
         return nodeOfStmt(a);
@@ -536,52 +537,53 @@ function sortRows(v: I32Vec, width: number): void {
 export function buildTypeParents(): void {
   if (TP.built) return;
   TP.built = true;
-  const nt = hir.nTypes | 0;
+  const h = hir;
+  const nt = h.nTypes | 0;
   TP.types = growFill(TP.types, nt);
-  TP.typeParams = growFill(TP.typeParams, hir.nTypeParams);
-  TP.tupleElems = growFill(TP.tupleElems, hir.nTupleElems);
+  TP.typeParams = growFill(TP.typeParams, h.nTypeParams);
+  TP.tupleElems = growFill(TP.tupleElems, h.nTupleElems);
   TP.queryOperands.reset();
   TP.thisNames.reset();
   TP.hasErrors = false;
-  const ids = hir.ids;
+  const ids = h.ids;
 
   for (let i = 0; i < nt; i++) {
     const parent = nodeOfType(i);
-    switch (hir.typeTag[i] | 0) {
+    switch (h.typeTag[i] | 0) {
       case TYPE_HERITAGE:
-        listTypes(hir.typeB[i] | 0, hir.typeC[i] | 0, parent);
+        listTypes(h.typeB[i] | 0, h.typeC[i] | 0, parent);
         break;
       case TYPE_REF:
-        listTypes(hir.typeC[i] | 0, hir.typeD[i] | 0, parent);
+        listTypes(h.typeC[i] | 0, h.typeD[i] | 0, parent);
         break;
       case TYPE_IMPORT:
-        listTypes(hir.typeD[i] | 0, hir.typeE[i] | 0, parent);
+        listTypes(h.typeD[i] | 0, h.typeE[i] | 0, parent);
         break;
       case TYPE_TYPEOF:
-        listTypes(hir.typeC[i] | 0, hir.typeD[i] | 0, parent);
-        TP.queryOperands.push2(hir.typeE[i] | 0, i);
+        listTypes(h.typeC[i] | 0, h.typeD[i] | 0, parent);
+        TP.queryOperands.push2(h.typeE[i] | 0, i);
         break;
       case TYPE_TEMPLATE:
       case TYPE_UNION:
       case TYPE_INTERSECTION:
-        listTypes(hir.typeA[i] | 0, hir.typeB[i] | 0, parent);
+        listTypes(h.typeA[i] | 0, h.typeB[i] | 0, parent);
         break;
       case TYPE_ARRAY:
       case TYPE_KEYOF:
       case TYPE_READONLY:
       case TYPE_UNIQUE:
-        oneType(hir.typeA[i] | 0, parent);
+        oneType(h.typeA[i] | 0, parent);
         break;
       case TYPE_JSDOC:
         TP.hasErrors = true;
-        oneType(hir.typeA[i] | 0, parent);
+        oneType(h.typeA[i] | 0, parent);
         break;
       case TYPE_PREDICATE:
-        oneType(hir.typeB[i] | 0, parent);
+        oneType(h.typeB[i] | 0, parent);
         break;
       case TYPE_TUPLE: {
-        const start = hir.typeA[i] | 0;
-        const len = hir.typeB[i] | 0;
+        const start = h.typeA[i] | 0;
+        const len = h.typeB[i] | 0;
         for (let k = 0; k < len; k++) {
           const e = ids[(start + k) | 0] | 0;
           if (e >= 0) TP.tupleElems[e] = parent;
@@ -589,24 +591,24 @@ export function buildTypeParents(): void {
         break;
       }
       case TYPE_COND:
-        oneType(hir.typeA[i] | 0, parent);
-        oneType(hir.typeB[i] | 0, parent);
-        oneType(hir.typeC[i] | 0, parent);
-        oneType(hir.typeD[i] | 0, parent);
+        oneType(h.typeA[i] | 0, parent);
+        oneType(h.typeB[i] | 0, parent);
+        oneType(h.typeC[i] | 0, parent);
+        oneType(h.typeD[i] | 0, parent);
         break;
       case TYPE_INDEXED_ACCESS:
-        oneType(hir.typeA[i] | 0, parent);
-        oneType(hir.typeB[i] | 0, parent);
+        oneType(h.typeA[i] | 0, parent);
+        oneType(h.typeB[i] | 0, parent);
         break;
       case TYPE_INFER:
-        oneTypeParam(hir.typeA[i] | 0, parent);
+        oneTypeParam(h.typeA[i] | 0, parent);
         break;
       case TYPE_MAPPED: {
-        const m = hir.typeA[i] | 0;
+        const m = h.typeA[i] | 0;
         if (m >= 0) {
-          oneTypeParam(hir.mappedParam[m] | 0, parent);
-          oneType(hir.mappedNameTy[m] | 0, parent);
-          oneType(hir.mappedTy[m] | 0, parent);
+          oneTypeParam(h.mappedParam[m] | 0, parent);
+          oneType(h.mappedNameTy[m] | 0, parent);
+          oneType(h.mappedTy[m] | 0, parent);
         }
         break;
       }
@@ -614,71 +616,71 @@ export function buildTypeParents(): void {
         break;
     }
   }
-  for (let i = 0; i < hir.nTupleElems; i++) {
-    oneType(hir.tupleElemTy[i] | 0, nodeOfTupleElem(i));
-    oneType(hir.tupleElemWritten[i] | 0, nodeOfTupleElem(i));
+  for (let i = 0; i < h.nTupleElems; i++) {
+    oneType(h.tupleElemTy[i] | 0, nodeOfTupleElem(i));
+    oneType(h.tupleElemWritten[i] | 0, nodeOfTupleElem(i));
   }
-  for (let i = 0; i < hir.nTypeParams; i++) {
-    oneType(hir.typeParamConstraint[i] | 0, nodeOfTypeParam(i));
-    oneType(hir.typeParamDefault[i] | 0, nodeOfTypeParam(i));
+  for (let i = 0; i < h.nTypeParams; i++) {
+    oneType(h.typeParamConstraint[i] | 0, nodeOfTypeParam(i));
+    oneType(h.typeParamDefault[i] | 0, nodeOfTypeParam(i));
   }
-  for (let i = 0; i < hir.nFns; i++) {
-    oneType(hir.fnRet[i] | 0, nodeOfFunc(i));
-    listTypeParams(hir.fnTypeParamsStart[i] | 0, hir.fnTypeParamsLen[i] | 0, nodeOfFunc(i));
-    const tp = hir.fnThisParam[i] | 0;
-    if (tp >= 0) TP.thisNames.push2(hir.paramPat[tp] | 0, tp);
+  for (let i = 0; i < h.nFns; i++) {
+    oneType(h.fnRet[i] | 0, nodeOfFunc(i));
+    listTypeParams(h.fnTypeParamsStart[i] | 0, h.fnTypeParamsLen[i] | 0, nodeOfFunc(i));
+    const tp = h.fnThisParam[i] | 0;
+    if (tp >= 0) TP.thisNames.push2(h.paramPat[tp] | 0, tp);
   }
   sortRows(TP.thisNames, 2);
-  for (let i = 0; i < hir.nParams; i++) oneType(hir.paramTy[i] | 0, nodeOfParam(i));
-  for (let i = 0; i < hir.nVarDecls; i++) oneType(hir.varDeclTy[i] | 0, nodeOfVarDecl(i));
-  for (let i = 0; i < hir.nMembers; i++) {
-    if ((hir.memberFunc[i] | 0) < 0) oneType(hir.memberTy[i] | 0, nodeOfMember(i));
+  for (let i = 0; i < h.nParams; i++) oneType(h.paramTy[i] | 0, nodeOfParam(i));
+  for (let i = 0; i < h.nVarDecls; i++) oneType(h.varDeclTy[i] | 0, nodeOfVarDecl(i));
+  for (let i = 0; i < h.nMembers; i++) {
+    if ((h.memberFunc[i] | 0) < 0) oneType(h.memberTy[i] | 0, nodeOfMember(i));
   }
-  for (let i = 0; i < hir.nClasses; i++) {
+  for (let i = 0; i < h.nClasses; i++) {
     const parent = nodeOfClass(i);
-    listTypeParams(hir.classTypeParamsStart[i] | 0, hir.classTypeParamsLen[i] | 0, parent);
-    listTypes(hir.classExtendsArgsStart[i] | 0, hir.classExtendsArgsLen[i] | 0, parent);
-    listTypes(hir.classImplementsStart[i] | 0, hir.classImplementsLen[i] | 0, parent);
-    listTypes(hir.classOtherImplementsStart[i] | 0, hir.classOtherImplementsLen[i] | 0, parent);
+    listTypeParams(h.classTypeParamsStart[i] | 0, h.classTypeParamsLen[i] | 0, parent);
+    listTypes(h.classExtendsArgsStart[i] | 0, h.classExtendsArgsLen[i] | 0, parent);
+    listTypes(h.classImplementsStart[i] | 0, h.classImplementsLen[i] | 0, parent);
+    listTypes(h.classOtherImplementsStart[i] | 0, h.classOtherImplementsLen[i] | 0, parent);
   }
-  for (let i = 0; i < hir.nInterfaces; i++) {
-    const s = hir.interfaceStmt[i] | 0;
+  for (let i = 0; i < h.nInterfaces; i++) {
+    const s = h.interfaceStmt[i] | 0;
     if (s < 0) continue;
     const parent = nodeOfStmt(s);
-    listTypeParams(hir.interfaceTypeParamsStart[i] | 0, hir.interfaceTypeParamsLen[i] | 0, parent);
-    listTypes(hir.interfaceExtendsStart[i] | 0, hir.interfaceExtendsLen[i] | 0, parent);
-    listTypes(hir.interfaceOtherHeritageStart[i] | 0, hir.interfaceOtherHeritageLen[i] | 0, parent);
+    listTypeParams(h.interfaceTypeParamsStart[i] | 0, h.interfaceTypeParamsLen[i] | 0, parent);
+    listTypes(h.interfaceExtendsStart[i] | 0, h.interfaceExtendsLen[i] | 0, parent);
+    listTypes(h.interfaceOtherHeritageStart[i] | 0, h.interfaceOtherHeritageLen[i] | 0, parent);
   }
-  for (let i = 0; i < hir.nAliases; i++) {
-    const s = hir.aliasStmt[i] | 0;
+  for (let i = 0; i < h.nAliases; i++) {
+    const s = h.aliasStmt[i] | 0;
     if (s < 0) continue;
     const parent = nodeOfStmt(s);
-    listTypeParams(hir.aliasTypeParamsStart[i] | 0, hir.aliasTypeParamsLen[i] | 0, parent);
-    oneType(hir.aliasTy[i] | 0, parent);
+    listTypeParams(h.aliasTypeParamsStart[i] | 0, h.aliasTypeParamsLen[i] | 0, parent);
+    oneType(h.aliasTy[i] | 0, parent);
   }
   // Few expressions have a type in them. This goes through all of them, so what tells that from the expression alone comes first.
-  const ne = hir.nExprs | 0;
+  const ne = h.nExprs | 0;
   for (let i = 0; i < ne; i++) {
-    const tag = hir.exprTag[i] | 0;
+    const tag = h.exprTag[i] | 0;
     let ty = -1;
     let argsStart = 0;
     let argsLen = 0;
     if (tag === EXPR_AS || tag === EXPR_SATISFIES) {
-      ty = hir.exprB[i] | 0;
+      ty = h.exprB[i] | 0;
     } else if (tag === EXPR_INSTANTIATION) {
-      argsStart = hir.exprB[i] | 0;
-      argsLen = hir.exprC[i] | 0;
+      argsStart = h.exprB[i] | 0;
+      argsLen = h.exprC[i] | 0;
     } else if (tag === EXPR_CALL || tag === EXPR_NEW || tag === EXPR_TAGGED_TEMPLATE) {
-      const c = hir.exprA[i] | 0;
+      const c = h.exprA[i] | 0;
       if (c >= 0) {
-        argsStart = hir.callTypeArgsStart[c] | 0;
-        argsLen = hir.callTypeArgsLen[c] | 0;
+        argsStart = h.callTypeArgsStart[c] | 0;
+        argsLen = h.callTypeArgsLen[c] | 0;
       }
     } else if (tag === EXPR_JSX) {
-      const j = hir.exprA[i] | 0;
+      const j = h.exprA[i] | 0;
       if (j >= 0) {
-        argsStart = hir.jsxTypeArgsStart[j] | 0;
-        argsLen = hir.jsxTypeArgsLen[j] | 0;
+        argsStart = h.jsxTypeArgsStart[j] | 0;
+        argsLen = h.jsxTypeArgsLen[j] | 0;
       }
     } else {
       continue;

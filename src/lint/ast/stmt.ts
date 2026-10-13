@@ -70,20 +70,22 @@ export function stmtTag(s: number): number {
 
 /** `Stmt::span` into `SP`: from its first token, which can be a decorator or a modifier such as `export`, to the end of its last, which can be a `;`. */
 export function stmtSpan(s: number): void {
-  if (!stmtInRange(s)) {
-    SP[0] = 0;
-    SP[1] = 0;
+  const h = hir;
+  const sp = SP;
+  if (!(s >= 0 && s < h.nStmts)) {
+    sp[0] = 0;
+    sp[1] = 0;
     return;
   }
-  const start = hir.stmtStart[s] | 0;
+  const start = h.stmtStart[s] | 0;
   // The HIR positions the block after `finally` at the keyword.
-  if ((hir.stmtTag[s] | 0) === STMT_BLOCK && (hir.text[start] | 0) === 102) {
-    SP[0] = skipTrivia(hir.text, hir.sourceLen | 0, hir.stmtLocPos[s] | 0);
-    SP[1] = hir.stmtLocEnd[s] | 0;
+  if ((h.stmtTag[s] | 0) === STMT_BLOCK && (h.text[start] | 0) === 102) {
+    sp[0] = skipTrivia(h.text, h.sourceLen | 0, h.stmtLocPos[s] | 0);
+    sp[1] = h.stmtLocEnd[s] | 0;
     return;
   }
-  SP[0] = start;
-  SP[1] = hir.stmtLocEnd[s] | 0;
+  sp[0] = start;
+  sp[1] = h.stmtLocEnd[s] | 0;
 }
 export function stmtStart(s: number): number {
   stmtSpan(s);

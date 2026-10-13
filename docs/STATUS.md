@@ -740,3 +740,31 @@ What decides whether `bun fmt` takes a script file, and what it says when it doe
 - Buffer.indexOf attempt: 0 byte mismatches, 170.5G -> 172.2G instructions (regression). Gate run with GATE_FAST=1 only; full gate not run.
 - Files: src/lint/ast/mod.ts reverted (git checkout -- src); docs/STATUS.md appended.
 - Retry by orchestrator: the real cost was the loop counter `i = ((i | 0) + 1) | 0`, kept as a double (fcvtzs/add/scvtf chain per byte). Rewritten as `for (let i = 0; i < last; i++)`: 170.5G → 169.3G instructions, cycles 38.1G → 36.3G; 0 mismatches. File: src/lint/ast/mod.ts.
+
+### perf R2 ast
+- Change: hoisted `hir`/`bound`/`F`/`SP`/`KEY` singletons into locals in exprSpan, exprChain, exprBinaryOpOf, exprIsInOptionalChain, exprParent (+exprParentInGeneral takes the already-read `a`), stmtSpan, keyFrom (`K = KEY`), buildTypeParents (`h = hir`), and an integer counter in asciiNameLen; anSpan/anParent untouched (hir reads only in rare cases).
+- Instructions: 163.8G -> 162.0G (-1.1%); 1-thread cycles 34.9G -> 39.1G in this run (busy machine, not gated).
+- Gate (full): vscode byte mismatches (excl .html): 0; no GATE FAILED; conformance: no language below baseline.
+- Files: src/lint/ast/expr.ts, src/lint/ast/node.ts, src/lint/ast/stmt.ts, src/lint/ast/decl.ts (uncommitted).
+
+### perf R2 lex
+- Tried (reverted): hoisted `this.src` and module tables (FIRST, NAME_BYTE, BC_STOP, STR_STOP) into locals in Lexer.name/scan/scanAfterLineFeed/blockComment/string; table/meta/src/cooked into locals in Names.lookup/atomOfKeys.
+- Also tried and reverted: `| 0` integer forms in Hir.listFrom/pushExpr/pushStmt (+0.7G: 164.0G vs 163.3G in the same session).
+- Instructions: lexer/names hoist A/B, 3 runs each: HEAD avg 162.5G, change avg 163.1G (run-to-run noise about +/-0.8G on the same binary); no measurable gain.
+- Gate: 0 byte mismatches, no GATE FAILED, conformance OK for the change variant (fast gate only for HEAD); not kept, so tree is back to HEAD.
+- Files: src/sema/parser/lexer.ts, src/sema/parser/names.ts, src/sema/hir.ts (all reverted).
+
+### perf R2 ir
+- Tried outSource (printer.ts:503) copy variants for len<=64; both reverted, no change kept.
+- DataView word copy (sv.getUint32 -> ov.setUint32, bytewise tail): 168.2G instructions vs 163.8G baseline (worse).
+- Bytewise copy unrolled 4x with a single offset: 164.3G vs 163.8G (worse, no gain).
+- Gate (GATE_FAST) mismatches 0 in both; src restored to baseline.
+### perf R2 ir-hoist
+- Tried: hoist pool arrays (tag/a/b/c/variants) and this.x typed-array fields into locals in Printer.printElements/printFlat/printOther/fitsElement, Tracker.closeFrame/firstText/pushSaved, Formatter.isPlainSource, Printer.outRepeat. All reverted; nothing kept.
+- Instructions (1 thread, GATE_FAST): baseline 163.8G; all hunks 167.1G; without printOther+fitsElement 164.9G; printElements+printFlat only 164.1G; document.ts hunks alone +0.9G; outRepeat+isPlainSource alone 163.8G (neutral).
+- Gate: 0 byte mismatches in every variant; no variant beat baseline, so no full gate run.
+- Lesson: entry-time hoisting in per-element printer functions (printOther, fitsElement) added instructions; the reads they replaced were single reads per call.
+
+### perf R2 scan
+- Tried (1) Uint32Array SWAR pre-check in markOddBlocks: 164.1G (worse than 163.8G); (2) share odd blocks between buildUnicodeEscapes and Formatter.setSource via cache: 165.4G (worse). Both reverted.
+- Result: no change kept; baseline 163.8G unchanged. Gate (fast) mismatches 0 in both attempts. Files: none changed.
