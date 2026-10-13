@@ -75,7 +75,7 @@ at any one algorithm.
 2. **Spelling cliffs.** Storing a bare typed-array read (`o[i] = src[i]`) is 25× slower than `src[i] | 0`. Storing a bare
    number into an `Int32Array` is 6× slower. `(n + 1) | 0` is 7× slower than `((n | 0) + 1) | 0`. Reading a typed-array
    field inside a loop is 6× slower than reading a local. A data field read through an interface type costs 26 ns; an
-   `abstract readonly kind` costs 134 ns. 183k lines written by ~35 agents certainly still contain some of these.
+   `abstract readonly kind` costs 134 ns. 183k lines written by 32 agents certainly still contain some of these.
 3. **Worker mode.** A program that uses `Worker`, which we must for `@scriptc/threads`, is compiled with:
    - every module-level variable `thread_local`, read through the TLV descriptor on macOS;
    - every typed-array access split on `bytes->shared`, with an opaque runtime call on the cold path that also blocks LLVM

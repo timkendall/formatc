@@ -1,5 +1,36 @@
 # formatc
 
+> [!WARNING]
+> **This is an experiment, not a tool to use.** It explores how far a fleet of AI agents can take a large port (Bun's ~175k-line
+> Rust formatter and everything it depends on) into TypeScript compiled by scriptc, and whether scriptc's native code can match Rust.
+> Output matches `bun fmt` on the benchmark corpus; the speed does not yet, and parts are unfinished. Use `bun fmt`.
+
+## What it took so far
+
+Everything in this repo was written by AI agents in one session on 2026-10-13 (about 8.5 hours of wall-clock time, including
+pauses on usage limits), directed by a human through a handful of prompts.
+
+| agent | model | effort | count | role |
+| ----- | ----- | ------ | ----- | ---- |
+| orchestrator (the main Claude Code session) | Claude Opus 5.5 | default | 1 | planning, splitting the work, reviewing results, measuring, docs |
+| `general-purpose` sub-agents | Claude Sonnet 5.5 | high | 32 | 1 research (scriptc cookbook), 25 porting, 6 performance |
+
+| | API calls | input tokens (cache reads + cache writes + uncached) | output tokens | estimated cost |
+| - | - | - | - | - |
+| orchestrator | 175 | 48.7 M (45.3 M + 3.5 M + <0.01 M) | 0.19 M | ~$34 |
+| sub-agents | 5,004 | 2,212 M (2,185 M + 26.9 M + 0.01 M) | 2.16 M logged, ~3.1 M estimated | ~$526–535 |
+| **total** | **5,179** | **~2.26 B** | **~2.3–3.3 M** | **~$560–570** |
+
+How these were counted:
+- Token counts are summed from the Claude Code transcripts of the session and of every sub-agent. They include the work of
+  agents that a usage limit cut off and that were later resumed.
+- Some sub-agent transcripts did not record their final output-token count, so their output is estimated from the median
+  tokens per API call of the others. That is the reason for the ranges.
+- Costs use list API prices: Opus 5.5 at $4 / $20 per million input / output tokens, Sonnet 5.5 at $2 / $10, cache reads at
+  $0.20, cache writes at 1.25× (5-minute TTL) or 2× (1-hour TTL) the input price.
+- About 97% of all tokens are cache reads, which dominate the cost: each agent re-reads its growing context on every call.
+- The session ran on a subscription plan, so what was actually billed differs.
+
 A TypeScript port of [Bun's formatter](https://bun.com/docs/format) (`bun fmt`, Rust), compiled to a native executable with
 [scriptc](https://scriptc.dev) and parallelized with `node:worker_threads` + [`@scriptc/threads`](https://scriptc.dev/docs/threads).
 
@@ -91,7 +122,7 @@ node tools/conformance.ts prettier [--languages=js,ts] [--filter=dir] [--report=
 
 ## How it was built
 
-By an orchestrating agent (Claude Opus 5.5) and ~35 Claude Sonnet 5.5 sub-agents working in parallel, each porting or optimizing
+By an orchestrating agent (Claude Opus 5.5) and 32 Claude Sonnet 5.5 sub-agents (see "What it took so far") working in parallel, each porting or optimizing
 one area against `bun fmt` as the oracle (differential tests, fuzzing, Prettier's fixtures).
 
 ## License and credits
