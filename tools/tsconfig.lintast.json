@@ -1,0 +1,5 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "noEmit": true, "noUnusedLocals": true, "types": ["node"] },
+  "include": ["../src/lint/**/*.ts", "../src/sema/bind/*.ts", "../src/sema/check/*.ts", "./ast-*.ts", "./lintast-*.ts"]
+}

@@ -1,0 +1,21 @@
+# third-party sources and benchmark corpora (see README: "Setup")
+/vendor/
+/bench/
+node_modules/
+
+# build outputs
+/bin/
+.scriptc/
+*.ll
+*.s
+*.o
+*.dSYM/
+*.trace
+target/
+/scratch/cookbook/out/
+/scratch/cookbook/buildtime/single/
+/scratch/cookbook/buildtime/multi/
+/scratch/cookbook/compat/bin/
+/scratch/agents.txt
+.DS_Store
+/scratch/cookbook/buildtime/*.bin

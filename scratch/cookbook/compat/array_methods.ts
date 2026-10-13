@@ -1,0 +1,1 @@
+const a = [3, 1, 2]; a.sort((x, y) => x - y); console.log(a, a.map((x) => x * 2).filter((x) => x > 2), a.reduce((p, c) => p + c, 0), a.indexOf(2), a.includes(5), a.slice(1), a.concat([9]), a.reverse(), a.join("-"), a.some((x) => x > 2), a.find((x) => x > 1));

@@ -1,0 +1,18 @@
+# working notes (scratch)
+- Installed scriptc 0.3.0 lacks i32 slots (vendor HEAD has int32-locals.ts, unreleased #922). In 0.3.0 number locals are double allocas; "integer view" i32 shadows + "integer induction" i64 for canonical for-loops.
+- b1b: sum s+=buf[i] plain 1770MB/s (node 1855); s=(s+buf[i])|0 287 (node 1713); while-Int32 349; unroll4 2910; u32 words 7038; imul hash 265 (node 1040); xorAcc 33444 (vectorized); field acc 431 vs node 1704; 
+- b1c: bit-only chains fast: xorShift 2131(2121), fnv 1073(1044); djb ((h<<5)+h+b)|0 248 (node 252); and 0xffff 286 (node 2097)
+- lexer b2/b2b: plain pos++ 300 (node 710); pos=(pos+1)|0 550; Int32 annotation 540; class fields 283; module state 315
+- paths with spaces in vscode-files.txt (some entries invalid)
+- RULE: acc = ((acc|0)+(x|0))|0 -> 2112MB/s vs (acc+x)|0 285; counter n=((n|0)+1)|0 2121 vs n=(n+1)|0 298 vs n++ 858; plain s+=x double 1770 (fine for no-wrap)
+- RULE: bare typed-array read stored/pushed/field-assigned => boxed union path 4.5-5.5ns (o[i]=src[i] 200MB/s); fix: src[i]|0 or src[i]! => 2600MB/s. Also bare number (e.g. induction i or param v) stored into Int32Array: 2.6ns vs 0.44 with |0
+- RULE: number[] loop `i<a.length` fast (0.6ns) but `n=a.length; i<n` 2.9ns; string charCodeAt: opposite: `n=s.length` 0.5ns (ascii) vs i<s.length 2.7ns; non-ascii string charCodeAt 1.9-3.4 ns
+- class field typed array in loop cond/body (this.src[i], this.src.length) 345MB/s vs 2100 hoisted
+- calls: small fns/methods/static/cross-module all inlined (0.47=loop floor); closure call 2.3-3ns (dyn_this_push/pop); virtual 1.5ns; recursion ~6ns/frame depth100 (node same); NoThrow no measurable effect
+- objects: new P temp 7.8ns (node 0.6 escape analysis), ProgramLifetime 4.6; push+keep 14ns(PL 12); tree build+walk 7.5ns/node (node 15.5); AoS read 1.9ns vs SoA 0.63; non-inlined obj pass 2.6ns (rc chain); field += 2.65
+- speed opt: +5-8% lexer/sums, no effect on objects
+- Maps: Map<number> get 1.0ns, Map<string> get 2.5ns (cached hash), set grow 6.4; faster than node. open addressing 0.66. Uint8 table 0.28
+- closures create+call 3ns; arr.forEach 2.75, map 3.2, reduce .63 ; exceptions: try free, throw Error 42ns, throw number 7ns (node 1000/38)
+- strings: slice 11ns, slice===lit 13, startsWith 6, s+="ab" 4.4 (node15), template 18, fromCharCode 2.1, Map<string>.get(slice) 14.7, TextDecoder 8.8GB/s, Buffer.toString 11GB/s; encode 64GB/s(!?) 
+- ByteBuf.push 1GB/s (bare read fixed); append run>=32 uses set(subarray) 12ns fixed cost; byte loop copies fine only for runs<~16 (with |0)
+- lexer: C -O2 744MB/s; scriptc tuned free fn 550-600, pull class tuned 609 (node 811), naive 345 (node 567)

@@ -1,0 +1,41 @@
+b_array_destructure_swap_in_fn   PASS    
+b_array_grow_write               PASS    
+b_array_new_fill                 PASS    
+b_ast_hierarchy                  DIFF     node=[node:internal/modules/run_main:107
+b_ast_union_kind                 DIFF     node=[node:internal/modules/run_main:107
+b_char_class_regex_unicode       PASS    
+b_class_generic_default_static   DIFF     node=[node:internal/modules/run_main:107
+b_class_in_array_find            DIFF     node=[node:internal/modules/run_main:107
+b_class_static_instances         DIFF     node=[node:internal/modules/run_main:107
+b_closure_counter                PASS    
+b_conditional_types_absent       PASS    
+b_const_obj_flags                PASS    
+b_delete_prop                    PASS    
+b_enum_in_record                 DIFF     node=[node:internal/modules/run_main:107
+b_exceptions_rethrow             PASS    
+b_field_init_order               PASS    
+b_for_comma                      PASS    
+b_for_of_entries                 PASS    
+b_fromcharcode_spread            PASS    
+b_func_table                     PASS    
+b_getset_interface_class         DIFF     node=[node:internal/modules/run_main:107
+b_iife                           PASS    
+b_interface_generic              PASS    
+b_labeled_block                  PASS    
+b_method_table_iface             COMPILE_FAIL SC1043: comparing non-number, non-string values are not supported yet
+b_nested_class_generic_map       PASS    
+b_number_isnan_inf               PASS    
+b_number_to_string_pad           PASS    
+b_object_literal_method_this     PASS    
+b_optional_method_call           COMPILE_FAIL SC9001: internal compiler error: in %init.0: bare unitLit 'null' outside a unionWrap — please report this
+b_readonly_array_param           PASS    
+b_set_of_strings_for             PASS    
+b_static_readonly                PASS    
+b_string_builder_join            PASS    
+b_string_compare                 PASS    
+b_string_raw_template            PASS    
+b_switch_large_range             PASS    
+b_try_finally_return             PASS    
+b_typed_array_in_class_generic_free DIFF     node=[node:internal/modules/run_main:107
+b_uint32_ops                     PASS    
+b_unknown_cast                   COMPILE_FAIL SC1090: 'number' values where 'string' is expected is not supported yet

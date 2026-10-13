@@ -1,0 +1,1 @@
+class Bits { constructor(public d: Uint8Array) {} get(i: number): boolean { return (this.d[i >> 3] & (1 << (i & 7))) !== 0; } } const b = new Bits(new Uint8Array([5])); console.log(b.get(0), b.get(1), b.get(2));

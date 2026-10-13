@@ -1,0 +1,1 @@
+function f(c: number): number { switch (c) { case 0x20: case 0x09: case 0x0a: return 1; case 0x2b: return 2; case 0x7b: case 0x7d: return 3; default: return 0; } } console.log(f(32), f(43), f(125), f(1));

@@ -1,0 +1,130 @@
+SNIPPET                          RESULT   DETAIL
+abstract_class                   DIFF     node=[node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+file:///] sc=[area=4
+area=6]
+any_type                         PASS    
+arguments_obj                    PASS    
+array_2d                         COMPILE_FAIL SC2009: values of type 'any[]' cannot be compiled: the array shape is supported, but its element type 'any' do
+array_methods                    DIFF     node=[[ 3, 2, 1 ] [ 4, 6 ] 6 1 false [ 2, 3 ] [ 1, 2, 3, 9 ] [ 3, 2, 1 ] 3-2-1 true 3] sc=[[ 1, 2, 3 ] [ 4, 6 ] 6 1 false [ 2, 3 ] [ 1, 2, 3, 9 ] [ 3, 2, 1 ] 3-2-1 true 3]
+array_splice_shift               PASS    
+arrow_this                       PASS    
+async_await                      PASS    
+bigint                           PASS    
+bit_flags_enum                   DIFF     node=[node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+file:///] sc=[false true 5]
+buffer_api                       PASS    
+class_expr_static_inherit        PASS    
+closures_loop                    PASS    
+comma_ternary_chain              PASS    
+computed_keys_record             PASS    
+const_assert_obj_lookup          PASS    
+custom_error                     DIFF     node=[node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+file:///] sc=[3 bad PErr]
+cyclic_class_refs                PASS    
+date_now                         PASS    
+decorators_absent                COMPILE_FAIL SC2001: values of type '{ toString(): string; }' cannot be compiled yet (supported: number, string, boolean, a
+default_rest_params              PASS    
+destructure                      PASS    
+do_while_break                   PASS    
+enum_const                       DIFF     node=[node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+file:///] sc=[3]
+enum_regular                     DIFF     node=[node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+file:///] sc=[0 11 10 C
+1 3 0]
+enum_string                      DIFF     node=[node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+file:///] sc=[b true]
+error_catch_unknown              COMPILE_FAIL SC0001: Property 'x' does not exist on type 'never'.
+exports_mix                      PASS    
+for_in_of                        PASS    
+function_props                   COMPILE_FAIL SC1090: assignment to non-variables are not supported yet
+generators                       PASS    
+generic_class_typedarray         COMPILE_FAIL SC1090: element access on non-array values are not supported yet (instantiating class 'Vec' with <Uint8Array>)
+generic_class                    PASS    
+generic_constraint               COMPILE_FAIL SC1090: reading 'length' from a value of type 'T' is not supported yet (instantiating 'len' with <string>)
+generic_fn                       PASS    
+generic_typedarray               COMPILE_FAIL SC1090: shared property access without a represented union receiver is not supported yet (instantiating 'sumAr
+getter_in_interface              PASS    
+getters_setters                  COMPILE_FAIL SC1090: the static member 'K' of class 'C' (static accessors and initializer-less static fields have no loweri
+hoisting_mutual                  PASS    
+import_meta                      PASS    
+index_signature                  PASS    
+inherit_super                    DIFF     node=[node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+file:///] sc=[4]
+instanceof                       PASS    
+interface_methods                PASS    
+json                             PASS    
+labels                           PASS    
+math_funcs                       PASS    
+mixin_like                       PASS    
+namespace                        DIFF     node=[node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+file:///] sc=[6]
+nested_map                       PASS    
+nonnull_cast                     PASS    
+number_literal_union_switch      PASS    
+number_ops                       PASS    
+object_entries                   PASS    
+object_freeze                    DIFF     node=[1 true] sc=[Uncaught Error: Object.isFrozen of this native value has no lowering]
+optional_chain                   COMPILE_FAIL SC1090: number methods as values (call 'toFixed' directly) are not supported yet
+optional_fields                  PASS    
+overloads                        PASS    
+param_props                      DIFF     node=[node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+file:///] sc=[6]
+process_api                      COMPILE_FAIL SC1090: process methods as values (call 'exit' directly) are not supported yet
+proxy                            DIFF     node=[5] sc=[Uncaught Error: non-plain targets or handlers on a native Proxy is not supported]
+recursion_deep                   DIFF     node=[file:///Users/timkendall/Developer/lab/scriptc-formatter/scratch/cookbook/compat] sc=[10000]
+regexp                           PASS    
+satisfies_as_const               PASS    
+set_ops                          PASS    
+spread                           PASS    
+stack_overflow_catch             PASS    
+static_method_generic            PASS    
+static_private                   PASS    
+string_enum_union                PASS    
+string_index                     PASS    
+string_methods                   PASS    
+switch_fallthrough               PASS    
+switch_string                    PASS    
+symbol_iter                      COMPILE_FAIL SC1090: for-of over this [Symbol.iterator] shape (the method must take no parameters and return an object whos
+tagged_template                  PASS    
+textencoder                      PASS    
+this_binding_method_ref          PASS    
+toplevel_await                   PASS    
+tuples                           PASS    
+typedarray_from                  COMPILE_FAIL SC1090: console.log of 'Uint8Array<ArrayBuffer>' values (Buffer's <Buffer ..> form is the lowered typed-array 
+typeof_narrow                    PASS    
+unicode_string                   PASS    
+union_classes                    PASS    
+union_disc                       PASS    
+union_null                       PASS    
+union_prims                      PASS    
+utility_types                    PASS    
+void_undefined                   COMPILE_FAIL SC1043: comparing non-number, non-string values are not supported yet
+weakmap                          PASS    
+with_eval                        COMPILE_FAIL SC2020: 'eval' is part of the standard library types but has no scriptc lowering yet

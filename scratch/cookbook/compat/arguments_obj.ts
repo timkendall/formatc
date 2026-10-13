@@ -1,0 +1,1 @@
+function f() { return arguments.length; } console.log(f());

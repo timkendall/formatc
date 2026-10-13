@@ -1,0 +1,1 @@
+const s = "  Hello, World  "; console.log(s.trim(), s.includes("World"), "ab".padStart(4, "-"), "x".repeat(3), "a,b,c".split(","), s.indexOf("o"), s.toUpperCase().trim(), "abc".slice(-2), "abc".substring(1), "abc".at(-1));

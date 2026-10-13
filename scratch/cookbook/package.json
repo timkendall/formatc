@@ -1,0 +1,7 @@
+{
+  "name": "scriptc-formatter",
+  "private": true,
+  "type": "module",
+  "dependencies": { "@scriptc/threads": "0.3.0" },
+  "devDependencies": { "@scriptc/types": "0.3.0", "@types/node": "^24.0.0", "typescript": "^5.9.0" }
+}

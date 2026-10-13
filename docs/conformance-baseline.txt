@@ -1,0 +1,21 @@
+angular: format 0/0 (0 syntax errors), rejected 0/0, second format 0/0, CRLF 0/0, CR 0/0, BOM 0/0, not ported 110
+css: format 162/162 (0 syntax errors), rejected 2/2, second format 136/136, CRLF 162/162, CR 162/162, BOM 161/161
+flow: format 899/1505 (4 syntax errors), rejected 19/22, second format 651/652, CRLF 892/892, CR 892/892, BOM 899/899
+graphql: format 104/104 (0 syntax errors), rejected 2/2, second format 87/87, CRLF 104/104, CR 104/104, BOM 104/104
+handlebars: format 128/128 (0 syntax errors), rejected 33/33, second format 114/114, CRLF 122/122, CR 122/122, BOM 128/128
+html: format 0/0 (0 syntax errors), rejected 0/0, second format 0/0, CRLF 0/0, CR 0/0, BOM 0/0, not ported 274
+js: format 1342/1357 (0 syntax errors), rejected 165/165, second format 1049/1049, CRLF 1332/1332, CR 1332/1332, BOM 1338/1338
+json: format 785/785 (0 syntax errors), rejected 191/191, second format 696/696, CRLF 785/785, CR 785/785, BOM 781/781
+jsx: format 184/186 (0 syntax errors), rejected 19/19, second format 165/165, CRLF 183/183, CR 183/183, BOM 184/184
+less: format 238/238 (0 syntax errors), rejected 4/4, second format 191/191, CRLF 236/236, CR 236/236, BOM 238/238
+lwc: format 0/0 (0 syntax errors), rejected 0/0, second format 0/0, CRLF 0/0, CR 0/0, BOM 0/0, not ported 5
+markdown: format 1568/1572 (0 syntax errors), rejected 0/0, second format 946/946, CRLF 1564/1564, CR 1564/1564, BOM 1568/1568
+mdx: format 32/32 (0 syntax errors), rejected 0/0, second format 22/22, CRLF 32/32, CR 32/32, BOM 32/32
+misc: format 425/426 (0 syntax errors), rejected 7/7, second format 373/373, CRLF 84/84, CR 84/84, BOM 424/424, not ported 139
+mjml: format 0/0 (0 syntax errors), rejected 0/0, second format 0/0, CRLF 0/0, CR 0/0, BOM 0/0, not ported 9
+scss: format 136/136 (0 syntax errors), rejected 1/1, second format 117/117, CRLF 136/136, CR 136/136, BOM 136/136
+typescript: format 747/756 (0 syntax errors), rejected 355/355, second format 600/600, CRLF 746/746, CR 746/746, BOM 734/734
+vue: format 0/0 (0 syntax errors), rejected 0/0, second format 0/0, CRLF 0/0, CR 0/0, BOM 0/0, not ported 192
+yaml: format 1623/1623 (0 syntax errors), rejected 3/3, second format 1118/1118, CRLF 1616/1616, CR 1616/1616, BOM 1622/1622
+format: 8373/9010 (92.93%)
+all checks: 39776/40417 (98.41%)
