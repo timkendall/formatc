@@ -51,10 +51,16 @@ threads.
 | 8 · accessor-aware aliasing | inline trivial `hir` accessors into aliased callers | 1 × Sonnet 5.5 (medium) | 8 | 0.4 M | ~$0.17 | no gain | | 0 of 1 |
 | orchestrator, rounds 1–8 | planning, probes, disassembly, merging, gating, profiling, docs | Opus 5.5 | ~170 | ~38 M | ~$19 | | | |
 | **after round 8, idle machine** | | | | | | **132.2 G** | **0.90 s (2.09×)** | |
+| S1 · scriptc patches | stack guard on a feedback vertex set (40), no `sanitize_address` outside `--sanitize` + invariant typed-array headers (30); thread-local hoisting, inline exception checks | 4 × Sonnet 5.5 (high) | 158 | 11.7 M | ~$3.6 | 123.6 G (−7.3%) | 0.88 s | 2 of 4 |
+| S2 · scriptc patches | shared typed-array views inline (50), no termination polls without `terminate` (60), one TLS block for all program globals (70) | 3 × Sonnet 5.5 (high) | 84 | 5.3 M | ~$1.6 | 97.6 G (−21%) | 0.76 s | 3 of 3 |
+| S3 · scriptc patches | inline `DataView`/Buffer numbers (85), inferred int32 locals (90); Darwin fast TLS | 3 × Sonnet 5.5 (high/medium) | 115 | 9.7 M | ~$2.9 | 94.5 G (−3.2%) | 0.76 s | 2 of 3 |
+| orchestrator, S1–S3 | toolchain setup, ablation planning, stacking, gating | Opus 5.5 | ~55 | ~24 M | ~$14 | | | |
+| **after S3, patched compiler** | | | | | | **92.9 G** | **0.73 s (1.66×)** | |
 
 ¹ Measured while other agents were running; the idle 8-thread time after round 2 is in the table below.
 
-Rounds 1–8 cost about $28 in total (~$9 for 26 agents, ~$19 for the orchestrator), against ~$560 for round 0.
+Rounds 1–8 cost about $28 in total (~$9 for 26 agents, ~$19 for the orchestrator), against ~$560 for round 0. The scriptc
+rounds S1–S3 cost about $22 more (~$8 for 10 agents, ~$14 for the orchestrator).
 Together they took instructions from 170.6 G to 132.2 G (−22.5%), cycles from 38.6 G to 27.9 G (−28%), and the 8-thread
 time from 1.25 s to 0.90 s.
 
@@ -84,14 +90,15 @@ measurements, where the time goes, and the ways we see to close the gap.
 
 ## Results
 
-`--check` over bench/vscode (18,080 files, 238 MB, 193 MB of it TypeScript), Apple M5 Pro, Bun canary 1.4.4, after swarm round
-8. Interleaved runs, min of 3 (min of 5 at 8 threads), load average ~3:
+`--check` over bench/vscode (18,080 files, 238 MB, 193 MB of it TypeScript), Apple M5 Pro, Bun canary 1.4.4, built with the
+patched scriptc compiler (`tools/scriptc-dev`; the stock 0.3.0 CLI gives 0.90 s at 8 threads). Interleaved runs, min of 3
+(min of 5 at 8 threads), load average ~3:
 
 | threads | formatc | `bun fmt` | gap |
 | ------- | ------- | --------- | --- |
-| 1       | 6.10 s  | 2.36 s    | 2.6× |
-| 8 (Bun's published benchmark) | 0.90 s | 0.43 s | 2.09× |
-| 18      | 0.57 s  | 0.29 s    | 2.0× |
+| 1       | 4.86 s  | 2.42 s    | 2.0× |
+| 8 (Bun's published benchmark) | 0.73 s | 0.44 s | 1.66× |
+| 18      | 0.46 s  | 0.29 s    | 1.6× |
 
 Correctness against `bun fmt` on the same tree (`bin/fmt --check --compare-to=../vscode-fmt`):
 

@@ -2,7 +2,8 @@
 # Writes the difference between a patched compiler copy and the pristine npm package as one patch file.
 #   tools/scriptc-dev/make-patch.sh <patched-compiler-dir> <patches/NN-name.patch> [base-dir]
 # <patched-compiler-dir> is a node_modules/@scriptc/compiler directory; the base defaults to the pristine package with the
-# patches that sort before this one already applied (so patches stack).
+# patches that sort before this one already applied (so patches stack). Pass an explicit base when other patches with lower
+# numbers appeared after your copy was made (a stale copy would otherwise revert them).
 set -e
 D=$(cd "$(dirname "$0")" && pwd)
 NEW=$(cd "$1" && pwd); OUT=$2; BASE=$3

@@ -1,0 +1,12 @@
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/byte-numbers.js b/dist/backend/llvm/byte-numbers.js
+--- a/dist/backend/llvm/byte-numbers.js	2026-10-13 18:55:40
++++ b/dist/backend/llvm/byte-numbers.js	2026-10-13 18:55:40
+@@ -34,8 +34,6 @@
+  * DataView's ToIndex behavior, and exception cleanup through the host. All
+  * operands have already been evaluated, exactly once and in source order. */
+ export function emitByteNumber(host, e, spec, receiver, offset, value, little, fallback) {
+-    if (host.mod.workers)
+-        return fallback();
+     const B = host.B, size = host.sizeType;
+     const slow = B.newLabel("bytes.number.slow"), access = B.newLabel("bytes.number.access");
+     const fastDone = B.newLabel("bytes.number.fast.done"), slowDone = B.newLabel("bytes.number.slow.done");

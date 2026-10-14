@@ -4,23 +4,24 @@ Measured 2026-10-13 on an Apple M5 Pro (18 cores), macOS, scriptc 0.3.0, Bun can
 
 ## 1. The numbers
 
-`--check`, wall time, interleaved runs, min of 3 (5 at 8 threads). Before the perf rounds vs after round 8 (2026-10-13, see the
-README's "Swarm rounds" table for each round):
+`--check`, wall time, interleaved runs, min of 3 (5 at 8 threads). Before the perf rounds → after round 8 (stock scriptc
+0.3.0) → with the patched compiler (`tools/scriptc-dev`, patches 30–90), 2026-10-13; the README's "Swarm rounds" table has
+each round:
 
-| threads | formatc before → after | `bun fmt` | gap |
-| ------- | ---------------------- | --------- | --- |
-| 1       | 8.42 → 6.10 s | 2.36 s | 3.5× → 2.6× |
-| 8       | 1.25 → 0.90 s | 0.43 s | 2.85× → 2.09× |
-| 18      | 0.75 → 0.57 s | 0.29 s | 2.5× → 2.0× |
+| threads | formatc | `bun fmt` | gap |
+| ------- | ------- | --------- | --- |
+| 1       | 8.42 → 6.10 → 4.86 s | 2.42 s | 3.5× → 2.0× |
+| 8       | 1.25 → 0.90 → 0.73 s | 0.44 s | 2.85× → 1.66× |
+| 18      | 0.75 → 0.57 → 0.46 s | 0.29 s | 2.5× → 1.6× |
 
 Whole run, one thread, from `/usr/bin/time -l` (instructions retired are stable when the machine is busy; wall time is not):
 
 | | instructions retired | cycles | IPC | peak RSS |
 | - | - | - | - | - |
-| formatc | 170.6 G before the perf rounds → **132.2 G** after round 8 (156.7 G was the first build) | 38.6 → 27.9 G | ~4.7 | 305 MB |
+| formatc | 170.6 G before the perf rounds → 132.2 G after round 8 → **92.9 G** with the patched compiler | 38.6 → 27.9 → 21.8 G | ~4.3 | 305 MB |
 | `bun fmt` | 35.9 G | 10.8 G | 3.3 | 124 MB |
 
-**We execute 3.7× more instructions than Bun.** They are cheap ones (IPC ~4.7 vs 3.3), so the cycle gap is ~2.6×. The
+**We execute 2.6× more instructions than Bun.** They are cheap ones (IPC ~4.3 vs 3.3), so the cycle gap is ~2.0×. The
 problem is instruction count, not cache misses or stalls.
 
 Per-language throughput, measured by the porting agents (compiled, single thread, in-process, MB/s; Bun estimated from `bun fmt
@@ -96,6 +97,14 @@ at any one algorithm.
    one call and no refcount work; aliasing a typed array into a local adds `scr_bytes_retain_v`/release calls. The codemods
    in `tools/codemod/` apply these rules. What remains (~6% of samples) is mostly functions that mention `hir`, `lx` or `p`
    once per call; removing it means passing them as parameters.
+3b. **Compiler patches (`tools/scriptc-dev`, 133 G → 93 G on the same source):** scriptc 0.3.0 put a stack-overflow check
+   on every function on a call-graph cycle (40: a feedback vertex set suffices, −7.7 G); emitted `sanitize_address` on every
+   function in normal builds, which blocks LLVM load hoisting (30); routed every shared typed-array access through a
+   runtime call holding a global mutex (50: inline, −13.6 G); polled for worker termination in every loop even in programs
+   that never call `terminate()` (60: −5.9 G); kept each program global in its own thread-local (70: one block, −5.7 G);
+   disabled its existing inline `DataView` path in worker programs (85: −2.8 G); and kept provable-int32 locals as doubles
+   (90: −1.1 G, the least certain patch). Measured and not kept: per-function hoisting of TLV addresses, a pthread-TSD fast
+   path for TLS, inline exception checks (already inline).
 5. **`DataView` get/set are runtime calls, not inlined.** `scr_dataview_set` alone is ~1% of the profile.
 6. Closures cost 2.3–3 ns per call. Small top-level functions and methods are inlined. `try` is free. Allocating a small
    object costs 4–8 ns (V8 often allocates nothing for the same code).
