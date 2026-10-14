@@ -56,6 +56,9 @@ threads.
 | S3 · scriptc patches | inline `DataView`/Buffer numbers (85), inferred int32 locals (90); Darwin fast TLS | 3 × Sonnet 5.5 (high/medium) | 115 | 9.7 M | ~$2.9 | 94.5 G (−3.2%) | 0.76 s | 2 of 3 |
 | orchestrator, S1–S3 | toolchain setup, ablation planning, stacking, gating | Opus 5.5 | ~55 | ~24 M | ~$14 | | | |
 | **after S3, patched compiler** | | | | | | **92.9 G** | **0.73 s (1.66×)** | |
+| P1 · IR building + compiler | IR writer without the per-file width pass; borrowed typed-array aliases (95); i32 call signatures and table bounds checks (96); five `\| 0` fixes that un-boxed the parameters of 8 hot functions; identifier fast path. Not kept: flat node tables, simple-argument paths | 7 × Sonnet 5.5 (medium/high) | 407 | 34.3 M | ~$9.5 | 84.6 G (−9%) | 0.64 s (1.49×) | 5 of 7 |
+| P2 · processes (branch `processes`) | child processes instead of worker threads: non-worker code generation (no thread-locals) | 1 × Sonnet 5.5 (high) | 81 | 9.9 M | ~$2.5 | 77.8 G (−8%) | 0.60 s (1.40×) | on a branch |
+| orchestrator, P1–P2 | profiling, merging, gating, docs | Opus 5.5 | ~50 | ~27 M | ~$20 | | | |
 
 ¹ Measured while other agents were running; the idle 8-thread time after round 2 is in the table below.
 
@@ -91,14 +94,14 @@ measurements, where the time goes, and the ways we see to close the gap.
 ## Results
 
 `--check` over bench/vscode (18,080 files, 238 MB, 193 MB of it TypeScript), Apple M5 Pro, Bun canary 1.4.4, built with the
-patched scriptc compiler (`tools/scriptc-dev`; the stock 0.3.0 CLI gives 0.90 s at 8 threads). Interleaved runs, min of 3
-(min of 5 at 8 threads), load average ~3:
+patched scriptc compiler (`tools/scriptc-dev`), after swarm round P1. Interleaved runs, min of 3 (min of 5 at 8 and 18
+threads). The `processes` branch, which uses child processes instead of worker threads, gives 3.94 / 0.60 / 0.41 s:
 
 | threads | formatc | `bun fmt` | gap |
 | ------- | ------- | --------- | --- |
-| 1       | 4.86 s  | 2.42 s    | 2.0× |
-| 8 (Bun's published benchmark) | 0.73 s | 0.44 s | 1.66× |
-| 18      | 0.46 s  | 0.29 s    | 1.6× |
+| 1       | 4.19 s  | 2.30 s    | 1.8× |
+| 8 (Bun's published benchmark) | 0.64 s | 0.43 s | 1.49× |
+| 18      | 0.42 s  | 0.28 s    | 1.5× |
 
 Correctness against `bun fmt` on the same tree (`bin/fmt --check --compare-to=../vscode-fmt`):
 

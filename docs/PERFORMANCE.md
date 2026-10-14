@@ -10,9 +10,12 @@ each round:
 
 | threads | formatc | `bun fmt` | gap |
 | ------- | ------- | --------- | --- |
-| 1       | 8.42 → 6.10 → 4.86 s | 2.42 s | 3.5× → 2.0× |
-| 8       | 1.25 → 0.90 → 0.73 s | 0.44 s | 2.85× → 1.66× |
-| 18      | 0.75 → 0.57 → 0.46 s | 0.29 s | 2.5× → 1.6× |
+| 1       | 8.42 → 6.10 → 4.86 → 4.19 s | 2.30–2.42 s | 3.5× → 1.8× |
+| 8       | 1.25 → 0.90 → 0.73 → 0.64 s | 0.43–0.44 s | 2.85× → 1.49× |
+| 18      | 0.75 → 0.57 → 0.46 → 0.42 s | 0.28–0.29 s | 2.5× → 1.5× |
+
+The last column is after round P1 (84.6 G instructions). The `processes` branch replaces worker threads with child
+processes, so scriptc compiles without worker mode: 77.8 G instructions, and 3.94 / 0.60 / 0.41 s at 1 / 8 / 18 threads.
 
 Whole run, one thread, from `/usr/bin/time -l` (instructions retired are stable when the machine is busy; wall time is not):
 
@@ -223,6 +226,14 @@ To reach 0.44 s at 8 threads with a 0.24–0.27 s driver floor, parse + IR + pri
    - Drop any per-directory config probes Bun doesn't make.
    - scriptc's `fs` has no `openat`, so this needs a runtime addition or an `--ffi` C helper. That is a design call for this
      project, whose point is TypeScript compiled by scriptc.
+
+**Outcome of rounds P1 and P2:**
+- **Kept:** steps 1 and 2 gave 93 G → 84.6 G. The biggest single win was five `| 0` fixes: possibly-undefined values had
+  boxed the parameters of eight hot functions.
+- **Processes:** another −8% instructions (77.8 G) and 0.60 s at 8 threads.
+- **No gain:** flat node tables, because the accessors were already ~1 lookup plus 2–3 loads. Counters also showed that
+  merging IR elements could save at most 6%.
+- **Remaining gap:** the formatter itself, ~78 G against Bun's 36 G for the whole run.
 
 Steps 1–4 together plausibly bring the JS work from 79 G to ~45 G and the 8-thread time to ~0.55 s (~1.25× Bun). Parity
 most likely needs step 5 as well, plus a scriptc whose integer and bounds handling is closer to what Rust gets by default.
