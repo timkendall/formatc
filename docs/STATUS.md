@@ -931,3 +931,8 @@ Measurement only (patches in scratch/ablations/bounds-V1.patch, bounds-V2.patch 
 - vscode --check --threads=1, min of 3 interleaved: 83.25 G -> 80.21 G instructions (-3.7%, 3.0 G); cycles 28.7 G -> 27.9 G (machine loaded, noisy; indicative only). Output mismatches: 0.
 - V2 static counts (IR): 16223 internal sc_f__/sc_bf__ functions (9351 + 6872); 3583 have an int-return ".i" clone beside the double base; 2810 have i32 params, 1279 return i32, 9076 have double params.
 - Call sites to sc_f__/sc_bf__: 48485; 21391 go to ".i" clones; 2024 go to a double base that has an ".i" twin; 23279 pass a double argument.
+### ablation exc
+Post-call exception checks, measured with `--check --threads=1` on the vscode corpus minus the 36 syntax-error files (copy; /tmp/fmt-main measured on the same copy: 81.7 G instr / 27.2 G cycles, cycles noisy under load). Edit: `emitPendingCheck` in dist/backend/llvm/emitter.js (~line 3108); patches in scratch/ablations/.
+- V1 (exc-V1.patch): no post-call checks except lexically inside try regions (a fully check-free binary hangs in `fsx.readText`, whose catch needs them). `scr_exc_pending` call sites 25,145 -> 532 (alert loads 72). 77.3 G instr (-4.4 G, -5.4%), 26.3 G cycles (min of 3, -3%). 0 mismatches vs ../vscode-fmt.
+- V2 (exc-V2.patch): no checks after `sc_f__*`/`sc_bf__*` calls (found by scanning the last emitted call), runtime checks kept. Sites 2,746 (alert loads 2,286). 77.5 G instr (-4.2 G, -5.1%), 25.4 G cycles (min of 3). 0 mismatches.
+- Conclusion: ~4.3 G instructions (~5%) is the ceiling for removing exception checks; almost all of it is recoverable by a precise "user function cannot throw" analysis (V2 ~ V1). Cycle gain is within noise, ~0-3%.
