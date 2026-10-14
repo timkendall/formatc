@@ -21,10 +21,10 @@ import { JV, parseToml, tomlError, tomlErrorLine, tomlErrorColumn } from "./json
 import * as w from "./worker.ts";
 import * as pipe from "./pipe.ts";
 import { Pool } from "./pool.ts";
+import { setYieldTurns } from "./scan.ts";
 
-// FMT_PIPELINE=0: find all the files first, as before. FMT_MAIN_WORKS=1: the main thread formats too when it is done finding files.
+// FMT_PIPELINE=0: find all the files first, as before.
 const PIPELINE = process.env["FMT_PIPELINE"] !== "0";
-const MAIN_WORKS = process.env["FMT_MAIN_WORKS"] === "1";
 // FMT_SCAN_THREADS: how many threads walk the tree while the others format (0: 1 up to 11 threads, 2 from 12).
 const SCAN_THREADS = Number(process.env["FMT_SCAN_THREADS"] === undefined ? "0" : (process.env["FMT_SCAN_THREADS"] as string));
 // FMT_SIZES=1: take the size of every file while walking (one more system call each), so that the big ones go first.
@@ -707,6 +707,7 @@ export class Run {
     if (pipelined) {
       pool = new Pool(threads, cfg);
       this.pool = pool;
+      setYieldTurns(threads > 1);
     }
     try {
       if (isOxfmt) expanded = expandAsOxfmt(configs, ignored, patterns, options.errorOnUnmatchedPattern);
@@ -853,7 +854,6 @@ export class Run {
       else exOf0[target.jobKey >> 1] = work[i];
     }
     pl.finish();
-    if (MAIN_WORKS) pl.consumeHere();
     await pl.join();
     const formatting = performance.now() - formatStart;
     tick("workers");
