@@ -89,12 +89,13 @@ function writeIntersectionTypes(typesStart: number, typesLen: number, f: Formatt
   let isPrevObjectLike = false;
   let isChainIndented = false;
 
+  const SP$ = SP;
   for (let index = 0; index < typesLen; index++) {
     const item = listAt(typesStart, index);
     const isObjectLike = isObjectLikeType(item);
     typeSpan(item);
-    const itemStart = SP[0] | 0;
-    const itemEnd = SP[1] | 0;
+    const itemStart = SP$.s0 | 0;
+    const itemEnd = SP$.s1 | 0;
 
     if (index === 0) {
       writeItem(item, f);

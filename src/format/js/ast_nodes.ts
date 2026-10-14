@@ -1549,10 +1549,11 @@ export function anSpan(an: number): void {
     return;
   }
   const hir$ = hir;
+  const SP$ = SP;
   switch (tag) {
     case AN_PROGRAM:
-      SP[0] = 0;
-      SP[1] = hir$.sourceLen | 0;
+      SP$.s0 = 0;
+      SP$.s1 = hir$.sourceLen | 0;
       return;
     case AN_JSX_EXPRESSION_CONTAINER:
     case AN_JSX_SPREAD_CHILD:
@@ -1564,11 +1565,11 @@ export function anSpan(an: number): void {
       return;
     case AN_DECORATOR: {
       exprOuterSpan(id);
-      const outerStart = SP[0] | 0;
-      const outerEnd = SP[1] | 0;
+      const outerStart = SP$.s0 | 0;
+      const outerEnd = SP$.s1 | 0;
       const back = skipTriviaBack(hir$.text, hir$.sourceLen | 0, outerStart);
-      SP[0] = back > 0 ? back - 1 : 0;
-      SP[1] = outerEnd;
+      SP$.s0 = (back > 0 ? back - 1 : 0) | 0;
+      SP$.s1 = (outerEnd) | 0;
       return;
     }
     case AN_ASSIGNMENT_TARGET_REST: {
@@ -1634,9 +1635,9 @@ export function anSpan(an: number): void {
       const d = patPropDefault(id);
       if (d >= 0) {
         patSpan(patPropValue(id));
-        const s = SP[0] | 0;
+        const s = SP$.s0 | 0;
         exprSpan(d);
-        SP[0] = s;
+        SP$.s0 = (s) | 0;
       } else {
         patPropSpan(id);
       }
@@ -1659,8 +1660,8 @@ export function anSpan(an: number): void {
       const e = funcBodyKind(id) === BODY_EXPR ? funcBodyExpr(id) : -1;
       if (e >= 0) exprSpan(e);
       else {
-        SP[0] = 0;
-        SP[1] = 0;
+        SP$.s0 = 0;
+        SP$.s1 = 0;
       }
       return;
     }
@@ -1675,20 +1676,20 @@ export function anSpan(an: number): void {
       }
       if (!funcBodySpan(id)) {
         funcSpan(id);
-        const end = SP[1] | 0;
-        SP[0] = end;
-        SP[1] = end;
+        const end = SP$.s1 | 0;
+        SP$.s0 = (end) | 0;
+        SP$.s1 = (end) | 0;
       }
       return;
     }
     case AN_FORMAL_PARAMETERS: {
       if (!funcParamsSpan(id)) funcSpan(id);
-      const start = SP[0] | 0;
-      let end = SP[1] | 0;
+      const start = SP$.s0 | 0;
+      let end = SP$.s1 | 0;
       const behind = arrowBehindParameters(id);
       if (behind >= 0) end = behind;
-      SP[0] = start;
-      SP[1] = end;
+      SP$.s0 = (start) | 0;
+      SP$.s1 = (end) | 0;
       return;
     }
     case AN_CLASS:
@@ -1858,13 +1859,13 @@ export function anStart(an: number): number {
   const tag = an >> 23;
   if (tag >= 1 && tag <= 43) return exprStart(an & 0x7fffff);
   anSpan(an);
-  return SP[0] | 0;
+  return SP.s0 | 0;
 }
 export function anEnd(an: number): number {
   const tag = an >> 23;
   if (tag >= 1 && tag <= 43) return exprEnd(an & 0x7fffff);
   anSpan(an);
-  return SP[1] | 0;
+  return SP.s1 | 0;
 }
 
 /** The list `(start, len)` that `typeArgumentsOf` / `typeParametersOf` found. */

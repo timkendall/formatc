@@ -131,9 +131,10 @@ function wrapsOnBreak(parent: number): boolean {
 }
 
 function writeOpening(e: number, f: Formatter): void {
+  const SP$ = SP;
   if (jsxIsFragment(e)) {
     jsxOpeningSpan(e);
-    writeJsxFragmentTag(SP[0] | 0, SP[1] | 0, false, f);
+    writeJsxFragmentTag(SP$.s0 | 0, SP$.s1 | 0, false, f);
   } else {
     writeOpeningElement(e, f);
   }
@@ -141,10 +142,11 @@ function writeOpening(e: number, f: Formatter): void {
 
 function writeClosing(e: number, f: Formatter): void {
   const name = jsxCloseTag(e);
+  const SP$ = SP;
   if (name >= 0) {
     writeJsxClosingElement(e, name, f);
   } else if (jsxIsFragment(e) && jsxClosingSpan(e)) {
-    writeJsxFragmentTag(SP[0] | 0, SP[1] | 0, true, f);
+    writeJsxFragmentTag(SP$.s0 | 0, SP$.s1 | 0, true, f);
   }
 }
 
@@ -180,12 +182,13 @@ function shouldExpand(parent: number): boolean {
   const call = anParent(arrow);
   if (anTag(call) !== AN_CALL_EXPRESSION) return false;
   const callee = exprCallee(anId(call));
+  const SP$ = SP;
   if (callee >= 0) {
     exprSpan(callee);
-    const calleeStart = SP[0] | 0;
-    const calleeEnd = SP[1] | 0;
+    const calleeStart = SP$.s0 | 0;
+    const calleeEnd = SP$.s1 | 0;
     anSpan(arrow);
-    if (calleeStart === (SP[0] | 0) && calleeEnd === (SP[1] | 0)) return false;
+    if (calleeStart === (SP$.s0 | 0) && calleeEnd === (SP$.s1 | 0)) return false;
   }
   return anTag(anWithoutChainExpression(anParent(call))) === AN_JSX_EXPRESSION_CONTAINER;
 }
@@ -194,8 +197,9 @@ function shouldExpand(parent: number): boolean {
 export function writeAnyJsxTagWithChildren(e: number, f: Formatter): void {
   const cx = cxOf(f);
   exprSpan(e);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const isSuppressed = cx.comments.isSuppressed(start);
   const parent = exprAstParent(e);
   const parentTag = anTag(parent);

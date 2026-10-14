@@ -511,8 +511,9 @@ function embedElement(p: Printer, id: number): boolean {
   const parser = inferElementParser(p, id);
   if (parser === null) return false;
   nodeContent(t, p.o, id);
-  const cs = NODE_CONTENT[0] | 0;
-  const ce = NODE_CONTENT[1] | 0;
+  const NODE_CONTENT$ = NODE_CONTENT;
+  const cs = NODE_CONTENT$.s0 | 0;
+  const ce = NODE_CONTENT$.s1 | 0;
   const text = p.o.originalText;
   w.startAttempt();
   builtOpeningTagPrefix(p, id);
@@ -520,10 +521,11 @@ function embedElement(p: Printer, id: number): boolean {
   printOpeningTag(p, id);
   w.endGroup();
   let isWritten = true;
+  const TRIM$ = TRIM;
   if (trimJsWhitespaceStart(text, cs, ce) < ce) {
     w.hardline();
     htmlTrimPreserveIndentation(text, cs, ce);
-    isWritten = textToDoc(p, text, TRIM[0] | 0, TRIM[1] | 0, parser, SOURCE_UNKNOWN);
+    isWritten = textToDoc(p, text, TRIM$.s0 | 0, TRIM$.s1 | 0, parser, SOURCE_UNKNOWN);
     w.hardline();
   }
   const out = w.beginBuilt();

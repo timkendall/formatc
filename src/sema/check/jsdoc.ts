@@ -13,6 +13,7 @@ import { I32Vec } from "../vec.ts";
 import { decodeUtf8, utf8Len } from "../../base/utf8.ts";
 import { isIdentifierPart, isIdentifierStart, isWhiteSpaceSingleLine } from "../parser/unicode.ts";
 import { ESC_CP, identEnd, unicodeEscapeAt } from "./spans.ts";
+import { Slots2 } from "../../base/slots.ts";
 
 export const TAG_STRIDE: number = 10;
 /** The `@`. */
@@ -151,27 +152,28 @@ class LineStartRule {
 }
 
 /** A found range of `find_*_range`, relative to the start of the slice. */
-const FOUND = new Int32Array(2);
+const FOUND = new Slots2();
 
 /** `find_token_range` of oxc_jsdoc: where the first word of `text[from, to)` is. A `{` ends it as well: `@kind{type}`. */
 function findTokenRange(text: Uint8Array, from: number, to: number): boolean {
   let start = -1;
   let index = from;
+  const FOUND$ = FOUND;
   while (index < to) {
     const c = decodeUtf8(text, index, to);
     const len = utf8Len();
     if (isUnicodeWhitespace(c) || c === 123) {
       if (start >= 0) {
-        FOUND[0] = start - from;
-        FOUND[1] = index - from;
+        FOUND$.s0 = (start - from) | 0;
+        FOUND$.s1 = (index - from) | 0;
         return true;
       }
     } else if (start < 0) start = index;
     index = index + len;
   }
   if (start < 0) return false;
-  FOUND[0] = start - from;
-  FOUND[1] = to - from;
+  FOUND$.s0 = (start - from) | 0;
+  FOUND$.s1 = (to - from) | 0;
   return true;
 }
 
@@ -186,13 +188,14 @@ function findTypeRange(text: Uint8Array, from: number, to: number): boolean {
   if (at >= to || (text[at] | 0) !== 123) return false;
   const offset = at - from;
   let braceCount = 0;
+  const FOUND$ = FOUND;
   for (let i = at; i < to; i++) {
     const byte = text[i] | 0;
     if (byte === 123) braceCount = braceCount + 1;
     else if (byte === 125) {
       if (braceCount === 1) {
-        FOUND[0] = offset;
-        FOUND[1] = offset + (i - at) + 1;
+        FOUND$.s0 = (offset) | 0;
+        FOUND$.s1 = (offset + (i - at) + 1) | 0;
         return true;
       }
       braceCount = braceCount - 1;
@@ -213,13 +216,14 @@ function findTypeNameRange(text: Uint8Array, from: number, to: number): boolean 
   let bracket = 0;
   let start = -1;
   let index = from;
+  const FOUND$ = FOUND;
   while (index < to) {
     const c = decodeUtf8(text, index, to);
     const len = utf8Len();
     if (isUnicodeWhitespace(c)) {
       if (bracket === 0 && start >= 0) {
-        FOUND[0] = start - from;
-        FOUND[1] = index - from;
+        FOUND$.s0 = (start - from) | 0;
+        FOUND$.s1 = (index - from) | 0;
         return true;
       }
     } else {
@@ -230,8 +234,8 @@ function findTypeNameRange(text: Uint8Array, from: number, to: number): boolean 
     index = index + len;
   }
   if (start < 0 || bracket !== 0) return false;
-  FOUND[0] = start - from;
-  FOUND[1] = to - from;
+  FOUND$.s0 = (start - from) | 0;
+  FOUND$.s1 = (to - from) | 0;
   return true;
 }
 
@@ -487,7 +491,8 @@ class Reader {
     const text = this.text;
     const lim = this.lim;
     let nameEnd = at + 1;
-    if (at <= lim && findTokenRange(text, at, lim)) nameEnd = at + FOUND[1];
+    const FOUND$ = FOUND;
+    if (at <= lim && findTokenRange(text, at, lim)) nameEnd = at + FOUND$.s1;
     this.resetPos(nameEnd);
     this.nextTokenJsdoc();
     this.parseTagComments();
@@ -496,16 +501,16 @@ class Reader {
     let tyEnd = 0;
     const to1 = this.writtenEnd(nameEnd, end);
     if (findTypeRange(text, nameEnd, to1)) {
-      tyStart = nameEnd + FOUND[0];
-      tyEnd = nameEnd + FOUND[1];
+      tyStart = nameEnd + FOUND$.s0;
+      tyEnd = nameEnd + FOUND$.s1;
     }
     const afterType = tyEnd !== 0 ? tyEnd : nameEnd;
     let nStart = 0;
     let nEnd = 0;
     const to2 = this.writtenEnd(afterType, end);
     if (findTypeNameRange(text, afterType, to2)) {
-      nStart = afterType + FOUND[0];
-      nEnd = afterType + FOUND[1];
+      nStart = afterType + FOUND$.s0;
+      nEnd = afterType + FOUND$.s1;
     }
     let defStart = 0;
     let defEnd = 0;

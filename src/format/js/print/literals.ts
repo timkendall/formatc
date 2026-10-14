@@ -20,7 +20,8 @@ const KB = new ByteBuf(64);
 
 export function writeNumericLiteral(e: number, f: Formatter): void {
   exprSpan(e);
-  writeNumberToken(SP[0] | 0, SP[1] | 0, f);
+  const SP$ = SP;
+  writeNumberToken(SP$.s0 | 0, SP$.s1 | 0, f);
 }
 
 export function writeStringLiteral(e: number, f: Formatter): void {
@@ -28,13 +29,15 @@ export function writeStringLiteral(e: number, f: Formatter): void {
   const isJsx = nodeKind(parent) === N_PROP && propIsJsxAttribute(nodeId(parent)) && anTag(exprAstParent(e)) === AN_JSX_ATTRIBUTE;
   exprSpan(e);
   // TODO(port): tailwind (`context_of_string`, `sorted_string_literal`): the option is refused by the driver.
-  fmtLiteralStringToken(SP[0] | 0, SP[1] | 0, isJsx, STRING_LITERAL_PARENT_KIND_EXPRESSION, f);
+  const SP$ = SP;
+  fmtLiteralStringToken(SP$.s0 | 0, SP$.s1 | 0, isJsx, STRING_LITERAL_PARENT_KIND_EXPRESSION, f);
 }
 
 export function writeBigIntLiteral(e: number, f: Formatter): void {
   exprSpan(e);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const text = f.source;
   let hasUpper = false;
   for (let i = start; i < end; i++) {
@@ -101,11 +104,12 @@ function writeRegExpLiteralWithUnknownFlags(start: number, flagsStart: number, e
 /** The flags are sorted. */
 export function writeRegExpLiteral(e: number, f: Formatter): void {
   exprSpan(e);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   exprRegexFlagsSpan(e);
-  const flagsStart = SP[0] | 0;
-  const flagsEnd = SP[1] | 0;
+  const flagsStart = SP$.s0 | 0;
+  const flagsEnd = SP$.s1 | 0;
   const text = f.source;
   let isSorted = true;
   let isAscii = true;

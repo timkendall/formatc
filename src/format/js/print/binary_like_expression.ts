@@ -602,8 +602,9 @@ function writeOperatorAndRightExpression(binary: number, outermost: number, f: F
   writeOperator(operator, right, isInlined, f);
   const cx = cxOf(f);
   exprSpan(right);
-  const rightStart = SP[0] | 0;
-  const rightEnd = SP[1] | 0;
+  const SP$ = SP;
+  const rightStart = SP$.s0 | 0;
+  const rightEnd = SP$.s1 | 0;
   if (isInlined && !isJsx && cx.comments.hasLeadingOwnLineComment(rightStart)) {
     f.startSoftLineIndentOrSpace();
     fmtExpr(right, f);
@@ -636,7 +637,8 @@ function writeNameAndArgumentsOfAngularPipe(right: number, f: Formatter): void {
   f.softLineBreakOrSpace();
   f.token(T_PIPE_SPACE);
   exprSpan(name);
-  f.sourceText(SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  f.sourceText(SP$.s0 | 0, SP$.s1 | 0);
   if (call < 0) return;
   f.startGroup();
   f.startIndent();
@@ -712,8 +714,9 @@ function writeOperator(operator: number, right: number, isInlined: boolean, f: F
   }
   // A comment that ends its line stays before the operator.
   exprSpan(right);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   let hasCommentBeforeOperator = false;
   if (!cx.isQuiet) {
     const cm = cx.comments;

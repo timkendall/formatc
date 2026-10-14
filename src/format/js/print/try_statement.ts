@@ -55,7 +55,7 @@ function hasCommentWithLineBreak(from: number, to: number, f: Formatter): boolea
 function writeBlock(block: number, f: Formatter): void {
   const cx = cxOf(f);
   stmtSpan(block);
-  const start = SP[0] | 0;
+  const start = SP.s0 | 0;
   if (!cx.isQuiet && commentsStayBetweenHeadAndBody(f)) {
     writeHeadBodySeparator(start, f);
     fmtNodeWithoutTrailingComments(WK_STMT, block, f);
@@ -79,13 +79,14 @@ export function writeTryStatement(statement: number, block: number, param: numbe
   f.token(KW_TRY);
   writeBlock(block, f);
 
+  const SP$ = SP;
   if (handler >= 0) {
     f.space();
     const node = mkAn(AN_CATCH_CLAUSE, statement);
     // format_node_without_comments(node.span(), || node.parent(), f, |f| write_catch_clause(node, param, handler, f))
     anSpan(node);
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     if (cx.isQuiet || !cm.isSuppressed(start)) writeCatchClause(node, param, handler, f);
     else {
       formatLeadingComments(start, end, f);
@@ -96,14 +97,14 @@ export function writeTryStatement(statement: number, block: number, param: numbe
   if (finalizer >= 0) {
     const previousBlock = handler >= 0 ? handler : block;
     stmtSpan(previousBlock);
-    const previousEnd = SP[1] | 0;
+    const previousEnd = SP$.s1 | 0;
     // `} /* comment */ finally {`
     if (!cx.isQuiet && commentsStayBetweenHeadAndBody(f)) {
       cm.commentsBeforeCharacter(previousEnd, 102 /* f */);
       writeCommentsBetweenBlocks(cm.from, cm.to, f);
     } else if (!cx.isQuiet) {
       stmtSpan(finalizer);
-      cm.commentsBefore(SP[0] | 0);
+      cm.commentsBefore(SP$.s0 | 0);
       const from = cm.from;
       const to = cm.to;
       let position = previousEnd;
@@ -145,8 +146,9 @@ function writeCatchClause(node: number, param: number, body: number, f: Formatte
   // A comment with a line break next to it goes to the start of the block, where `write_block_statement` takes it from the cache. Any other
   // stays before `catch`.
   anSpan(node);
-  const nodeStart = SP[0] | 0;
-  const nodeEnd = SP[1] | 0;
+  const SP$ = SP;
+  const nodeStart = SP$.s0 | 0;
+  const nodeEnd = SP$.s1 | 0;
   cm.commentsBefore(nodeStart);
   const from = cm.from;
   const to = cm.to;
@@ -173,8 +175,8 @@ function writeCatchClause(node: number, param: number, body: number, f: Formatte
     f.space();
     // format_node_without_comments(param.span(), || node, f, |f| write_catch_parameter(param, body, f))
     varDeclSpan(param);
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     if (cx.isQuiet || !cm.isSuppressed(start)) writeCatchParameter(param, body, f);
     else {
       formatLeadingComments(start, end, f);
@@ -200,7 +202,8 @@ function writeCatchParameter(param: number, body: number, f: Formatter): void {
   }
 
   patSpan(pattern);
-  cm.commentsBefore(SP[0] | 0);
+  const SP$ = SP;
+  cm.commentsBefore(SP$.s0 | 0);
   const leadingFrom = cm.from;
   const leadingTo = cm.to;
   let leadingCommentWithBreak = false;
@@ -212,9 +215,9 @@ function writeCatchParameter(param: number, body: number, f: Formatter): void {
   }
   // Those before the `)`, and of those after it the ones that start or end their line.
   varDeclSpan(param);
-  const paramEnd = SP[1] | 0;
+  const paramEnd = SP$.s1 | 0;
   stmtSpan(body);
-  const bodyStart = SP[0] | 0;
+  const bodyStart = SP$.s0 | 0;
   cm.commentsIn(paramEnd, bodyStart);
   const beforeBodyFrom = cm.from;
   const beforeBodyTo = cm.to;

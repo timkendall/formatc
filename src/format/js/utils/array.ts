@@ -28,6 +28,7 @@ export function writeArrayNode(len: number, wk: number, start: number, n: number
   const breaksAtEmptyLines = emptyLineBetweenElementsBreaksArray(f);
   const text = f.source;
   let hasSeenHole = false;
+  const SP$ = SP;
   for (let index = 0; index < n; index++) {
     const h = listAt(start, index);
     const hole = isHole(wk, h);
@@ -47,7 +48,7 @@ export function writeArrayNode(len: number, wk: number, start: number, n: number
       let emptyAfter = false;
       if (!hole) {
         nodeSpanOf(wk, h);
-        emptyAfter = isLineAfterElementEmpty(text, SP[1] | 0);
+        emptyAfter = isLineAfterElementEmpty(text, SP$.s1 | 0);
       }
       if (emptyAfter && !breaksAtEmptyLines) f.softEmptyLineOrSpace();
       else if (emptyAfter && !hasSeenHole && !isBeforeHole) f.emptyLine();

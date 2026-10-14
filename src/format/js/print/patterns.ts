@@ -43,12 +43,13 @@ import { writeSuppressedNode } from "../utils/suppressed.ts";
 import { writeObjectPatternLikePattern } from "./object_pattern_like.ts";
 
 export function writeBindingPattern(pat: number, f: Formatter): void {
+  const SP$ = SP;
   switch (patTag(pat)) {
     case PAT_MISSING:
       return;
     case PAT_IDENT:
       patSpan(pat);
-      f.sourceText(SP[0] | 0, SP[1] | 0);
+      f.sourceText(SP$.s0 | 0, SP$.s1 | 0);
       return;
     case PAT_OBJECT:
       if (!f.stack.enter()) return;
@@ -67,9 +68,10 @@ export function writeBindingPattern(pat: number, f: Formatter): void {
 
 function writeArrayPattern(pat: number, elementsStart: number, elementsLen: number, f: Formatter): void {
   f.token(LBRACKET);
+  const SP$ = SP;
   if (elementsLen === 0) {
     patSpan(pat);
-    formatDanglingComments(SP[0] | 0, SP[1] | 0, DANGLING_SOFT, f);
+    formatDanglingComments(SP$.s0 | 0, SP$.s1 | 0, DANGLING_SOFT, f);
   } else {
     const last = listAt(elementsStart, elementsLen - 1);
     const rest = isRestElement(last) ? last : -1;
@@ -122,8 +124,9 @@ export function writeArrayPatternElement(element: number, f: Formatter): void {
   const parent = nodeAsAstNodes(patElemParent(element));
   // format_node(element.span(), parent, f, ..)
   patElemSpan(element);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   if (cx.isQuiet) {
     writeRestOrDefault(rest, pat, def, f);
     return;
@@ -156,11 +159,12 @@ export function writeBindingProperty(property: number, f: Formatter): void {
   }
   const cx = cxOf(f);
   // Prettier's `handlePropertyComments`: a comment at the end of the line of the key leads the property.
+  const SP$ = SP;
   if (!cx.isQuiet && !commentsStayAroundOperator(f) && !patPropIsShorthand(property)) {
     const owner = nodeOfPatProp(property);
     if (keyLoad(owner) !== KEY_NONE && keySpan(owner)) {
-      const keyStart = SP[0] | 0;
-      const keyEnd = SP[1] | 0;
+      const keyStart = SP$.s0 | 0;
+      const keyEnd = SP$.s1 | 0;
       const cm = cx.comments;
       if (!cm.hasCommentInRange(keyStart, keyEnd)) {
         const n = cm.commentsLeadingProperty(keyEnd, patStart(patPropValue(property)));
@@ -168,7 +172,7 @@ export function writeBindingProperty(property: number, f: Formatter): void {
         for (let i = 0; i < n; i++) {
           if (cm.isSuppressionComment((from + i) | 0)) {
             patPropSpan(property);
-            writeSuppressedNode(SP[0] | 0, SP[1] | 0, f);
+            writeSuppressedNode(SP$.s0 | 0, SP$.s1 | 0, f);
             return;
           }
         }
@@ -190,7 +194,7 @@ export function fmtBindingPropertyValue(property: number, f: Formatter): void {
   const cx = cxOf(f);
   // format_node(value.span().to(default.span()), || BindingProperty(property), f, ..)
   patSpan(value);
-  const start = SP[0] | 0;
+  const start = SP.s0 | 0;
   const end = exprEnd(def);
   if (cx.isQuiet) {
     writeAssignmentPattern(value, def, f);

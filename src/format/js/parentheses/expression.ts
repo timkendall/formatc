@@ -926,7 +926,7 @@ function assignmentNeedsParentheses(e: number, left: number, parent: number, f: 
     case AN_RETURN_STATEMENT:
     case AN_THROW_STATEMENT:
       stmtSpan(pid);
-      return !hasOwnLineCommentBetween(SP[0] | 0, exprStart(e), f);
+      return !hasOwnLineCommentBetween(SP.s0 | 0, exprStart(e), f);
     default:
       return true;
   }
@@ -1080,6 +1080,7 @@ function isOptionalMemberExpressionOfBabel(e0: number): boolean {
 function isInForStatementInitializer(e: number, f: Formatter): boolean {
   const endsEarly = searchForInitializerEndsAtStatements(f);
   let a = exprAstParent(e);
+  const SP$ = SP;
   while (true) {
     let isEnd = false;
     switch (anTag(a)) {
@@ -1087,10 +1088,10 @@ function isInForStatementInitializer(e: number, f: Formatter): boolean {
         const init = stmtForInit(anId(a));
         if (init >= 0) {
           stmtSpan(init);
-          const s = SP[0] | 0;
-          const en = SP[1] | 0;
+          const s = SP$.s0 | 0;
+          const en = SP$.s1 | 0;
           exprSpan(e);
-          if (s <= (SP[0] | 0) && (SP[1] | 0) <= en) return true;
+          if (s <= (SP$.s0 | 0) && (SP$.s1 | 0) <= en) return true;
         }
         isEnd = true;
         break;

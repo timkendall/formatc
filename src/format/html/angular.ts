@@ -407,6 +407,7 @@ function printAngularI18n(p: Printer, element: number, b: Uint8Array, s: number,
   // `getTextValueParts`
   const vs = trimJsWhitespaceStart(b, s, e);
   const ve = trimJsWhitespaceEnd(b, vs, e);
+  const TRIM$ = TRIM;
   if (has(t, element, IS_WHITESPACE_SENSITIVE)) {
     // All that is between the parts of the `fill` is forced line breaks, so it is as good as an array.
     if (has(t, element, IS_INDENTATION_SENSITIVE)) {
@@ -415,8 +416,8 @@ function printAngularI18n(p: Printer, element: number, b: Uint8Array, s: number,
       return true;
     }
     htmlTrimPreserveIndentation(b, vs, ve);
-    const ts = TRIM[0] | 0;
-    const te = TRIM[1] | 0;
+    const ts = TRIM$.s0 | 0;
+    const te = TRIM$.s1 | 0;
     const dedent = minIndentation(b, ts, te);
     let ls = ts;
     let index = 0;

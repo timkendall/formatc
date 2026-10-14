@@ -73,19 +73,19 @@ export function stmtSpan(s: number): void {
   const h = hir;
   const sp = SP;
   if (!(s >= 0 && s < h.nStmts)) {
-    sp[0] = 0;
-    sp[1] = 0;
+    sp.s0 = 0;
+    sp.s1 = 0;
     return;
   }
   const start = h.stmtStart[s] | 0;
   // The HIR positions the block after `finally` at the keyword.
   if ((h.stmtTag[s] | 0) === STMT_BLOCK && (h.text[start] | 0) === 102) {
-    sp[0] = skipTrivia(h.text, h.sourceLen | 0, h.stmtLocPos[s] | 0);
-    sp[1] = h.stmtLocEnd[s] | 0;
+    sp.s0 = (skipTrivia(h.text, h.sourceLen | 0, h.stmtLocPos[s] | 0)) | 0;
+    sp.s1 = h.stmtLocEnd[s] | 0;
     return;
   }
-  sp[0] = start;
-  sp[1] = h.stmtLocEnd[s] | 0;
+  sp.s0 = (start) | 0;
+  sp.s1 = h.stmtLocEnd[s] | 0;
 }
 export function stmtStart(s: number): number {
   const h = hir;
@@ -93,7 +93,7 @@ export function stmtStart(s: number): number {
   const start = h.stmtStart[s] | 0;
   if ((h.stmtTag[s] | 0) === STMT_BLOCK && (h.text[start] | 0) === 102) {
     stmtSpan(s);
-    return SP[0] | 0;
+    return SP.s0 | 0;
   }
   return start;
 }
@@ -127,8 +127,9 @@ export function stmtIsDefaultExport(s: number): boolean {
 /** `Stmt::span_without_export` into `SP`: the declaration without `export` and `export default`. */
 export function stmtSpanWithoutExport(s: number): void {
   stmtSpan(s);
-  let start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  let start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const ms = stmtModifiersStart(s);
   const ml = stmtModifiersLen(s);
   const hir$ = hir;
@@ -136,11 +137,11 @@ export function stmtSpanWithoutExport(s: number): void {
     const m = hir$.ids[(ms + i) | 0] | 0;
     if ((modifierFlagOf(m) & (FLAG_EXPORT | FLAG_DEFAULT)) !== 0) {
       modifierSpan(m);
-      start = skipTrivia(hir$.text, hir$.sourceLen | 0, SP[1] | 0);
+      start = skipTrivia(hir$.text, hir$.sourceLen | 0, SP$.s1 | 0);
     }
   }
-  SP[0] = start;
-  SP[1] = end;
+  SP$.s0 = (start) | 0;
+  SP$.s1 = (end) | 0;
 }
 
 /** `Stmt::export_span` into `SP`: the range of ESLint's `ExportNamedDeclaration` or `ExportDefaultDeclaration` around a declaration, from the `export`. False if there is none. */
@@ -148,13 +149,14 @@ export function stmtExportSpan(s: number): boolean {
   const ms = stmtModifiersStart(s);
   const ml = stmtModifiersLen(s);
   const hir$ = hir;
+  const SP$ = SP;
   for (let i = 0; i < ml; i++) {
     const m = hir$.ids[(ms + i) | 0] | 0;
     if (modifierFlagOf(m) === FLAG_EXPORT) {
       modifierSpan(m);
-      const start = SP[0] | 0;
+      const start = SP$.s0 | 0;
       stmtSpan(s);
-      SP[0] = start;
+      SP$.s0 = (start) | 0;
       return true;
     }
   }
@@ -191,9 +193,10 @@ export function stmtSemicolon(s: number): boolean {
     default:
       break;
   }
+  const SP$ = SP;
   if (isTerminated && end >= 1 && (hir.text[end - 1] | 0) === 59) {
-    SP[0] = (end - 1) | 0;
-    SP[1] = end;
+    SP$.s0 = (end - 1) | 0;
+    SP$.s1 = (end) | 0;
     return true;
   }
   return false;
@@ -207,9 +210,10 @@ export function stmtCatchClauseSpan(s: number): boolean {
   if (handler < 0) return false;
   const block = hir$.stmtA[s] | 0;
   stmtSpan(block);
-  const start = skipTrivia(hir$.text, hir$.sourceLen | 0, SP[1] | 0);
-  SP[0] = start;
-  SP[1] = stmtEnd(handler);
+  const SP$ = SP;
+  const start = skipTrivia(hir$.text, hir$.sourceLen | 0, SP$.s1 | 0);
+  SP$.s0 = (start) | 0;
+  SP$.s1 = (stmtEnd(handler)) | 0;
   return true;
 }
 
@@ -303,8 +307,9 @@ export function stmtModuleSpecifierSpan(s: number): boolean {
   let end = 0;
   if (found >= 0 && (text[found] | 0) === quote) end = (found + 1) | 0;
   else end = tokenEnd(text, len, start, false);
-  SP[0] = start;
-  SP[1] = end;
+  const SP$ = SP;
+  SP$.s0 = (start) | 0;
+  SP$.s1 = (end) | 0;
   return true;
 }
 
@@ -317,7 +322,8 @@ export function stmtImportAttributes(s: number): number {
   const t = stmtTag(s);
   if (t !== STMT_IMPORT && t !== STMT_EXPORT_NAMED && t !== STMT_EXPORT_STAR) return -1;
   stmtSpan(s);
-  return importAttributesIndexWithin(SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  return importAttributesIndexWithin(SP$.s0 | 0, SP$.s1 | 0);
 }
 
 /** `Stmt::namespace_export_name`: the atom of the `N` of `export as namespace N`, or -1; `stmtNamespaceExportNamePos` is where it is written. */
@@ -475,10 +481,11 @@ export function stmtDirectiveSpan(s: number): boolean {
   }
   if (!(stmtStart(s) < end)) return false;
   exprSpan(e);
-  const es = SP[0] | 0;
-  const ee = SP[1] | 0;
-  SP[0] = (es + 1) | 0;
-  SP[1] = ee > 1 ? (ee - 1) | 0 : 0;
+  const SP$ = SP;
+  const es = SP$.s0 | 0;
+  const ee = SP$.s1 | 0;
+  SP$.s0 = (es + 1) | 0;
+  SP$.s1 = (ee > 1 ? (ee - 1) | 0 : 0) | 0;
   return true;
 }
 
@@ -511,21 +518,22 @@ export function varDeclIsDefinite(d: number): boolean {
 export function varDeclSpan(d: number): void {
   const hir$ = hir;
   patSpan(hir$.varDeclPat[d] | 0);
-  SP[1] = hir$.varDeclLocEnd[d] | 0;
+  SP.s1 = hir$.varDeclLocEnd[d] | 0;
 }
 /** `VarDecl::binding_span` into `SP`: the pattern and its type annotation, which is the range of ESLint's `id`. */
 export function varDeclBindingSpan(d: number): void {
   const hir$ = hir;
   patSpan(hir$.varDeclPat[d] | 0);
-  const s = SP[0] | 0;
-  const e = SP[1] | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  const e = SP$.s1 | 0;
   const ty = hir$.varDeclTy[d] | 0;
   if (ty >= 0) {
     typeOuterSpan(ty);
-    SP[0] = s;
+    SP$.s0 = (s) | 0;
   } else {
-    SP[0] = s;
-    SP[1] = e;
+    SP$.s0 = (s) | 0;
+    SP$.s1 = (e) | 0;
   }
 }
 /** `VarDecl::parent`: the `Var` statement, or the `Try` statement of a `catch` parameter (a Node). */
@@ -552,8 +560,9 @@ export function caseBodyLen(c: number): number {
 }
 export function caseSpan(c: number): void {
   const hir$ = hir;
-  SP[0] = hir$.casePos[c] | 0;
-  SP[1] = hir$.caseEnd[c] | 0;
+  const SP$ = SP;
+  SP$.s0 = hir$.casePos[c] | 0;
+  SP$.s1 = hir$.caseEnd[c] | 0;
 }
 /** `Case::parent`: the `Switch` statement (a Node). */
 export function caseParent(c: number): number {

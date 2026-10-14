@@ -38,9 +38,10 @@ import {
   exprUnaryOpOf,
 } from "../../../lint/ast/index.ts";
 import { I32Vec } from "../../../sema/vec.ts";
+import { Slots2 } from "../../../base/slots.ts";
 
 /** Result of `expressionLeftSideLeft`: the expression, and whether it is, or is at the left edge of, what an assignment or `++` writes to. */
-export const LEFT_SIDE = new Int32Array(2);
+export const LEFT_SIDE = new Slots2();
 const scratch = new I32Vec(8);
 
 /**
@@ -113,8 +114,9 @@ export function expressionLeftSideLeft(expr: number, isTarget: boolean): boolean
 }
 
 function setLeft(e: number, isTarget: number): boolean {
-  LEFT_SIDE[0] = e;
-  LEFT_SIDE[1] = isTarget;
+  const LEFT_SIDE$ = LEFT_SIDE;
+  LEFT_SIDE$.s0 = (e) | 0;
+  LEFT_SIDE$.s1 = (isTarget) | 0;
   return true;
 }
 
@@ -123,10 +125,11 @@ export function leftmost(expression: number): number {
   let expr = expression;
   let isTarget = false;
   let last = expression;
+  const LEFT_SIDE$ = LEFT_SIDE;
   while (true) {
     if (!isTarget) last = expr;
     if (!expressionLeftSideLeft(expr, isTarget)) return last;
-    expr = LEFT_SIDE[0] | 0;
-    isTarget = (LEFT_SIDE[1] | 0) !== 0;
+    expr = LEFT_SIDE$.s0 | 0;
+    isTarget = (LEFT_SIDE$.s1 | 0) !== 0;
   }
 }

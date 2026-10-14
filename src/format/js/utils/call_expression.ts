@@ -88,7 +88,7 @@ function commentsTrailingComputedCallee(call: number, f: Formatter): boolean {
   if (anTag(parentAn) !== AN_CALL_EXPRESSION) return false;
   let followingStart = 0;
   if (typeListAngleBrackets(callTypeArgsStart(call), callTypeArgsLen(call))) {
-    followingStart = SP[0] | 0;
+    followingStart = SP.s0 | 0;
   } else if (callArgsLen(call) > 0) {
     followingStart = exprStart(listAt(callArgsStart(call), 0));
   } else {
@@ -193,10 +193,11 @@ function hasCommentsAroundArguments(e: number, f: Formatter): boolean {
   let start = exprEnd(callCallee(call));
   const as = callArgsStart(call);
   const n = callArgsLen(call);
+  const SP$ = SP;
   for (let i = 0; i < n; i++) {
     exprSpan(listAt(as, i));
-    const argStart = SP[0] | 0;
-    const argEnd = SP[1] | 0;
+    const argStart = SP$.s0 | 0;
+    const argEnd = SP$.s1 | 0;
     if (cm.hasAnyCommentIn(start, argStart)) return true;
     start = argEnd;
   }

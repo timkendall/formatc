@@ -57,8 +57,9 @@ export function importRunBegin(f: Formatter): boolean {
 function isSortable(statement: number, f: Formatter): boolean {
   if (stmtTag(statement) !== STMT_IMPORT) return false;
   stmtSpan(statement);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const cm = cxOf(f).comments;
   return !cm.isSuppressed(start) && !cm.hasTrailingSuppressionComment(end);
 }
@@ -153,7 +154,7 @@ function startStatement(statement: number, f: Formatter): void {
   const cx = cxOf(f);
   const cm = cx.comments;
   stmtSpan(statement);
-  const statementStart = SP[0] | 0;
+  const statementStart = SP.s0 | 0;
   cm.commentsBefore(statementStart);
   let i = cm.from;
   const to = cm.to;
@@ -192,21 +193,22 @@ function newWritten(statement: number, imp: number, f: Formatter): Written {
   const text = cx.src.text;
   let sourceStart = 0;
   let sourceEnd = 0;
+  const SP$ = SP;
   if (importSpecSpanOf(imp)) {
-    sourceStart = SP[0] | 0;
-    sourceEnd = SP[1] | 0;
+    sourceStart = SP$.s0 | 0;
+    sourceEnd = SP$.s1 | 0;
   }
   let source = bytesString(text, sourceStart, sourceEnd);
   let hasCommentForDefault = false;
   if (cm.hasCommentBefore(sourceStart)) {
     stmtSpan(statement);
-    const keywordEnd = ((SP[0] | 0) + 6) | 0;
+    const keywordEnd = ((SP$.s0 | 0) + 6) | 0;
     // Without a `from`, everything is after it.
     let isAfterFrom = importIsSideEffect(imp);
     let position = keywordEnd;
     if (!isAfterFrom) {
       importClauseSpan(imp);
-      position = SP[1] | 0;
+      position = SP$.s1 | 0;
     }
     cm.commentsIn(position, sourceStart);
     const from = cm.from;
@@ -234,7 +236,7 @@ function newWritten(statement: number, imp: number, f: Formatter): Written {
       source = nl >= 0 ? bytesString(text, cStart, trimAsciiEnd(text, cStart, nl)) : bytesString(text, cStart, cEnd);
     }
     if (importNamespaceSpan(imp) && importDefault(imp) < 0) {
-      const star = SP[0] | 0;
+      const star = SP$.s0 | 0;
       cm.commentsIn(keywordEnd, star);
       hasCommentForDefault = cm.to > cm.from;
     }

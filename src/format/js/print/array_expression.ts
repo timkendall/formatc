@@ -28,8 +28,9 @@ function commentsStayBehindHoles(f: Formatter): boolean {
 export function writeArrayExpression(e: number, elementsStart: number, elementsLen: number, f: Formatter): void {
   f.token(LBRACKET);
   exprSpan(e);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   if (elementsLen === 0) {
     formatDanglingComments(start, end, DANGLING_SOFT, f);
   } else {

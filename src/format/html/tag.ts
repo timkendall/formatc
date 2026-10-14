@@ -51,6 +51,7 @@ import {
 import { eqLit } from "./data.ts";
 import { HOptions } from "./hoptions.ts";
 import { hasPrettierIgnore, isPreLike, isTextLike, trimAsciiEnd } from "./utilities.ts";
+import { Slots2 } from "../../base/slots.ts";
 
 const HTML5_DOCTYPE_START_MARKER = "<!doctype";
 
@@ -311,7 +312,7 @@ function lenOfClosingTagStartMarker(t: HTree, o: HOptions, id: number): number {
 }
 
 /** `getNodeContent`: the range of `o.originalText` goes into `NODE_CONTENT[0]`, `NODE_CONTENT[1]`. */
-export const NODE_CONTENT = new Int32Array(2);
+export const NODE_CONTENT = new Slots2();
 export function nodeContent(t: HTree, o: HOptions, id: number): void {
   let start = nGet(t, id, F_START_E);
   const first = firstChild(t, id);
@@ -319,10 +320,11 @@ export function nodeContent(t: HTree, o: HOptions, id: number): void {
     start = Math.max(0, start - lenOfOpeningTagEndMarker(t, o, id));
   }
   const text = o.originalText;
+  const NODE_CONTENT$ = NODE_CONTENT;
   if (!hasEndSpan(t, id)) {
     if (!isWrittenToItsEnd(t, id)) {
-      NODE_CONTENT[0] = 0;
-      NODE_CONTENT[1] = 0;
+      NODE_CONTENT$.s0 = 0;
+      NODE_CONTENT$.s1 = 0;
       return;
     }
     let end = nGet(t, id, F_SPAN_E);
@@ -334,12 +336,12 @@ export function nodeContent(t: HTree, o: HOptions, id: number): void {
       at = last;
     }
     if (start > end || end > text.length) {
-      NODE_CONTENT[0] = 0;
-      NODE_CONTENT[1] = 0;
+      NODE_CONTENT$.s0 = 0;
+      NODE_CONTENT$.s1 = 0;
       return;
     }
-    NODE_CONTENT[0] = start;
-    NODE_CONTENT[1] = trimAsciiEnd(text, start, end);
+    NODE_CONTENT$.s0 = (start) | 0;
+    NODE_CONTENT$.s1 = (trimAsciiEnd(text, start, end)) | 0;
     return;
   }
   let end = nGet(t, id, F_END_S);
@@ -350,12 +352,12 @@ export function nodeContent(t: HTree, o: HOptions, id: number): void {
     end = Math.max(0, end - lenOfClosingTagEndMarker(t, o, last));
   }
   if (start > end || end > text.length) {
-    NODE_CONTENT[0] = 0;
-    NODE_CONTENT[1] = 0;
+    NODE_CONTENT$.s0 = 0;
+    NODE_CONTENT$.s1 = 0;
     return;
   }
-  NODE_CONTENT[0] = start;
-  NODE_CONTENT[1] = end;
+  NODE_CONTENT$.s0 = (start) | 0;
+  NODE_CONTENT$.s1 = (end) | 0;
 }
 
 void F_SPAN_S;

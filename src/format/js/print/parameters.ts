@@ -163,8 +163,9 @@ export function fmtFormalParameters(func: number, f: Formatter): void {
     return;
   }
   anSpan(mkAn(AN_FORMAL_PARAMETERS, func));
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   // format_node_without_comments(span, || func.as_ast_nodes(), f, write)
   if (!cx.comments.isSuppressed(start)) {
     writeFormalParameters(func, f);
@@ -186,8 +187,9 @@ function writeFormalParameters(func: number, f: Formatter): void {
     return;
   }
   anSpan(mkAn(AN_FORMAL_PARAMETERS, func));
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const cm = cx.comments;
   const n = cm.commentsBefore(start);
   if (n > 0) {
@@ -226,6 +228,7 @@ function writeParametersInParentheses(func: number, spanStart: number, spanEnd: 
   else layout = PARAMETER_LAYOUT_DEFAULT;
 
   if (!parenthesesNotNeeded) f.token(LPAREN);
+  const SP$ = SP;
   if (layout === PARAMETER_LAYOUT_NO_PARAMETERS) {
     if (cx.isQuiet) {
       // nothing
@@ -235,12 +238,12 @@ function writeParametersInParentheses(func: number, spanStart: number, spanEnd: 
         // Prettier takes a comment before the `=>` for one between the parentheses, finds none there, and is left with the line breaks
         // around it. The empty text is what makes the second one count.
         if (funcArrowSpan(func)) {
-          const tokenStart = SP[0] | 0;
+          const tokenStart = SP$.s0 | 0;
           const rt = funcReturnType(func);
           let start = spanEnd;
           if (rt >= 0) {
             typeSpan(rt);
-            start = SP[1] | 0;
+            start = SP$.s1 | 0;
           }
           if (cm.hasCommentInRange(start, tokenStart)) {
             f.startIndent();
@@ -461,7 +464,7 @@ function writeParameterContent(param: number, f: Formatter): void {
   if (ty >= 0) {
     if (!cx.isQuiet) {
       typeAnnotationSpan(ty);
-      if (cx.comments.hasCommentBefore(SP[0] | 0)) f.space();
+      if (cx.comments.hasCommentBefore(SP.s0 | 0)) f.space();
     }
     fmtTypeAnnotation(ty, f);
   }
@@ -533,11 +536,12 @@ function writeParameterList(func: number, layout: number, f: Formatter): void {
     }
   }
   const separator = hasModifiers ? JOIN_HARDLINE : JOIN_SOFT_LINE;
+  const SP$ = SP;
   for (let i = 0; i < total; i++) {
     const p = i === 0 && thisParam >= 0 ? thisParam : listAt(ps, thisParam >= 0 ? i - 1 : i);
     if (i > 0) {
       nodeSpanOf(WK_PARAM, p);
-      joinNodesSeparator(f, separator, SP[0] | 0, SP[1] | 0);
+      joinNodesSeparator(f, separator, SP$.s0 | 0, SP$.s1 | 0);
     }
     fmtParam(p, f);
     writeSeparatorAfter(f, COMMA, i === total - 1, ts, 0);
@@ -551,7 +555,7 @@ export function canAvoidParentheses(arrow: number, f: Formatter): boolean {
   const param = listAt(funcParamsStart(arrow), 0);
   if (paramIsRest(param) || paramTy(param) >= 0 || paramIsOptional(param) || paramDefault(param) >= 0) return false;
   if (patTag(paramPat(param)) !== PAT_IDENT) return false;
-  const at = funcArrowSpan(arrow) ? SP[0] | 0 : 0;
+  const at = funcArrowSpan(arrow) ? SP.s0 | 0 : 0;
   return !cxOf(f).comments.hasCommentBefore(at);
 }
 
@@ -572,18 +576,19 @@ function isHuggableExpression(e: number): boolean {
 /** Whether there are comments around the only parameter `param` of `func`. Those before the `(` that do not trail the name lead it. */
 function hasCommentsAround(func: number, param: number, f: Formatter): boolean {
   anSpan(mkAn(AN_FORMAL_PARAMETERS, func));
-  const spanStart = SP[0] | 0;
-  const spanEnd = SP[1] | 0;
+  const SP$ = SP;
+  const spanStart = SP$.s0 | 0;
+  const spanEnd = SP$.s1 | 0;
   const kind = funcKind(func);
   let start = spanStart;
   if ((kind === FN_DECL || kind === FN_EXPR || kind === FN_ARROW) && funcHasBody(func)) {
     if (typeParamListAngleBrackets(funcTypeParamsStart(func), funcTypeParamsLen(func))) {
-      start = SP[1] | 0;
+      start = SP$.s1 | 0;
     } else if (funcName(func) >= 0) {
       start = identEndOf(funcName(func), funcNamePos(func));
     } else {
       funcSpan(func);
-      start = SP[0] | 0;
+      start = SP$.s0 | 0;
     }
   }
   commentsBetween(start, spanEnd, f);
@@ -591,8 +596,8 @@ function hasCommentsAround(func: number, param: number, f: Formatter): boolean {
   const to = CB[1] | 0;
   const cm = cxOf(f).comments;
   paramSpan(param);
-  const paramStart = SP[0] | 0;
-  const paramEnd = SP[1] | 0;
+  const paramStart = SP$.s0 | 0;
+  const paramEnd = SP$.s1 | 0;
   let followsName = false;
   let computed = false;
   for (let i = from; i < to; i++) {

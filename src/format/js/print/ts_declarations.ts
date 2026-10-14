@@ -201,10 +201,11 @@ export function writeTsInterfaceDeclaration(statement: number, iface: number, f:
   const extStart = interfaceExtendsStart(iface);
   const extLen = interfaceExtendsLen(iface);
   interfaceBodySpan(iface);
-  const bodyStart = SP[0] | 0;
-  const bodyEnd = SP[1] | 0;
+  const SP$ = SP;
+  const bodyStart = SP$.s0 | 0;
+  const bodyEnd = SP$.s1 | 0;
   const hasAngleBrackets = typeParamListAngleBrackets(tpStart, tpLen);
-  const bracketsEnd = hasAngleBrackets ? SP[1] | 0 : 0;
+  const bracketsEnd = hasAngleBrackets ? SP$.s1 | 0 : 0;
 
   // Whether the head is a group that can break before `extends`: there are several types, or one that is `A.B` without type arguments, or
   // a comment trails the name or the type parameters.
@@ -223,7 +224,7 @@ export function writeTsInterfaceDeclaration(statement: number, iface: number, f:
     if (!groupMode) {
       const previousEnd = hasAngleBrackets ? bracketsEnd : identEndOf(name, namePos);
       typeSpan(first);
-      cm.commentsIn(previousEnd, SP[0] | 0);
+      cm.commentsIn(previousEnd, SP$.s0 | 0);
       const from = cm.from;
       const to = cm.to;
       for (let i = from; i < to; i++) {
@@ -299,9 +300,10 @@ function writeInterfaceId(
   extLen: number,
   f: Formatter,
 ): void {
+  const SP$ = SP;
   if (tpLen === 0 && extLen === 0) {
     identSpan(name, namePos);
-    writeIdentifierWithoutTrailingComments(name, namePos, SP[0] | 0, SP[1] | 0, node, f);
+    writeIdentifierWithoutTrailingComments(name, namePos, SP$.s0 | 0, SP$.s1 | 0, node, f);
   } else {
     identifier(name, namePos, node, f);
   }
@@ -317,7 +319,7 @@ function writeInterfaceExtends(extStart: number, extLen: number, groupMode: bool
   if (extLen === 0) return;
   const cm = cxOf(f).comments;
   typeSpan(listAt(extStart, 0));
-  const firstStart = SP[0] | 0;
+  const firstStart = SP.s0 | 0;
   if (cm.hasLeadingOwnLineComment(firstStart)) {
     cm.commentsBefore(firstStart);
     formatTrailingCommentsRange(cm.from, cm.to, f);
@@ -360,8 +362,9 @@ export function writeTsTypeAliasDeclaration(statement: number, alias: number, f:
   const aliasType = aliasTy(alias);
   const ty = withoutLoneOperator(aliasType);
   typeSpan(ty);
-  const tyStart = SP[0] | 0;
-  const tyEnd = SP[1] | 0;
+  const SP$ = SP;
+  const tyStart = SP$.s0 | 0;
+  const tyEnd = SP$.s1 | 0;
   const isOxfmt = commentsBeforeSemicolonOfTypeAliasGoBehindIt(f);
 
   // The comments before the `;` of an export are behind it: see `Comments::withoutSemicolon`.
@@ -372,7 +375,7 @@ export function writeTsTypeAliasDeclaration(statement: number, alias: number, f:
     if (isOxfmt) end = tyEnd;
     else {
       stmtSpan(statement);
-      end = cm.withoutSemicolon(SP[0] | 0, SP[1] | 0);
+      end = cm.withoutSemicolon(SP$.s0 | 0, SP$.s1 | 0);
     }
     viewLimit = cm.limitCommentsUpTo(end);
   }
@@ -387,13 +390,13 @@ export function writeTsTypeAliasDeclaration(statement: number, alias: number, f:
   const tpStart = aliasTypeParamsStart(alias);
   const tpLen = aliasTypeParamsLen(alias);
   const hasAngleBrackets = typeParamListAngleBrackets(tpStart, tpLen);
-  const leftEnd = hasAngleBrackets ? SP[1] | 0 : identEndOf(name, namePos);
+  const leftEnd = hasAngleBrackets ? SP$.s1 | 0 : identEndOf(name, namePos);
   if (hasAngleBrackets) {
     identifier(name, namePos, node, f);
     writeTypeParametersWithoutTrailingComments(tpStart, tpLen, owner, f);
   } else {
     identSpan(name, namePos);
-    writeIdentifierWithoutTrailingComments(name, namePos, SP[0] | 0, SP[1] | 0, node, f);
+    writeIdentifierWithoutTrailingComments(name, namePos, SP$.s0 | 0, SP$.s1 | 0, node, f);
   }
   // What oxfmt writes behind the `=`, and whether a line comment is on the line of the `=`.
   let runFrom = 0;
@@ -476,8 +479,9 @@ function writeTypeParametersWithoutTrailingComments(tpStart: number, tpLen: numb
   const cm = cx.comments;
   const node = mkTypeParametersAn(owner);
   anSpan(node);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   if (cm.hasTrailingSuppressionComment(end)) {
     formatLeadingComments(start, end, f);
     writeSuppressedNode(start, end, f);
@@ -531,7 +535,7 @@ function writeCommentsAfterTypeAliasLeftSide(alias: number, leftEnd: number, f: 
   const cm = cxOf(f).comments;
   LEFT_SIDE_LINE_COMMENT[0] = 0;
   typeSpan(aliasTy(alias));
-  if (!cm.hasAnyCommentIn(leftEnd, SP[0] | 0)) return false;
+  if (!cm.hasAnyCommentIn(leftEnd, SP.s0 | 0)) return false;
   const operatorEnd = cm.positionAfterCharacter(leftEnd, 61);
   const previousLimit = cm.limitCommentsUpTo(operatorEnd);
   writeCommentsBeforeOperator(leftEnd, f);
@@ -656,11 +660,12 @@ export function writeTsEnumDeclaration(statement: number, declaration: number, f
   const name = enumName(declaration);
   const namePos = enumNamePos(declaration);
   enumBodySpan(declaration);
-  const bodyStart = SP[0] | 0;
-  const bodyEnd = SP[1] | 0;
+  const SP$ = SP;
+  const bodyStart = SP$.s0 | 0;
+  const bodyEnd = SP$.s1 | 0;
   if (!cx.isQuiet && commentsStayBetweenHeadAndBody(f)) {
     identSpan(name, namePos);
-    writeIdentifierWithoutTrailingComments(name, namePos, SP[0] | 0, SP[1] | 0, node, f);
+    writeIdentifierWithoutTrailingComments(name, namePos, SP$.s0 | 0, SP$.s1 | 0, node, f);
     writeHeadBodySeparator(bodyStart, f);
   } else {
     identifier(name, namePos, node, f);
@@ -675,6 +680,7 @@ function writeTsEnumBody(declaration: number, bodyStart: number, bodyEnd: number
   f.token(LBRACE);
   const membersStart = enumMembersStart(declaration);
   const membersLen = enumMembersLen(declaration);
+  const SP$ = SP;
   if (membersLen === 0) {
     // Prettier's `printObject`: the group of an enum breaks, with nothing in it as well.
     formatDanglingComments(bodyStart, bodyEnd, DANGLING_SOFT, f);
@@ -700,7 +706,7 @@ function writeTsEnumBody(declaration: number, bodyStart: number, bodyEnd: number
       const member = listAt(membersStart, i);
       if (i > 0) {
         enumMemberSpan(member);
-        joinNodesSeparator(f, JOIN_SOFT_LINE, SP[0] | 0, SP[1] | 0);
+        joinNodesSeparator(f, JOIN_SOFT_LINE, SP$.s0 | 0, SP$.s1 | 0);
       }
       fmtEnumMember(member, f);
       writeSeparatorAfter(f, COMMA, i === membersLen - 1, separator, 0);
@@ -721,7 +727,7 @@ export function writeTsEnumMember(member: number, f: Formatter): void {
   if (keyKind(key) !== KEY_NONE) {
     // `["a"]` is `"a"`. Only a template keeps its brackets.
     let isComputed = false;
-    if (keyIsComputed(key) && keyInnerSpan(key)) isComputed = (cxOf(f).src.byteAt(SP[0] | 0) | 0) === 96;
+    if (keyIsComputed(key) && keyInnerSpan(key)) isComputed = (cxOf(f).src.byteAt(SP.s0 | 0) | 0) === 96;
     if (isComputed) f.token(LBRACKET);
     fmtKey(key, mkAn(AN_TS_ENUM_MEMBER, member), f);
     if (isComputed) f.token(RBRACKET);
@@ -742,26 +748,27 @@ export function writeTsModuleDeclaration(statement: number, module: number, f: F
   const node = stmtAsAstNodes(statement);
   const innermost = moduleInnermost(module);
   const hasBody = moduleBodySpan(innermost);
-  const bodyStart = SP[0] | 0;
-  const bodyEnd = SP[1] | 0;
+  const SP$ = SP;
+  const bodyStart = SP$.s0 | 0;
+  const bodyEnd = SP$.s1 | 0;
   if (isDeclared(statement)) f.token(KW_DECLARE);
 
   // Which of the comments after the name trail it depends on the body.
   moduleNameSpan(innermost);
-  const nameEnd = SP[1] | 0;
+  const nameEnd = SP$.s1 | 0;
   const hasLimit = !cx.isQuiet;
   const viewLimit = hasLimit ? cm.limitCommentsUpTo(nameEnd) : -1;
   const kind = moduleNameKind(module);
   if (kind === MODNAME_GLOBAL) {
     moduleNameSpan(module);
-    cm.commentsBefore(SP[0] | 0);
+    cm.commentsBefore(SP$.s0 | 0);
     formatLeadingCommentsRange(cm.from, cm.to, f);
     f.token(KW_GLOBAL);
   } else if (kind === MODNAME_STRING) {
     f.token(KW_MODULE);
     f.space();
     identSpan(moduleName(module), moduleNamePos(module));
-    fmtStringLiteralOf(SP[0] | 0, SP[1] | 0, node, f);
+    fmtStringLiteralOf(SP$.s0 | 0, SP$.s1 | 0, node, f);
   } else if (kind === MODNAME_IDENT) {
     f.token(moduleUsesModuleKeyword(module) ? KW_MODULE : KW_NAMESPACE);
     f.space();
@@ -781,10 +788,10 @@ export function writeTsModuleDeclaration(statement: number, module: number, f: F
     cm.restoreViewLimit(viewLimit);
     if (!(hasBody && commentsStayBetweenHeadAndBody(f))) {
       stmtSpan(statement);
-      const sStart = SP[0] | 0;
-      const sEnd = SP[1] | 0;
+      const sStart = SP$.s0 | 0;
+      const sEnd = SP$.s1 | 0;
       moduleNameSpan(innermost);
-      formatTrailingComments(sStart, sEnd, SP[0] | 0, SP[1] | 0, hasBody ? bodyStart : 0, f);
+      formatTrailingComments(sStart, sEnd, SP$.s0 | 0, SP$.s1 | 0, hasBody ? bodyStart : 0, f);
     }
   }
 
@@ -845,14 +852,15 @@ export function writeTsImportEqualsDeclaration(statement: number, imp: number, f
   f.space();
   f.token(EQ);
   f.space();
+  const SP$ = SP;
   if (importEqualsTargetKind(imp) === IET_ENTITY) {
     entityName(importEqualsEntityStart(imp), importEqualsEntityLen(imp), node, f);
   } else if (importEqualsRequireSpan(imp)) {
-    const requireStart = SP[0] | 0;
-    const requireEnd = SP[1] | 0;
+    const requireStart = SP$.s0 | 0;
+    const requireEnd = SP$.s1 | 0;
     if (stmtModuleSpecifierSpan(statement)) {
-      const specStart = SP[0] | 0;
-      const specEnd = SP[1] | 0;
+      const specStart = SP$.s0 | 0;
+      const specEnd = SP$.s1 | 0;
       // format_node(require_span, || node, f, |f| ..)
       const cm = cx.comments;
       if (cx.isQuiet) {

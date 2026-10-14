@@ -149,11 +149,11 @@ class Decl {
   }
   start(): number {
     stmtSpan(this.statement);
-    return SP[0] | 0;
+    return SP.s0 | 0;
   }
   end(): number {
     stmtSpan(this.statement);
-    return SP[1] | 0;
+    return SP.s1 | 0;
   }
   /** The import, or -1. */
   imp(): number {
@@ -431,7 +431,8 @@ function sameName(a: number, b: number): boolean {
 
 function identSpanOf(atom: number, pos: number): Span {
   identSpan(atom, pos);
-  return new Span(SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  return new Span(SP$.s0 | 0, SP$.s1 | 0);
 }
 
 function sameIdent(aAtom: number, aPos: number, bAtom: number, bPos: number): boolean {
@@ -849,6 +850,7 @@ class Organizer {
     const start = importAttributesEntriesStart(row);
     const n = importAttributesEntriesLen(row);
     const entries: string[][] = [];
+    const SP$ = SP;
     for (let k = 0; k < n; k++) {
       const p = listAt(start, k);
       const owner = nodeOfProp(p);
@@ -857,14 +859,14 @@ class Organizer {
       const key = keyName(owner);
       if (key < 0) continue;
       exprSpan(v);
-      const vs = SP[0] | 0;
-      const ve = SP[1] | 0;
+      const vs = SP$.s0 | 0;
+      const ve = SP$.s1 | 0;
       if (ve - vs < 1) continue;
       entries.push([identName(key), bytesString(this.text, vs + 1, ve - 1)]);
     }
     const places = stableOrder(entries.length, (a: number, b: number): number => compareBytesStr((entries[a] as string[])[0] as string, (entries[b] as string[])[0] as string));
     importAttributesKeywordSpan(row);
-    let key = bytesString(this.text, SP[0] | 0, SP[1] | 0) + " ";
+    let key = bytesString(this.text, SP$.s0 | 0, SP$.s1 | 0) + " ";
     for (let i = 0; i < entries.length; i++) {
       const e = entries[places[i] | 0] as string[];
       key += (e[0] as string) + ':"' + (e[1] as string) + '"';
@@ -1164,12 +1166,13 @@ class Organizer {
   /** `"m" with { type: "json" };` */
   writeSource(statement: number, out: ByteBuf): void {
     if (!stmtModuleSpecifierSpan(statement)) return;
-    const start = SP[0] | 0;
-    let end = SP[1] | 0;
+    const SP$ = SP;
+    const start = SP$.s0 | 0;
+    let end = SP$.s1 | 0;
     const row = stmtImportAttributes(statement);
     if (row >= 0) {
       importAttributesBracesSpan(row);
-      end = SP[1] | 0;
+      end = SP$.s1 | 0;
     }
     out.append(this.text, start, end);
   }
@@ -1179,9 +1182,10 @@ class Organizer {
     const original = imp.base.imp();
     // What is before and after the braces is written as it is, with its comments.
     let ownBraces: Span | null = null;
+    const SP$ = SP;
     if (original >= 0 && imp.named !== null && imp.bracesImport === original) {
       importClauseSpan(original);
-      ownBraces = this.bracesIn(new Span(SP[0] | 0, SP[1] | 0));
+      ownBraces = this.bracesIn(new Span(SP$.s0 | 0, SP$.s1 | 0));
     }
     let hasSameName = imp.namespaceAtom < 0;
     if (hasSameName) {
@@ -1222,7 +1226,7 @@ class Organizer {
           const it = specifier.id;
           const isRedundant = importSpecIsRenamed(it) && !identIsString(importSpecImportedPos(it)) && sameName(importSpecImported(it), importSpecLocal(it));
           importSpecSpan(it);
-          const span = new Span(SP[0] | 0, SP[1] | 0);
+          const span = new Span(SP$.s0 | 0, SP$.s1 | 0);
           let code: Uint8Array;
           if (isRedundant) {
             const b = new ByteBuf(32);
@@ -1235,7 +1239,7 @@ class Organizer {
           }
           const impId = importSpecImport(it);
           stmtSpan(importStmt(impId));
-          const placeStart = SP[0] | 0;
+          const placeStart = SP$.s0 | 0;
           let index = 0;
           const ns = importNamedStart(impId);
           for (let q = 0; q < importNamedLen(impId); q++) {
@@ -1252,9 +1256,9 @@ class Organizer {
       let bracesList = 0;
       if (imp.bracesImport >= 0) {
         importClauseSpan(imp.bracesImport);
-        braces = this.bracesIn(new Span(SP[0] | 0, SP[1] | 0));
+        braces = this.bracesIn(new Span(SP$.s0 | 0, SP$.s1 | 0));
         stmtSpan(importStmt(imp.bracesImport));
-        bracesStmtStart = SP[0] | 0;
+        bracesStmtStart = SP$.s0 | 0;
         bracesList = bracesStmtStart;
       }
       const isMultiLine = braces !== null && this.hasLineBreakBetween(braces.start, braces.end);
@@ -1264,7 +1268,7 @@ class Organizer {
         const n = importNamedLen(bi);
         if (n > 0) {
           importSpecSpan(listAt(importNamedStart(bi), n - 1));
-          const afterLast = this.skipTrivia(SP[1] | 0, STOPS_AT_TOKEN);
+          const afterLast = this.skipTrivia(SP$.s1 | 0, STOPS_AT_TOKEN);
           hasTrailingComma = (this.text[afterLast] | 0) === 44;
         }
       }
@@ -1367,9 +1371,10 @@ class Organizer {
   isWrittenAlike(imp: NewImport): boolean {
     if (!imp.isUnchanged()) return false;
     const original = imp.base.imp();
+    const SP$ = SP;
     if (original >= 0) {
       importClauseSpan(original);
-      const braces = this.bracesIn(new Span(SP[0] | 0, SP[1] | 0));
+      const braces = this.bracesIn(new Span(SP$.s0 | 0, SP$.s1 | 0));
       if (braces !== null && this.hasCommentIn(braces)) return false;
     }
     return true;
@@ -1423,13 +1428,14 @@ class Organizer {
     const out = new ByteBuf(128);
     out.appendAscii(exportIsTypeOnly(x) ? "export type " : "export ");
     const elements: Element[] = [];
+    const SP$ = SP;
     for (let i = 0; i < items.length; i++) {
       const it = items[i] as number;
       exportSpecSpan(it);
-      const span = new Span(SP[0] | 0, SP[1] | 0);
+      const span = new Span(SP$.s0 | 0, SP$.s1 | 0);
       const exportId = exportSpecExport(it);
       stmtSpan(exportStmt(exportId));
-      const placeStart = SP[0] | 0;
+      const placeStart = SP$.s0 | 0;
       let index = 0;
       const start = exportItemsStart(exportId);
       for (let q = 0; q < exportItemsLen(exportId); q++) {
@@ -1625,10 +1631,11 @@ export function preprocess(options: OrganizeOptions, endOfLine: string): Uint8Ar
       }
     }
   }
+  const SP$ = SP;
   if (hasJsx) {
     // `/** @jsx h */`
     fileProgramSpan();
-    const firstToken = SP[0] | 0;
+    const firstToken = SP$.s0 | 0;
     const pragma = (name: string): string | null => {
       for (let c = 0; c < organizer.cStart.length; c++) {
         if ((organizer.cEnd[c] as number) > firstToken) break;
@@ -1669,7 +1676,7 @@ export function preprocess(options: OrganizeOptions, endOfLine: string): Uint8Ar
     const m = stmtModuleModule(statement);
     // `ModuleName::String(_) | ModuleName::Global`
     if (!moduleBodySpan(m)) continue;
-    const bodyStart = SP[0] | 0;
+    const bodyStart = SP$.s0 | 0;
     const moduleImports: Decl[] = [];
     const moduleExports: Decl[][] = [];
     organizer.declarationsIn(moduleBodyStart(m), moduleBodyLen(m), bodyStart + 1, moduleImports, moduleExports);

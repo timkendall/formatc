@@ -19,8 +19,9 @@ function blockCommentThatEndsLineStartsOne(f: Formatter): boolean {
 /** The elements of the array literal `array`. */
 export function fmtArrayElementList(array: number, elementsStart: number, elementsLen: number, groupId: number, f: Formatter): void {
   exprSpan(array);
-  const arrayStart = SP[0] | 0;
-  const arrayEnd = SP[1] | 0;
+  const SP$ = SP;
+  const arrayStart = SP$.s0 | 0;
+  const arrayEnd = SP$.s1 | 0;
   if (!canConciselyPrintArrayList(arrayStart, arrayEnd, elementsStart, elementsLen, f)) {
     // One per line, if they do not fit on one line.
     writeArrayNode(elementsLen, WK_EXPR, elementsStart, elementsLen, f);
@@ -46,8 +47,8 @@ export function fmtArrayElementList(array: number, elementsStart: number, elemen
   for (let i = 0; i < elementsLen; i++) {
     const element = listAt(elementsStart, i);
     exprSpan(element);
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     if (i > 0) {
       f.startEntry();
       if (isLineAfterElementEmpty(text, previousEnd)) f.emptyLine();
@@ -103,6 +104,7 @@ export function canConciselyPrintArrayList(arrayStart: number, arrayEnd: number,
   const from = cm.from;
   const to = (from + count) | 0;
   let next = from;
+  const SP$ = SP;
   for (let i = 0; i < listLen; i++) {
     const item = listAt(listStart, i);
     const t = exprTag(item);
@@ -112,8 +114,8 @@ export function canConciselyPrintArrayList(arrayStart: number, arrayEnd: number,
       if ((op === UN_PLUS || op === UN_MINUS) && exprTag(exprOperand(item)) === EXPR_NUMBER) {
         // `-(/* comment */ 1)`
         exprSpan(item);
-        const s = SP[0] | 0;
-        const e = SP[1] | 0;
+        const s = SP$.s0 | 0;
+        const e = SP$.s1 | 0;
         while (next < to && (cm.spanStart[next] | 0) <= s) next = (next + 1) | 0;
         if (next < to && s <= (cm.spanStart[next] | 0) && (cm.spanEnd[next] | 0) <= e) return false;
         continue;

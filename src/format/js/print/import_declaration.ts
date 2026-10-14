@@ -124,9 +124,10 @@ export function fmtStringLiteral(start: number, end: number, parent: number, f: 
 
 /** ESTree's `ModuleExportName`: `a`, or `"a"`. `(nameAtom, namePos)`: the `Ident`. */
 export function moduleExportName(nameAtom: number, namePos: number, parent: number, f: Formatter): void {
+  const SP$ = SP;
   if (identIsString(namePos)) {
     identSpan(nameAtom, namePos);
-    fmtStringLiteral(SP[0] | 0, SP[1] | 0, parent, f);
+    fmtStringLiteral(SP$.s0 | 0, SP$.s1 | 0, parent, f);
   } else identifier(nameAtom, namePos, parent, f);
 }
 
@@ -134,8 +135,9 @@ export function moduleExportName(nameAtom: number, namePos: number, parent: numb
 export function formatImportAndExportSourceWithClause(statement: number, f: Formatter): void {
   if (!stmtModuleSpecifierSpan(statement)) return;
   const parent = stmtAsAstNodes(statement);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const withClause = stmtImportAttributes(statement);
   if (withClause < 0) {
     fmtStringLiteral(start, end, parent, f);
@@ -155,8 +157,8 @@ export function formatImportAndExportSourceWithClause(statement: number, f: Form
   // Without attributes all comments trail the source. Otherwise, of the comments before the first attribute that do not start their line,
   // those before the `{` and those that end their line. The others lead the attribute.
   importAttributesBracesSpan(withClause);
-  const bracesStart = SP[0] | 0;
-  const bracesEnd = SP[1] | 0;
+  const bracesStart = SP$.s0 | 0;
+  const bracesEnd = SP$.s1 | 0;
   let from = 0;
   let to = 0;
   const entriesLen = importAttributesEntriesLen(withClause);
@@ -167,7 +169,7 @@ export function formatImportAndExportSourceWithClause(statement: number, f: Form
   } else {
     const first = listAt(importAttributesEntriesStart(withClause), 0);
     propSpan(first);
-    cm.commentsBefore(SP[0] | 0);
+    cm.commentsBefore(SP$.s0 | 0);
     from = cm.from;
     const n = cm.to - from;
     let count = 0;
@@ -190,7 +192,7 @@ export function writeImportDeclaration(statement: number, imp: number, f: Format
     f.space();
   } else if (importIsTypeOnly(imp)) {
     importClauseSpan(imp);
-    f.token(importKindToken(SP[0] | 0, f));
+    f.token(importKindToken(SP.s0 | 0, f));
   }
   if (!importIsSideEffect(imp)) {
     writeImportSpecifiers(statement, imp, f);
@@ -216,9 +218,10 @@ function writeImportSpecifiers(statement: number, imp: number, f: Formatter): vo
     f.token(COMMA);
     f.space();
   }
+  const SP$ = SP;
   if (namespaceAtom >= 0 && importNamespaceSpan(imp)) {
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     const cx = cxOf(f);
     // format_node(span, || node, f, |f| "*", space, "as", space, identifier(namespace, node))
     if (cx.isQuiet) writeNamespaceImport(namespaceAtom, importNamespacePos(imp), node, f);
@@ -249,7 +252,7 @@ function writeImportSpecifiers(statement: number, imp: number, f: Formatter): vo
   const only = listAt(namedStart, 0);
   if (isOnlySpecifier) {
     importSpecSpan(only);
-    if (!onlySpecifierHasComments(statement, SP[0] | 0, SP[1] | 0, f)) {
+    if (!onlySpecifierHasComments(statement, SP$.s0 | 0, SP$.s1 | 0, f)) {
       f.token(LBRACE);
       f.maybeSpace(shouldInsertSpaceAroundBrackets);
       fmtImportSpec(only, f);
@@ -280,7 +283,7 @@ export function onlySpecifierHasComments(statement: number, specifierStart: numb
   if (cx.isQuiet) return false;
   const cm = cx.comments;
   stmtSpan(statement);
-  cm.commentsBeforeCharacter(SP[0] | 0, 125 /* } */);
+  cm.commentsBeforeCharacter(SP.s0 | 0, 125 /* } */);
   const from = cm.from;
   const to = cm.to;
   for (let i = from; i < to; i++) {
@@ -312,7 +315,7 @@ function commentsBeforeFrom(position0: number, statement: number, f: Formatter):
     return 0;
   }
   let position = position0;
-  cm.commentsIn(position, SP[0] | 0);
+  cm.commentsIn(position, SP.s0 | 0);
   const from = cm.from;
   const to = cm.to;
   const text = cx.src.text;
@@ -365,12 +368,12 @@ function writeSeparatorAfterLocal(f: Formatter, isLast: boolean, trailing: numbe
 
 function importSpecStartOf(s: number): number {
   importSpecSpan(s);
-  return SP[0] | 0;
+  return SP.s0 | 0;
 }
 
 function exportSpecStartOf(s: number): number {
   exportSpecSpan(s);
-  return SP[0] | 0;
+  return SP.s0 | 0;
 }
 
 /** `import {⏎⏎// comment⏎a } from "b"`: oxfmt keeps the empty line, also behind the `{`. */
@@ -389,12 +392,13 @@ function writeSpecifier(statement: number, specifier: number, isExport: boolean,
   const cm = cx.comments;
   if (isExport) exportSpecSpan(specifier);
   else importSpecSpan(specifier);
-  const specStart = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const specStart = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   // What leads the source is hidden from the last specifier.
   let limit = -1;
   if (nextStart < 0 && stmtModuleSpecifierSpan(statement)) {
-    const sourceStart = SP[0] | 0;
+    const sourceStart = SP$.s0 | 0;
     cm.commentsIn(end, sourceStart);
     for (let i = cm.from; i < cm.to; i++) {
       if (cm.precededByNewline(i) && !cm.followedByNewline(i)) {
@@ -457,8 +461,9 @@ export function fmtCommentsInSpecifier(spanEnd: number, f: Formatter): void {
 export function writeImportSpecifier(specifier: number, f: Formatter): void {
   const node = mkAn(AN_IMPORT_SPECIFIER, specifier);
   importSpecSpan(specifier);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   fmtCommentsInSpecifier(end, f);
   if (importSpecIsTypeOnly(specifier)) f.token(importKindToken(start, f));
   if (importSpecIsRenamed(specifier)) {
@@ -476,14 +481,15 @@ function writeWithClause(withClause: number, f: Formatter): void {
   const entriesStart = importAttributesEntriesStart(withClause);
   const entriesLen = importAttributesEntriesLen(withClause);
   const isConsistent = f.options.quoteProperties === QUOTE_PROPS_CONSISTENT;
+  const SP$ = SP;
   if (isConsistent) {
     let quoteNeeded = false;
     const text = cx.src.text;
     for (let i = 0; i < entriesLen; i++) {
       const owner = nodeOfProp(listAt(entriesStart, i));
       if (keyKind(owner) === KEY_STRING && keySpan(owner)) {
-        const a = (SP[0] | 0) + 1;
-        const b = (SP[1] | 0) - 1;
+        const a = (SP$.s0 | 0) + 1;
+        const b = (SP$.s1 | 0) - 1;
         if (!isNameWithoutQuotes(text, a, b > a ? b : a, f.options.flavor)) {
           quoteNeeded = true;
           break;
@@ -495,10 +501,10 @@ function writeWithClause(withClause: number, f: Formatter): void {
 
   f.space();
   importAttributesKeywordSpan(withClause);
-  f.sourceText(SP[0] | 0, SP[1] | 0);
+  f.sourceText(SP$.s0 | 0, SP$.s1 | 0);
   f.space();
   importAttributesBracesSpan(withClause);
-  writeImportAttributes(entriesStart, entriesLen, SP[0] | 0, SP[1] | 0, f);
+  writeImportAttributes(entriesStart, entriesLen, SP$.s0 | 0, SP$.s1 | 0, f);
 
   if (isConsistent) cx.popQuoteNeeded();
 }
@@ -527,7 +533,8 @@ function writeImportAttributes(entriesStart: number, entriesLen: number, bracesS
   }
 
   propSpan(first);
-  f.startGroupExpand(cx.src.containsNewline(bracesStart, SP[0] | 0));
+  const SP$ = SP;
+  f.startGroupExpand(cx.src.containsNewline(bracesStart, SP$.s0 | 0));
   f.token(LBRACE);
   f.startSoftBlockIndentWithMaybeSpace(needsSpace);
   const trailing = trailingSeparator(FTC_ES5, f.options);
@@ -539,11 +546,11 @@ function writeImportAttributes(entriesStart: number, entriesLen: number, bracesS
       else f.softLineBreakOrSpace();
     }
     propSpan(attribute);
-    previousEnd = SP[1] | 0;
+    previousEnd = SP$.s1 | 0;
     let nextStart = 0;
     if (i + 1 < entriesLen) {
       propSpan(listAt(entriesStart, i + 1));
-      nextStart = SP[0] | 0;
+      nextStart = SP$.s0 | 0;
     }
     writeImportAttribute(attribute, bracesStart, bracesEnd, nextStart, f);
     writeSeparatorAfterLocal(f, i === entriesLen - 1, trailing);
@@ -558,16 +565,17 @@ function writeImportAttribute(attribute: number, bracesStart: number, bracesEnd:
   const cx = cxOf(f);
   const cm = cx.comments;
   propSpan(attribute);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const node = mkAn(AN_OBJECT_PROPERTY, attribute);
   formatLeadingComments(start, end, f);
   const owner = nodeOfProp(attribute);
   const kind = keyKind(owner);
   if (kind === KEY_STRING) {
     keySpan(owner);
-    const ks = SP[0] | 0;
-    const ke = SP[1] | 0;
+    const ks = SP$.s0 | 0;
+    const ke = SP$.s1 | 0;
     // format_node(span, || node, f, |f| write!(f, format))
     if (cx.isQuiet) fmtLiteralStringToken(ks, ke, false, STRING_LITERAL_PARENT_KIND_IMPORT_ATTRIBUTE, f);
     else {

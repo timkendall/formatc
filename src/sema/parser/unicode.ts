@@ -7,6 +7,7 @@
 // `isRecentIdentifier*` and `isTypeScriptIdentifierPart` are the same functions. TODO(port): compare with Bun's exact
 // tables if a vscode file with an exotic identifier character ever differs.
 import { ID_PART_RANGES, ID_START_RANGES } from "./unicode_tables.ts";
+import { Slots2 } from "../../base/slots.ts";
 
 export const ID_START_TBL = new Uint8Array(256);
 export const ID_PART_TBL = new Uint8Array(256);
@@ -67,7 +68,7 @@ export function isJsLineTerminator(c: number): boolean {
 }
 
 /** Result slot of decode(): the code point. */
-export const DEC = new Int32Array(2);
+export const DEC = new Slots2();
 
 /**
  * Rust `decode`: the code point at `src[pos]` and its length in bytes, strict UTF-8 (no overlong forms, no surrogates, <=
@@ -76,15 +77,16 @@ export const DEC = new Int32Array(2);
 export function decode(src: Uint8Array, pos: number, end: number): number {
   if (pos >= end) return 0;
   const b0 = src[pos] | 0;
+  const DEC$ = DEC;
   if (b0 < 0x80) {
-    DEC[0] = b0;
+    DEC$.s0 = (b0) | 0;
     return 1;
   }
   if (b0 >= 0xc2 && b0 <= 0xdf) {
     if (pos + 2 > end) return 0;
     const b1 = src[pos + 1] | 0;
     if ((b1 & 0xc0) !== 0x80) return 0;
-    DEC[0] = ((b0 & 0x1f) << 6) | (b1 & 0x3f);
+    DEC$.s0 = (((b0 & 0x1f) << 6) | (b1 & 0x3f)) | 0;
     return 2;
   }
   if (b0 >= 0xe0 && b0 <= 0xef) {
@@ -94,7 +96,7 @@ export function decode(src: Uint8Array, pos: number, end: number): number {
     if ((b1 & 0xc0) !== 0x80 || (b2 & 0xc0) !== 0x80) return 0;
     if (b0 === 0xe0 && b1 < 0xa0) return 0;
     if (b0 === 0xed && b1 > 0x9f) return 0;
-    DEC[0] = ((b0 & 0x0f) << 12) | ((b1 & 0x3f) << 6) | (b2 & 0x3f);
+    DEC$.s0 = (((b0 & 0x0f) << 12) | ((b1 & 0x3f) << 6) | (b2 & 0x3f)) | 0;
     return 3;
   }
   if (b0 >= 0xf0 && b0 <= 0xf4) {
@@ -105,7 +107,7 @@ export function decode(src: Uint8Array, pos: number, end: number): number {
     if ((b1 & 0xc0) !== 0x80 || (b2 & 0xc0) !== 0x80 || (b3 & 0xc0) !== 0x80) return 0;
     if (b0 === 0xf0 && b1 < 0x90) return 0;
     if (b0 === 0xf4 && b1 > 0x8f) return 0;
-    DEC[0] = ((b0 & 0x07) << 18) | ((b1 & 0x3f) << 12) | ((b2 & 0x3f) << 6) | (b3 & 0x3f);
+    DEC$.s0 = (((b0 & 0x07) << 18) | ((b1 & 0x3f) << 12) | ((b2 & 0x3f) << 6) | (b3 & 0x3f)) | 0;
     return 4;
   }
   return 0;

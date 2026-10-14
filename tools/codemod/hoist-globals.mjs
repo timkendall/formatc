@@ -86,6 +86,145 @@ const pure = (e) => {
   return false;
 };
 
+// ---- --tables phase (runs INSTEAD of phases 1/2): alias module-level typed-array (and, with --strings, string) consts
+// mentioned inside loops; `const T$ = T;` goes right before the OUTERMOST loop mentioning T (nested functions excluded).
+if (flag("--tables")) {
+  const withStrings = flag("--strings");
+  const TA = /^(Uint8|Int8|Uint16|Int16|Int32|Uint32|Float64)Array$/;
+  const tcache = new Map();
+  const tableSym = (id) => {
+    let sym = checker.getSymbolAtLocation(id);
+    if (!sym) return undefined;
+    if (sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
+    if (tcache.has(sym)) return tcache.get(sym);
+    let ok = false;
+    const d = sym.valueDeclaration;
+    if (d && ts.isVariableDeclaration(d) && ts.isIdentifier(d.name) && d.parent && ts.isVariableDeclarationList(d.parent) &&
+        (d.parent.flags & ts.NodeFlags.Const) && d.parent.parent && ts.isVariableStatement(d.parent.parent) &&
+        ts.isSourceFile(d.parent.parent.parent) && !d.parent.parent.parent.isDeclarationFile && inSrc(d.parent.parent.parent)) {
+      const t = checker.getTypeAtLocation(d.name);
+      const tsym = t.getSymbol();
+      if (tsym && TA.test(tsym.name)) ok = true;
+      else if (withStrings && (t.flags & ts.TypeFlags.StringLike)) ok = true;
+    }
+    tcache.set(sym, ok ? { sym, decl: d } : undefined);
+    return tcache.get(sym);
+  };
+  const isLoop = (n) => ts.isIterationStatement(n, false);
+  let aliases = 0, refs = 0, files = 0;
+  for (const sf of program.getSourceFiles()) {
+    if (!inTarget(sf)) continue;
+    const text = sf.text;
+    const edits = [];
+    const topNames = new Set();
+    const localNames = new Map();
+    let lastImport;
+    for (const st of sf.statements) {
+      if (ts.isImportDeclaration(st)) {
+        lastImport = st;
+        const c = st.importClause;
+        if (c && c.namedBindings && ts.isNamedImports(c.namedBindings)) for (const e of c.namedBindings.elements) {
+          topNames.add(e.name.text);
+          let sy = checker.getSymbolAtLocation(e.name);
+          if (sy && (sy.flags & ts.SymbolFlags.Alias)) sy = checker.getAliasedSymbol(sy);
+          if (sy) localNames.set(sy, e.name.text);
+        }
+        else if (c && c.name) topNames.add(c.name.text);
+        else if (c && c.namedBindings) topNames.add(c.namedBindings.name.text);
+      } else if (ts.isVariableStatement(st)) {
+        for (const d of st.declarationList.declarations) if (ts.isIdentifier(d.name)) {
+          topNames.add(d.name.text);
+          const sy = checker.getSymbolAtLocation(d.name); if (sy) localNames.set(sy, d.name.text);
+        }
+      } else if ((ts.isFunctionDeclaration(st) || ts.isClassDeclaration(st)) && st.name) topNames.add(st.name.text);
+    }
+    const needImports = new Map();
+    function processFn(fn) {
+      const body = fn.body;
+      if (!body || !ts.isBlock(body)) return;
+      if (ts.isConstructorDeclaration(fn) && fn.parent.heritageClauses) return;
+      const groups = new Map(); // loop -> Map(sym -> {decl, ids})
+      const bodyNames = new Set();
+      function walk(n, loop) {
+        if (n !== body && isFn(n)) return;
+        if (ts.isIdentifier(n)) {
+          bodyNames.add(n.text);
+          if (!loop) return;
+          const p = n.parent;
+          if (ts.isVariableDeclaration(p) && p.initializer === n && p.name.text.endsWith("$")) return; // existing alias
+          if (ts.isShorthandPropertyAssignment(p) && p.name === n) return;
+          if (ts.isPropertyAccessExpression(p) && p.name === n) return;
+          if (ts.isQualifiedName(p) || ts.isTypeQueryNode(p) || ts.isTypeReferenceNode(p)) return;
+          if ((ts.isPropertyAssignment(p) || ts.isPropertyDeclaration(p) || ts.isMethodDeclaration(p) || ts.isPropertySignature(p) ||
+               ts.isLabeledStatement(p) || ts.isBreakOrContinueStatement(p) || ts.isVariableDeclaration(p) || ts.isParameter(p) ||
+               ts.isImportSpecifier(p) || ts.isExportSpecifier(p) || ts.isBindingElement(p)) && p.name === n) return;
+          if (ts.isBindingElement(p) && p.propertyName === n) return;
+          const g = tableSym(n);
+          if (!g) return;
+          let m = groups.get(loop); if (!m) groups.set(loop, (m = new Map()));
+          let r = m.get(g.sym); if (!r) m.set(g.sym, (r = { decl: g.decl, ids: [] }));
+          r.ids.push(n);
+          return;
+        }
+        ts.forEachChild(n, (k) => walk(k, loop || (isLoop(n) ? n : undefined)));
+      }
+      // loop must be the node whose children we walk: handle by passing loop when entering a loop node
+      function walk2(n, loop) {
+        if (n !== body && isFn(n)) return;
+        if (isLoop(n) && !loop) loop = n;
+        if (ts.isIdentifier(n)) return walk(n, loop);
+        ts.forEachChild(n, (k) => walk2(k, loop));
+      }
+      walk2(body, undefined);
+      if (groups.size === 0) return;
+      const alias = (base) => { let a = base + "$"; while (bodyNames.has(a) || topNames.has(a)) a += "$"; bodyNames.add(a); return a; };
+      const byPos = new Map(); // insertion stmt -> [texts]
+      for (const [loop, m] of groups) {
+        let st = loop;
+        while (st.parent && ts.isLabeledStatement(st.parent)) st = st.parent;
+        const par = st.parent;
+        if (!(ts.isBlock(par) || ts.isCaseClause(par) || ts.isDefaultClause(par) || ts.isSourceFile(par))) continue;
+        for (const [sym, r] of m) {
+          let ln = r.ids[0].text;
+          const imported = localNames.get(sym);
+          if (!imported) {
+            ln = r.decl.name.text;
+            if (topNames.has(ln) || !lastImport) continue;
+            let rel = path.relative(path.dirname(sf.fileName), r.decl.getSourceFile().fileName);
+            if (!rel.startsWith(".")) rel = "./" + rel;
+            needImports.set(ln, rel); topNames.add(ln); localNames.set(sym, ln);
+          }
+          const name = alias(ln);
+          byPos.set(st, [...(byPos.get(st) || []), `const ${name} = ${ln};`]);
+          aliases++;
+          for (const id of r.ids) { edits.push({ pos: id.getStart(sf), end: id.end, text: name }); refs++; }
+        }
+      }
+      for (const [st, decls] of byPos) {
+        const pos = st.getStart(sf);
+        const lineStart = text.lastIndexOf("\n", pos - 1) + 1;
+        const before = text.slice(lineStart, pos);
+        if (/^[ \t]*$/.test(before)) edits.push({ pos, end: pos, text: decls.map((d) => d + "\n" + before).join("") });
+        else edits.push({ pos, end: pos, text: decls.join(" ") + " " });
+      }
+    }
+    (function visit(n) { if (isFn(n)) processFn(n); ts.forEachChild(n, visit); })(sf);
+    if (edits.length === 0) continue;
+    for (const [n, rel] of needImports) edits.push({ pos: lastImport.end, end: lastImport.end, text: `\nimport { ${n} } from "${rel}";` });
+    edits.sort((a, b) => b.pos - a.pos || b.end - a.end);
+    let out = text;
+    for (let i = 0; i < edits.length; i++) {
+      const e = edits[i];
+      if (i > 0 && e.end > edits[i - 1].pos) throw new Error(`overlapping edits in ${sf.fileName} at ${e.pos}`);
+      out = out.slice(0, e.pos) + e.text + out.slice(e.end);
+    }
+    files++;
+    if (!dry) fs.writeFileSync(sf.fileName, out);
+  }
+  console.log(`hoist-globals --tables: ${aliases} aliases, ${refs} references, ${files} files${dry ? " (dry run)" : ""}`);
+  process.exit(0);
+}
+
 let fnCount = 0, refCount = 0, callCount = 0, fileCount = 0;
 const perName = new Map();
 

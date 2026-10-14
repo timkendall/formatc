@@ -104,7 +104,7 @@ export function unionLeadingComments(ty: number, f: Formatter): number {
     return cm.printedCount;
   }
   typeSpan(ty);
-  const start = SP[0] | 0;
+  const start = SP.s0 | 0;
   cm.commentsBefore(start);
   const from = cm.from;
   const to = cm.to;
@@ -147,12 +147,13 @@ export function shouldHugType(ty: number, typesStart: number, typesLen: number, 
   const at = unionLeadingComments(ty, f);
   if (cx.comments.to > at) return false;
   typeSpan(ty);
-  let start = SP[0] | 0;
+  const SP$ = SP;
+  let start = SP$.s0 | 0;
   for (let i = 0; i < typesLen; i++) {
     const t = listAt(typesStart, i);
     typeSpan(t);
-    if (cx.comments.hasCommentInRange(start, SP[0] | 0)) return false;
-    start = SP[1] | 0;
+    if (cx.comments.hasCommentInRange(start, SP$.s0 | 0)) return false;
+    start = SP$.s1 | 0;
   }
   return true;
 }

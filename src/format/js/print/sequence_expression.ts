@@ -61,8 +61,9 @@ function sequenceAfterReturnIsAGroupOfItsOwn(f: Formatter): boolean {
 export function spanThatCommentsLead(e: number, f: Formatter): void {
   exprSpan(e);
   if (f.options.flavor !== FLAVOR_OXFMT || exprTag(e) !== EXPR_BINARY || exprBinaryOpOf(e) !== BIN_COMMA) return;
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   // A type cast comment is about the parentheses behind it, which stay.
   if (cxOf(f).comments.isCastParenthesis(start)) return;
   const scratch$ = scratch;
@@ -72,7 +73,7 @@ export function spanThatCommentsLead(e: number, f: Formatter): void {
   scratch$.len = base;
   if (first < 0) return;
   exprSpan(first);
-  SP[1] = end;
+  SP$.s1 = (end) | 0;
 }
 
 /** `a, b, c` */

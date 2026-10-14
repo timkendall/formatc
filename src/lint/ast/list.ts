@@ -48,17 +48,18 @@ export function listAround(kind: number, start: number, len: number, offset: num
 export function listAroundCase(start: number, len: number, offset: number): number {
   let from = 0;
   let to = len;
+  const SP$ = SP;
   while (from < to) {
     const middle = from + ((to - from) >> 1);
     const c = listAt(start, middle);
     caseSpan(c);
-    if ((SP[0] | 0) <= offset) from = middle + 1;
+    if ((SP$.s0 | 0) <= offset) from = middle + 1;
     else to = middle;
   }
   if (from === 0) return -1;
   const id = listAt(start, from - 1);
   caseSpan(id);
-  return offset < (SP[1] | 0) ? id : -1;
+  return offset < (SP$.s1 | 0) ? id : -1;
 }
 
 /** `List::index_of_start`: the index of the element that starts at `pos`, or -1. */

@@ -42,14 +42,15 @@ export function typeTag(t: number): number {
 
 /** `TypeNode::span` into `SP`: without the parentheses around it. */
 export function typeSpan(t: number): void {
+  const SP$ = SP;
   if (!inRange(t)) {
-    SP[0] = 0;
-    SP[1] = 0;
+    SP$.s0 = 0;
+    SP$.s1 = 0;
     return;
   }
   const hir$ = hir;
-  SP[0] = hir$.typePos[t] | 0;
-  SP[1] = hir$.typeEnd[t] | 0;
+  SP$.s0 = hir$.typePos[t] | 0;
+  SP$.s1 = hir$.typeEnd[t] | 0;
 }
 export function typeStart(t: number): number {
   return inRange(t) ? hir.typePos[t] | 0 : 0;
@@ -76,22 +77,24 @@ export function typeOuterSpan(t: number): void {
     start = (before - 1) | 0;
     end = (after + 1) | 0;
   }
-  SP[0] = start;
-  SP[1] = end;
+  const SP$ = SP;
+  SP$.s0 = (start) | 0;
+  SP$.s1 = (end) | 0;
 }
 export function typeOuterStart(t: number): number {
   typeOuterSpan(t);
-  return SP[0] | 0;
+  return SP.s0 | 0;
 }
 export function typeOuterEnd(t: number): number {
   typeOuterSpan(t);
-  return SP[1] | 0;
+  return SP.s1 | 0;
 }
 
 /** `TypeNode::is_parenthesized` */
 export function typeIsParenthesized(t: number): boolean {
   typeOuterSpan(t);
-  return (SP[0] | 0) !== typeStart(t) || (SP[1] | 0) !== typeEnd(t);
+  const SP$ = SP;
+  return (SP$.s0 | 0) !== typeStart(t) || (SP$.s1 | 0) !== typeEnd(t);
 }
 
 /**
@@ -100,14 +103,15 @@ export function typeIsParenthesized(t: number): boolean {
  */
 export function typeAnnotationSpan(t: number): void {
   typeOuterSpan(t);
-  const os = SP[0] | 0;
-  const oe = SP[1] | 0;
+  const SP$ = SP;
+  const os = SP$.s0 | 0;
+  const oe = SP$.s1 | 0;
   const before = fileEndOfTokenBefore(os);
   const text = hir.text;
   const isArrow = before >= 2 && (text[before - 2] | 0) === 61 && (text[before - 1] | 0) === 62;
   const back = isArrow ? 2 : 1;
-  SP[0] = before > back ? (before - back) | 0 : 0;
-  SP[1] = oe;
+  SP$.s0 = (before > back ? (before - back) | 0 : 0) | 0;
+  SP$.s1 = (oe) | 0;
 }
 
 /** `TypeNode::parent` (a Node). */
@@ -143,8 +147,9 @@ export function typePredicateParamPos(t: number): number {
 export function typeUniqueSymbolKeywordSpan(t: number): boolean {
   if (typeTag(t) !== TYPE_UNIQUE_SYMBOL) return false;
   const end = typeEnd(t);
-  SP[0] = end > 6 ? (end - 6) | 0 : 0;
-  SP[1] = end;
+  const SP$ = SP;
+  SP$.s0 = (end > 6 ? (end - 6) | 0 : 0) | 0;
+  SP$.s1 = (end) | 0;
   return true;
 }
 
@@ -155,12 +160,13 @@ export function typeImportSpan(t: number): boolean {
   const isTypeof = ((hir$.typeAux[t] | 0) & 1) !== 0;
   const ws = typeStart(t);
   const we = typeEnd(t);
+  const SP$ = SP;
   if (isTypeof) {
-    SP[0] = skipTrivia(hir$.text, hir$.sourceLen | 0, ws + 6);
-    SP[1] = we;
+    SP$.s0 = (skipTrivia(hir$.text, hir$.sourceLen | 0, ws + 6)) | 0;
+    SP$.s1 = (we) | 0;
   } else {
-    SP[0] = ws;
-    SP[1] = we;
+    SP$.s0 = (ws) | 0;
+    SP$.s1 = (we) | 0;
   }
   return true;
 }
@@ -171,17 +177,19 @@ export function typeImportSourceSpan(t: number): boolean {
   const hir$ = hir;
   const text = hir$.text;
   const len = hir$.sourceLen | 0;
-  const open = skipTrivia(text, len, (SP[0] | 0) + 6);
+  const SP$ = SP;
+  const open = skipTrivia(text, len, (SP$.s0 | 0) + 6);
   const start = skipTrivia(text, len, open + 1);
-  SP[0] = start;
-  SP[1] = tokenEnd(text, len, start, false);
+  SP$.s0 = (start) | 0;
+  SP$.s1 = (tokenEnd(text, len, start, false)) | 0;
   return true;
 }
 
 /** `TypeNode::import_attributes`: of an `Import`: the `with: { .. }` of `import("m", { with: { .. } })`: its row in `hir.importAttributes`, or -1. */
 export function typeImportAttributes(t: number): number {
   if (!importAttributesSearchSpanOfType(t)) return -1;
-  return importAttributesIndexWithin(SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  return importAttributesIndexWithin(SP$.s0 | 0, SP$.s1 | 0);
 }
 
 // ───────────────────────────── template types ─────────────────────────────
@@ -213,19 +221,21 @@ export function typeTemplateQuasiSpan(t: number, i: number): void {
     start = skipTrivia(text, len, typeOuterEnd(before));
   }
   const end = i < n ? templateTextEnd(text, len, start + 1) : typeEnd(t);
-  SP[0] = start;
-  SP[1] = end;
+  const SP$ = SP;
+  SP$.s0 = (start) | 0;
+  SP$.s1 = (end) | 0;
 }
 
 /** `TypeTemplate::raw(i)` into `SP`: the piece of text as it is written, without its delimiters. */
 export function typeTemplateRawSpan(t: number, i: number): void {
   const isLast = i + 1 === typeTemplateQuasiCount(t);
   typeTemplateQuasiSpan(t, i);
-  const s = SP[0] | 0;
-  const e = SP[1] | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  const e = SP$.s1 | 0;
   const cut = isLast ? 1 : 2;
-  SP[0] = (s + 1) | 0;
-  SP[1] = e > cut ? (e - cut) | 0 : 0;
+  SP$.s0 = (s + 1) | 0;
+  SP$.s1 = (e > cut ? (e - cut) | 0 : 0) | 0;
 }
 
 // ───────────────────────────── angle brackets ─────────────────────────────
@@ -237,8 +247,9 @@ function angleBrackets(start: number, end: number): void {
   let close = skipTrivia(text, len, end);
   if (close < len && (text[close] | 0) === 44) close = skipTrivia(text, len, close + 1);
   const before = fileEndOfTokenBefore(start);
-  SP[0] = before > 0 ? (before - 1) | 0 : 0;
-  SP[1] = (close + 1) | 0;
+  const SP$ = SP;
+  SP$.s0 = (before > 0 ? (before - 1) | 0 : 0) | 0;
+  SP$.s1 = (close + 1) | 0;
 }
 
 /**
@@ -263,9 +274,10 @@ export function typeParamListAngleBrackets(start: number, len: number): boolean 
   const first = hir$.ids[start] | 0;
   const last = hir$.ids[(start + len - 1) | 0] | 0;
   typeParamSpan(first);
-  const s = SP[0] | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
   typeParamSpan(last);
-  const e = SP[1] | 0;
+  const e = SP$.s1 | 0;
   angleBrackets(s, e);
   return true;
 }
@@ -285,9 +297,10 @@ export function importAttributesObject(row: number): number {
 /** `ImportAttributes::keyword_span` into `SP`: `with`, or the deprecated `assert`. */
 export function importAttributesKeywordSpan(row: number): void {
   const k = importAttributesKeyword(row);
-  SP[0] = k;
+  const SP$ = SP;
+  SP$.s0 = (k) | 0;
   const hir$ = hir;
-  SP[1] = tokenEnd(hir$.text, hir$.sourceLen | 0, k, false);
+  SP$.s1 = (tokenEnd(hir$.text, hir$.sourceLen | 0, k, false)) | 0;
 }
 /** `ImportAttributes::braces_span` into `SP`: the `{ .. }`. */
 export function importAttributesBracesSpan(row: number): void {
@@ -299,11 +312,12 @@ export function importAttributesOptionsSpan(row: number): void {
   const text = hir$.text;
   const len = hir$.sourceLen | 0;
   exprSpan(importAttributesObject(row));
-  let close = skipTrivia(text, len, SP[1] | 0);
+  const SP$ = SP;
+  let close = skipTrivia(text, len, SP$.s1 | 0);
   if (close < len && (text[close] | 0) === 44) close = skipTrivia(text, len, close + 1);
   const before = fileEndOfTokenBefore(importAttributesKeyword(row));
-  SP[0] = before > 0 ? (before - 1) | 0 : 0;
-  SP[1] = (close + 1) | 0;
+  SP$.s0 = (before > 0 ? (before - 1) | 0 : 0) | 0;
+  SP$.s1 = (close + 1) | 0;
 }
 /** `ImportAttributes::entries`: `key: "value"`: a list of PropIds. The key is a name or a string. */
 export function importAttributesEntriesStart(row: number): number {
@@ -342,8 +356,9 @@ export function tupleElemIsRest(e: number): boolean {
 }
 export function tupleElemSpan(e: number): void {
   const hir$ = hir;
-  SP[0] = hir$.tupleElemStart[e] | 0;
-  SP[1] = hir$.tupleElemEnd[e] | 0;
+  const SP$ = SP;
+  SP$.s0 = hir$.tupleElemStart[e] | 0;
+  SP$.s1 = hir$.tupleElemEnd[e] | 0;
 }
 /** `TupleElem::parent`: the tuple type (a Node). */
 export function tupleElemParent(e: number): number {

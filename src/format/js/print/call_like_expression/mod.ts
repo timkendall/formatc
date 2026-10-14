@@ -98,7 +98,7 @@ function writeCall(e: number, call: number, context: number, f: Formatter): void
       if (object >= 0) {
         exprSpan(object);
         const cm = cx.comments;
-        cm.commentsLeadingLink(SP[1] | 0);
+        cm.commentsLeadingLink(SP.s1 | 0);
         formatLeadingCommentsRange(cm.from, cm.to, f);
       }
     }
@@ -279,8 +279,9 @@ export function fmtCallTypeArguments(e: number, call: number, f: Formatter): voi
     return;
   }
   anSpan(mkTypeArgumentsAn(owner));
-  const spanStart = SP[0] | 0;
-  const spanEnd = SP[1] | 0;
+  const SP$ = SP;
+  const spanStart = SP$.s0 | 0;
+  const spanEnd = SP$.s1 | 0;
   formatLeadingComments(spanStart, spanEnd, f);
   typeArgumentsWithoutComments(start, len, owner, f);
   typeArgumentsTrailingComments(call, spanEnd, f);

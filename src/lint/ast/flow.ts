@@ -13,9 +13,10 @@ import { typeParamName, typeParamNamePos } from "./decl.ts";
 
 /** `File::flow_token_span_at` into `SP`: the token that starts at `start`. */
 export function flowTokenSpanAt(start: number): void {
-  SP[0] = start;
+  const SP$ = SP;
+  SP$.s0 = (start) | 0;
   const hir$ = hir;
-  SP[1] = tokenEnd(hir$.text, hir$.sourceLen | 0, start, false);
+  SP$.s1 = (tokenEnd(hir$.text, hir$.sourceLen | 0, start, false)) | 0;
 }
 
 /** Whether the token `text[s, e)` is exactly `lit`. */
@@ -83,13 +84,15 @@ export function typeParamFlowTokenAfterName(p: number): void {
   const nameEnd = identEndOf(typeParamName(p), typeParamNamePos(p));
   const hir$ = hir;
   const start = skipTrivia(hir$.text, hir$.sourceLen | 0, nameEnd);
-  SP[0] = start;
-  SP[1] = tokenEnd(hir$.text, hir$.sourceLen | 0, start, false);
+  const SP$ = SP;
+  SP$.s0 = (start) | 0;
+  SP$.s1 = (tokenEnd(hir$.text, hir$.sourceLen | 0, start, false)) | 0;
 }
 
 /** Whether the token in `SP` is `lit`. */
 export function spTokenIs(lit: string): boolean {
-  return tokenIs(SP[0] | 0, SP[1] | 0, lit);
+  const SP$ = SP;
+  return tokenIs(SP$.s0 | 0, SP$.s1 | 0, lit);
 }
 
 /**
@@ -105,20 +108,22 @@ export function tupleElemFlowVarianceAndLabel(e: number): number {
   const rawStart = hir$.tupleElemStart[e] | 0;
   const hasDots = (hir$.tupleElemHasDots[e] | 0) !== 0;
   flowTokenSpanAt(rawStart);
-  const firstStart = SP[0] | 0;
-  const firstEnd = SP[1] | 0;
+  const SP$ = SP;
+  const firstStart = SP$.s0 | 0;
+  const firstEnd = SP$.s1 | 0;
   // The label is followed by the `?` or the `:`.
   const nextStart = skipTrivia(text, len, firstEnd);
   const nextEnd = tokenEnd(text, len, nextStart, false);
+  const FLOW$ = FLOW;
   if (hasDots || tokenIs(nextStart, nextEnd, ":") || tokenIs(nextStart, nextEnd, "?")) {
-    FLOW[FLOW_LABEL_ATOM] = name;
-    FLOW[FLOW_LABEL_POS] = hasDots ? nextStart : firstStart;
+    FLOW$.s0 = (name) | 0;
+    FLOW$.s1 = (hasDots ? nextStart : firstStart) | 0;
     return 2;
   }
-  FLOW[FLOW_LABEL_ATOM] = name;
-  FLOW[FLOW_LABEL_POS] = nextStart;
-  SP[0] = firstStart;
-  SP[1] = firstEnd;
+  FLOW$.s0 = (name) | 0;
+  FLOW$.s1 = (nextStart) | 0;
+  SP$.s0 = (firstStart) | 0;
+  SP$.s1 = (firstEnd) | 0;
   return 3;
 }
 
@@ -180,8 +185,9 @@ export function enumFlowExplicitType(en: number): boolean {
   const ofEnd = tokenEnd(text, len, ofStart, false);
   if (!tokenIs(ofStart, ofEnd, "of")) return false;
   const s = skipTrivia(text, len, ofEnd);
-  SP[0] = s;
-  SP[1] = tokenEnd(text, len, s, false);
+  const SP$ = SP;
+  SP$.s0 = (s) | 0;
+  SP$.s1 = (tokenEnd(text, len, s, false)) | 0;
   return true;
 }
 

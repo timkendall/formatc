@@ -1,3 +1,4 @@
+import { Slots4 } from "../base/slots.ts";
 // Port of vendor/bun/src/lint/span.rs. A Rust `Span { start, end }` is NEVER an object here: it is a pair of Int32.
 //
 //   * A function that takes a `Span` takes `(start, end)`.
@@ -13,7 +14,7 @@
 //   after(p, end)  (p.end, end)                                 before(s,n)  (s, n.start)
 //   contains(o)    start <= o.start && o.end <= end             contains_offset(x)   start <= x && x < end
 //   shrink(a, b)   (start + a, max(0, end - b))                 range()      start .. max(end, start)
-export const SP = new Int32Array(4);
+export const SP = new Slots4();
 export const SP_START: number = 0;
 export const SP_END: number = 1;
 
@@ -29,14 +30,16 @@ export function spanIsEmpty(start: number, end: number): boolean {
 
 /** Writes `(start, end)` into `SP`. */
 export function setSpan(start: number, end: number): void {
-  SP[0] = start | 0;
-  SP[1] = end | 0;
+  const SP$ = SP;
+  SP$.s0 = start | 0;
+  SP$.s1 = end | 0;
 }
 
 /** Writes `Span::shrink(start, end, a, b)` into `SP`. */
 export function shrinkSpan(start: number, end: number, a: number, b: number): void {
-  SP[0] = (start + a) | 0;
-  SP[1] = end > b ? (end - b) | 0 : 0;
+  const SP$ = SP;
+  SP$.s0 = (start + a) | 0;
+  SP$.s1 = (end > b ? (end - b) | 0 : 0) | 0;
 }
 
 /** `Span::sort_key` is not ported: sorts of nodes by span are written where they are needed. */

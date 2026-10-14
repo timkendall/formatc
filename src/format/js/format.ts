@@ -537,9 +537,10 @@ export function spanForComments(node: number, f: Formatter): void {
 
 /** `SP[1] = comments.without_semicolon(SP)` */
 function withoutSemicolon(f: Formatter): void {
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
-  SP[1] = cxOf(f).comments.withoutSemicolon(start, end);
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
+  SP$.s1 = (cxOf(f).comments.withoutSemicolon(start, end)) | 0;
 }
 
 // A reference to the parent of what is written (`pk`, `ph`), computed only if it is needed. `pk` is a `WK_*` (the parent of that kind of
@@ -833,8 +834,9 @@ export function writeTrailingCommentsIn(start: number, end: number, pk: number, 
 
 function writeTrailingCommentsOfChild(start: number, end: number, parent: number, f: Formatter): void {
   spanForComments(parent, f);
-  const encStart = SP[0] | 0;
-  const encEnd = SP[1] | 0;
+  const SP$ = SP;
+  const encStart = SP$.s0 | 0;
+  const encEnd = SP$.s1 | 0;
   if (cxOf(f).comments.nextStart() < encEnd) {
     const following = followingSpanStartIn(start, end, parent, f.options.flavor);
     formatTrailingComments(encStart, encEnd, start, end, following, f);
@@ -854,8 +856,9 @@ export function noCommentTrailsWhatIsBeforeAnother(cx: JsFormatContext): boolean
 export function writeTrailingCommentsOf(node: number, f: Formatter): void {
   if (cxOf(f).comments.nextStart() === INF) return;
   spanForComments(node, f);
-  const s = SP[0] | 0;
-  const e = SP[1] | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  const e = SP$.s1 | 0;
   writeTrailingCommentsIn(s, e, PK_NODE, node, f);
 }
 
@@ -923,8 +926,9 @@ export function formatNodeWithoutComments(start: number, end: number, pk: number
  */
 export function identifier(atom: number, pos: number, parent: number, f: Formatter): void {
   identSpan(atom, pos);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const cx = cxOf(f);
   if (cx.isQuiet) {
     f.sourceText(start, end);
@@ -1016,8 +1020,9 @@ export function fmtInTypeCasts(
   const cx = cxOf(f);
   const cm = cx.comments;
   exprSpan(e);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
 
   // ESTree's `Expression`, as opposed to the `ChainElement` in a `ChainExpression`.
   if (!isInChainExpression && cm.hasTrailingSuppressionComment(end)) {
@@ -1089,7 +1094,7 @@ export function fmtInTypeCasts(
     return;
   }
   spanThatCommentsLead(e, f);
-  formatLeadingComments(SP[0] | 0, SP[1] | 0, f);
+  formatLeadingComments(SP$.s0 | 0, SP$.s1 | 0, f);
   if (isSuppressed) {
     writeSuppressedExpression(e, isChainExpression, f);
   } else {
@@ -1132,8 +1137,9 @@ function castCommentGoesIntoAddedParentheses(f: Formatter): boolean {
 /** Prettier's `printIgnored` for an expression, in the parentheses that it needs. */
 function writeSuppressedExpression(e: number, isChainExpression: boolean, f: Formatter): void {
   exprSpan(e);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const needsParentheses = isChainExpression ? chainExpressionNeedsParentheses(e, f) : exprNeedsParentheses(e, f);
   // A class expression with decorators is on lines of its own.
   let isDecoratedClass = false;
@@ -1172,10 +1178,11 @@ export function fmtExpr(e: number, f: Formatter): void {
   const tag = exprTag(e);
   // Nearly half of all expressions are names. The names that can need parentheses have 3 to 9 letters, and are longer only if they are
   // written with escapes, or stand for an expression in a template.
+  const SP$ = SP;
   if (tag === EXPR_IDENT) {
     exprSpan(e);
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     const len = end - start;
     const mayNeedParentheses = len >= 3 && (len <= 9 || len >= 35 || !f.isPlainSource(start, end));
     if (mayNeedParentheses && exprNeedsParentheses(e, f)) fmtExprFull(e, EO_NONE, false, f);
@@ -1228,13 +1235,14 @@ function writeExpressionThatHasAsked(e: number, options: number, f: Formatter): 
 
 /** `tag`: that of `e`. */
 function writeExpressionOf(tag: number, e: number, options: number, f: Formatter): void {
+  const SP$ = SP;
   switch (tag) {
     case EXPR_MISSING:
       return;
     case EXPR_IDENT:
     case EXPR_PRIVATE_IDENTIFIER:
       exprSpan(e);
-      f.sourceText(SP[0] | 0, SP[1] | 0);
+      f.sourceText(SP$.s0 | 0, SP$.s1 | 0);
       return;
     case EXPR_THIS:
       f.token(T_THIS);
@@ -1419,8 +1427,9 @@ function formatStatementInner(s: number, isBeforeAnother: boolean, f: Formatter)
     return;
   }
   stmtSpan(s);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   if (hasNoCommentsIn(cx, 0, end)) {
     // `// prettier-ignore` on a line of its own after the last statement.
     if (!isBeforeAnother && cx.comments.hasTrailingSuppressionComment(end)) {
@@ -1445,13 +1454,14 @@ function formatStatementWithComments(s: number, isBeforeAnother: boolean, f: For
   const cm = cx.comments;
   const node = stmtAsAstNodes(s);
   spanForComments(node, f);
-  let start = SP[0] | 0;
-  let end = SP[1] | 0;
+  const SP$ = SP;
+  let start = SP$.s0 | 0;
+  let end = SP$.s1 | 0;
   anSpan(node);
-  const nodeEnd = SP[1] | 0;
+  const nodeEnd = SP$.s1 | 0;
   // Prettier's `locStart`: the decorators of a class can be before its `export`.
   stmtSpan(s);
-  const stmtStart = SP[0] | 0;
+  const stmtStart = SP$.s0 | 0;
   if (stmtStart < start) start = stmtStart;
   // The `;` can be behind the comment: `a() // prettier-ignore ⏎ ;`
   if (cm.hasTrailingSuppressionComment(nodeEnd) || (end < nodeEnd && cm.hasTrailingSuppressionComment(end))) {
@@ -1485,14 +1495,15 @@ function formatDeclarationWithComments(s: number, isBeforeAnother: boolean, f: F
   const isExported = stmtIsExported(s);
   let start = 0;
   let end = 0;
+  const SP$ = SP;
   if (isExported) {
     stmtSpanWithoutExport(s);
-    start = SP[0] | 0;
-    end = cm.withoutSemicolon(start, SP[1] | 0);
+    start = SP$.s0 | 0;
+    end = cm.withoutSemicolon(start, SP$.s1 | 0);
   } else {
     spanForComments(stmtAsAstNodes(s), f);
-    start = SP[0] | 0;
-    end = SP[1] | 0;
+    start = SP$.s0 | 0;
+    end = SP$.s1 | 0;
   }
   // parent: `statement.as_ast_nodes()` if exported, else `statement.ast_parent()`
   const pk = isExported ? PK_STMT_OF_EXPORT : WK_STMT;
@@ -1542,12 +1553,13 @@ function writeIgnoredStatement(s: number, start: number, end: number, f: Formatt
     return;
   }
   stmtSpan(s);
-  const stmtEnd = SP[1] | 0;
+  const SP$ = SP;
+  const stmtEnd = SP$.s1 | 0;
   let hasSemicolon = false;
   const tag = stmtTag(s);
   if (tag === STMT_VAR && stmtIsExported(s)) {
     stmtSpanWithoutExport(s);
-    if (start < (SP[0] | 0)) hasSemicolon = end < stmtEnd;
+    if (start < (SP$.s0 | 0)) hasSemicolon = end < stmtEnd;
     else hasSemicolon = true;
   } else if (tag === STMT_BREAK || tag === STMT_CONTINUE || tag === STMT_DEBUGGER || tag === STMT_VAR) {
     hasSemicolon = true;
@@ -1582,7 +1594,7 @@ function writeIgnoredStatementWithoutTerminator(s: number, start: number, end: n
   const hasTerminator = endsWithTerminator(s);
   if (hasTerminator) {
     stmtSpan(s);
-    contentEnd = cm.withoutSemicolon(start, SP[1] | 0);
+    contentEnd = cm.withoutSemicolon(start, SP.s1 | 0);
   }
   if (f.options.semicolons === SEMICOLONS_ALWAYS) {
     enterNode(start, contentEnd, f);
@@ -1604,6 +1616,7 @@ function writeIgnoredStatementWithoutTerminator(s: number, start: number, end: n
 function endsWithTerminator(statement: number): boolean {
   // The `;` after the declaration in the head of a loop separates.
   const parent = stmtParent(statement);
+  const SP$ = SP;
   if (nodeKind(parent) === N_STMT) {
     const p = nodeId(parent);
     const t = stmtTag(p);
@@ -1613,9 +1626,9 @@ function endsWithTerminator(statement: number): boolean {
     else if (t === STMT_FOR_OF) body = stmtForOfBody(p);
     if (body >= 0) {
       stmtSpan(statement);
-      const end = SP[1] | 0;
+      const end = SP$.s1 | 0;
       stmtSpan(body);
-      if (end <= (SP[0] | 0)) return false;
+      if (end <= (SP$.s0 | 0)) return false;
     }
   }
   let last = statement;
@@ -1792,9 +1805,10 @@ export function fmtType(ty: number, f: Formatter): void {
 
 function writeTypeInParentheses(ty: number, f: Formatter): void {
   const tag = typeTag(ty);
+  const SP$ = SP;
   if (tag === TYPE_KEYWORD || tag === TYPE_BOOL_LIT) {
     typeSpan(ty);
-    f.sourceText(SP[0] | 0, SP[1] | 0);
+    f.sourceText(SP$.s0 | 0, SP$.s1 | 0);
     return;
   }
   // No other kind of type ever needs parentheses. Flow's `renders T` writes its own.
@@ -1821,8 +1835,9 @@ function formatTypeWithComments(ty: number, f: Formatter): void {
   const cx = cxOf(f);
   const cm = cx.comments;
   typeSpan(ty);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   // A union writes the comments before it with its first `|`, and deals with `prettier-ignore`.
   const isUnion = typeTag(ty) === TYPE_UNION;
   let isSuppressed = false;
@@ -1879,12 +1894,13 @@ function commentsStayOutsideOfParenthesesOfUnion(f: Formatter): boolean {
 
 /** Step 5 for a type. */
 export function writeType(ty: number, f: Formatter): void {
+  const SP$ = SP;
   switch (typeTag(ty)) {
     case TYPE_ERROR:
     case TYPE_JSDOC:
       if (fileIsFlow() && writeNullableTypeOrTypeOperator(ty, f)) return;
       typeSpan(ty);
-      writeSuppressedNode(SP[0] | 0, SP[1] | 0, f);
+      writeSuppressedNode(SP$.s0 | 0, SP$.s1 | 0, f);
       return;
     case TYPE_HERITAGE:
       fmtExpr(typeHeritageExpr(ty), f);
@@ -1893,7 +1909,7 @@ export function writeType(ty: number, f: Formatter): void {
     case TYPE_KEYWORD:
     case TYPE_BOOL_LIT:
       typeSpan(ty);
-      f.sourceText(SP[0] | 0, SP[1] | 0);
+      f.sourceText(SP$.s0 | 0, SP$.s1 | 0);
       return;
     case TYPE_REF:
       writeTsTypeReference(ty, typeRefNameStart(ty), typeRefNameLen(ty), typeRefArgsStart(ty), typeRefArgsLen(ty), f);
@@ -2012,8 +2028,9 @@ function formatTypeAnnotationWith(mark: number, ty: number, f: Formatter): void 
   }
   const node = mkAn(AN_TS_TYPE_ANNOTATION, ty);
   anSpan(node);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   if (cx.comments.hasCommentBefore(start) && !(commentSticksToNameOfVariable(f) && isVariableDeclaratorParent(node))) f.space();
   formatNodeThen(start, end, node, mark, ty, f);
 }
@@ -2074,7 +2091,8 @@ function formatWithComments(wk: number, h: number, f: Formatter, isBeforeAnother
     return;
   }
   nodeSpanOf(wk, h);
-  formatNodeInList(SP[0] | 0, SP[1] | 0, isBeforeAnother, wk, h, wk, h, f);
+  const SP$ = SP;
+  formatNodeInList(SP$.s0 | 0, SP$.s1 | 0, isBeforeAnother, wk, h, wk, h, f);
 }
 
 export function fmtMember(m: number, f: Formatter): void {
@@ -2132,6 +2150,7 @@ export function fmtTupleElem(el: number, f: Formatter): void {
     return;
   }
   tupleElemSpan(el);
-  formatNodeInList(SP[0] | 0, SP[1] | 0, false, WK_TUPLE_ELEM, el, WK_TUPLE_ELEM, el, f);
+  const SP$ = SP;
+  formatNodeInList(SP$.s0 | 0, SP$.s1 | 0, false, WK_TUPLE_ELEM, el, WK_TUPLE_ELEM, el, f);
 }
 

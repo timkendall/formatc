@@ -166,6 +166,7 @@ export function entityName(nameStart: number, nameLen: number, parent: number, f
     return;
   }
   // The next name is what follows a name, which `parent` does not tell.
+  const SP$ = SP;
   for (let i = 0; i < nameLen; i++) {
     const atom = entityAtom(nameStart, i);
     const pos = entityPos(nameStart, i);
@@ -174,12 +175,12 @@ export function entityName(nameStart: number, nameLen: number, parent: number, f
       return;
     }
     identSpan(atom, pos);
-    const partStart = SP[0] | 0;
-    const partEnd = SP[1] | 0;
+    const partStart = SP$.s0 | 0;
+    const partEnd = SP$.s1 | 0;
     const nextStart = entityPos(nameStart, i + 1);
     writeIdentifierWithoutTrailingComments(atom, pos, partStart, partEnd, parent, f);
     entitySpan(nameStart, nameLen);
-    formatTrailingComments(SP[0] | 0, SP[1] | 0, partStart, partEnd, nextStart, f);
+    formatTrailingComments(SP$.s0 | 0, SP$.s1 | 0, partStart, partEnd, nextStart, f);
     f.token(DOT);
   }
 }
@@ -228,11 +229,12 @@ export function writeTsTypeReference(ty: number, nameStart: number, nameLen: num
   const cx = cxOf(f);
   const isJavascript = fileIsJavascript();
   // What it is only matters for a long name, and for comments.
+  const SP$ = SP;
   if (cx.isQuiet && nameLen <= 2 && !isJavascript && !keepsParenthesesOfIntrinsic(f)) {
     for (let i = 0; i < nameLen; i++) {
       if (i > 0) f.token(DOT);
       identSpan(entityAtom(nameStart, i), entityPos(nameStart, i));
-      f.sourceText(SP[0] | 0, SP[1] | 0);
+      f.sourceText(SP$.s0 | 0, SP$.s1 | 0);
     }
     typeArguments(argsStart, argsLen, nodeOfType(ty), f);
     return;
@@ -248,8 +250,8 @@ export function writeTsTypeReference(ty: number, nameStart: number, nameLen: num
   }
   if (argsLen === 0 && isJavascript) {
     typeSpan(ty);
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     const text = f.source;
     // Flow's other name for it.
     if (nameLen === 1 && end - start === 4 && (text[start] | 0) === 98 && (text[start + 1] | 0) === 111 && (text[start + 2] | 0) === 111 && (text[start + 3] | 0) === 108) {
@@ -270,7 +272,7 @@ export function writeTsTypeReference(ty: number, nameStart: number, nameLen: num
       }
       if (nameLen === 1) {
         identSpan(entityAtom(nameStart, last), entityPos(nameStart, last));
-        writeIdentifierWithoutTrailingComments(entityAtom(nameStart, last), entityPos(nameStart, last), SP[0] | 0, SP[1] | 0, node, f);
+        writeIdentifierWithoutTrailingComments(entityAtom(nameStart, last), entityPos(nameStart, last), SP$.s0 | 0, SP$.s1 | 0, node, f);
       } else {
         entityName(nameStart, nameLen, node, f);
       }
@@ -324,7 +326,7 @@ function keepsParenthesesOfIntrinsic(f: Formatter): boolean {
 function isLeftmostIntrinsicInTypeAlias(ty: number, nameStart: number, nameLen: number, argsLen: number): boolean {
   if (!entityIs(nameStart, nameLen, "intrinsic") || argsLen !== 0) return false;
   typeOuterSpan(ty);
-  const start = SP[0] | 0;
+  const start = SP.s0 | 0;
   let parent = typeAstParent(ty);
   while (true) {
     const t = anTag(parent);
@@ -342,8 +344,9 @@ function isLeftmostIntrinsicInTypeAlias(ty: number, nameStart: number, nameLen: 
 /** `"a"`, `1`, `-1`, `1n` */
 export function writeTsLiteralType(ty: number, f: Formatter): void {
   typeSpan(ty);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const text = f.source;
   const tag = typeTag(ty);
   if (tag === TYPE_STRING_LIT) {
@@ -448,12 +451,13 @@ function writeSignatures(membersStart: number, membersLen: number, isInterface: 
   }
 
   let hasElements = false;
+  const SP$ = SP;
   for (let index = 0; index < membersLen; index++) {
     const signature = listAt(membersStart, index);
     const next = index + 1 < membersLen ? listAt(membersStart, index + 1) : -1;
     memberSpan(signature);
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     // Prettier has no node for the `...`.
     if (isInexactMark(signature) && !cx.comments.hasCommentBefore(start)) {
       if (hasElements) f.softLineBreakOrSpace();
@@ -476,8 +480,9 @@ function separatorIsBehindComments(f: Formatter): boolean {
 function writeSignature(signature: number, next: number, isInterface: boolean, f: Formatter): void {
   const cx = cxOf(f);
   memberSpan(signature);
-  const start = SP[0] | 0;
-  let end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  let end = SP$.s1 | 0;
   if (!cx.isQuiet) {
     const cm = cx.comments;
     if (cm.isSuppressed(start)) {
@@ -616,11 +621,12 @@ function commentsBehindColonOfPropertySignatureStay(f: Formatter): boolean {
 export function commentsAfterPropertyName(ty: number, f: Formatter): number {
   const cm = cxOf(f).comments;
   typeSpan(ty);
-  cm.commentsBefore(SP[0] | 0);
+  const SP$ = SP;
+  cm.commentsBefore(SP$.s0 | 0);
   const from = cm.from;
   const to = cm.to;
   typeAnnotationSpan(ty);
-  const colon = SP[0] | 0;
+  const colon = SP$.s0 | 0;
   let beforeColon = 0;
   while (from + beforeColon < to && (cm.spanStart[from + beforeColon] | 0) < colon && !cm.precededByNewline(from + beforeColon)) beforeColon = (beforeColon + 1) | 0;
   let takesComments = commentsBehindColonOfPropertySignatureStay(f);
@@ -672,14 +678,15 @@ export function writeTsImportType(ty: number, f: Formatter): void {
   const argsLen = typeImportArgsLen(ty);
   const isTypeof = (typeImportFlags(ty) & 1) !== 0;
   typeSpan(ty);
-  const tyStart = SP[0] | 0;
-  const tyEnd = SP[1] | 0;
+  const SP$ = SP;
+  const tyStart = SP$.s0 | 0;
+  const tyEnd = SP$.s1 | 0;
   if (!typeImportSourceSpan(ty)) {
     writeSuppressedNode(tyStart, tyEnd, f);
     return;
   }
-  const sourceStart = SP[0] | 0;
-  const sourceEnd = SP[1] | 0;
+  const sourceStart = SP$.s0 | 0;
+  const sourceEnd = SP$.s1 | 0;
   const node = mkAn(AN_TS_IMPORT_TYPE, ty);
   const cx = cxOf(f);
 
@@ -689,9 +696,9 @@ export function writeTsImportType(ty: number, f: Formatter): void {
     let following = tyEnd;
     if (nameLen > 0) {
       identSpan(entityAtom(nameStart, 0), entityPos(nameStart, 0));
-      following = SP[0] | 0;
+      following = SP$.s0 | 0;
     } else if (typeListAngleBrackets(argsStart, argsLen)) {
-      following = SP[0] | 0;
+      following = SP$.s0 | 0;
     }
     hasComment = cx.comments.hasCommentInRange(tyStart, following);
   }
@@ -790,11 +797,12 @@ function writeImportTypeArguments(ty: number, sourceStart: number, sourceEnd: nu
   const cx = cxOf(f);
   const cm = cx.comments;
   importAttributesOptionsSpan(options);
-  const spanStart = SP[0] | 0;
-  const spanEnd = SP[1] | 0;
+  const SP$ = SP;
+  const spanStart = SP$.s0 | 0;
+  const spanEnd = SP$.s1 | 0;
   typeSpan(ty);
-  const tyStart = SP[0] | 0;
-  const tyEnd = SP[1] | 0;
+  const tyStart = SP$.s0 | 0;
+  const tyEnd = SP$.s1 | 0;
   const node = mkAn(AN_TS_IMPORT_TYPE, ty);
 
   let slot = f.startCapture();
@@ -883,14 +891,15 @@ function writeImportTypeOptions(options: number, f: Formatter): void {
   const cx = cxOf(f);
   const cm = cx.comments;
   importAttributesOptionsSpan(options);
-  const outerStart = SP[0] | 0;
-  const outerEnd = SP[1] | 0;
+  const SP$ = SP;
+  const outerStart = SP$.s0 | 0;
+  const outerEnd = SP$.s1 | 0;
   importAttributesKeywordSpan(options);
-  const keywordStart = SP[0] | 0;
-  const keywordEnd = SP[1] | 0;
+  const keywordStart = SP$.s0 | 0;
+  const keywordEnd = SP$.s1 | 0;
   importAttributesBracesSpan(options);
-  const innerStart = SP[0] | 0;
-  const innerEnd = SP[1] | 0;
+  const innerStart = SP$.s0 | 0;
+  const innerEnd = SP$.s1 | 0;
   const entriesStart = importAttributesEntriesStart(options);
   const entriesLen = importAttributesEntriesLen(options);
   const hasSpace = f.options.bracketSpacing;
@@ -914,7 +923,7 @@ function writeImportTypeOptions(options: number, f: Formatter): void {
     f.token(RBRACE);
   } else {
     propSpan(listAt(entriesStart, 0));
-    const expandInner = isAuto && cx.src.containsNewline(innerStart, SP[0] | 0);
+    const expandInner = isAuto && cx.src.containsNewline(innerStart, SP$.s0 | 0);
     f.startGroupExpand(expandInner);
     f.token(LBRACE);
     f.startSoftBlockIndentWithMaybeSpace(hasSpace);
@@ -923,7 +932,7 @@ function writeImportTypeOptions(options: number, f: Formatter): void {
       const entry = listAt(entriesStart, i);
       if (i > 0) {
         propSpan(entry);
-        joinNodesSeparator(f, JOIN_SOFT_LINE, SP[0] | 0, SP[1] | 0);
+        joinNodesSeparator(f, JOIN_SOFT_LINE, SP$.s0 | 0, SP$.s1 | 0);
       }
       fmtProp(entry, f);
       writeSeparatorAfter(f, COMMA, i === entriesLen - 1, separator, 0);
@@ -954,16 +963,17 @@ export function writeTsTypePredicate(ty: number, f: Formatter): void {
     if (atom >= 0) identifier(atom, pos, node, f);
     return;
   }
+  const SP$ = SP;
   if (atom >= 0) {
     identSpan(atom, pos);
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     writeIdentifierWithoutTrailingComments(atom, pos, start, end, node, f);
     typeSpan(ty);
-    const tyStart = SP[0] | 0;
-    const tyEnd = SP[1] | 0;
+    const tyStart = SP$.s0 | 0;
+    const tyEnd = SP$.s1 | 0;
     typeSpan(annotation);
-    formatTrailingComments(tyStart, tyEnd, start, end, SP[0] | 0, f);
+    formatTrailingComments(tyStart, tyEnd, start, end, SP$.s0 | 0, f);
   }
   f.space();
   f.token(KW_IS);

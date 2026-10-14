@@ -236,7 +236,7 @@ function isStringLiteral(at: number): boolean {
 /** `node.getStart()` of an expression, which can be a parenthesis. */
 function startOf(e: number): number {
   exprOuterSpan(e);
-  return SP[0] | 0;
+  return SP.s0 | 0;
 }
 
 // ───────────────────────────── the errors ─────────────────────────────
@@ -421,6 +421,7 @@ function statements(): void {
   const hir$ = hir;
   const n = hir$.nStmts | 0;
   const bound$ = bound;
+  const SP$ = SP;
   for (let i = 0; i < n; i++) {
     const tag = hir$.stmtTag[i] | 0;
     const modStart = hir$.stmtModStart[i] | 0;
@@ -476,8 +477,8 @@ function statements(): void {
             let cs = nodeStart;
             let ce = nodeEnd;
             if (stmtCatchClauseSpan(i)) {
-              cs = SP[0] | 0;
-              ce = SP[1] | 0;
+              cs = SP$.s0 | 0;
+              ce = SP$.s1 | 0;
             }
             failWhen(WHEN_CATCH_CLAUSE, cs, ce, 0, startOf(init), "Catch clause variable cannot have an initializer.");
           }
@@ -649,6 +650,7 @@ function classes(): void {
   const hir$ = hir;
   const n = hir$.nClasses | 0;
   const bound$ = bound;
+  const SP$ = SP;
   for (let i = 0; i < n; i++) {
     const modLen = hir$.classModLen[i] | 0;
     const implementsLen = hir$.classImplementsLen[i] | 0;
@@ -658,8 +660,8 @@ function classes(): void {
     const ownerTag = bound$.classOwnerTag[i] | 0;
     if (ownerTag === CO_NONE) continue;
     classSpan(i);
-    const nodeStart = SP[0] | 0;
-    const nodeEnd = SP[1] | 0;
+    const nodeStart = SP$.s0 | 0;
+    const nodeEnd = SP$.s1 | 0;
     const modStart = hir$.classModStart[i] | 0;
     let kind: number;
     let place: number;
@@ -706,7 +708,7 @@ function classes(): void {
 /** `Interface::body_span().start`: the `{` of the interface (or what is in its place). */
 function interfaceBodyStart(i: number): number {
   interfaceBodySpan(i);
-  return SP[0] | 0;
+  return SP.s0 | 0;
 }
 
 /** The parent of the expression `e` if that is an expression, else -1. */
@@ -831,7 +833,7 @@ function members(): void {
 
 /** The end of the key of the member `i`, or its name position when it has none. */
 function memberNameEnd(i: number): number {
-  if (keySpan(nodeOfMember(i))) return SP[1] | 0;
+  if (keySpan(nodeOfMember(i))) return SP.s1 | 0;
   return hir.memberNamePos[i] | 0;
 }
 
@@ -845,14 +847,15 @@ function parameters(): void {
   const hir$ = hir;
   const n = hir$.nParams | 0;
   const bound$ = bound;
+  const SP$ = SP;
   for (let i = 0; i < n; i++) {
     const modLen = hir$.paramModLen[i] | 0;
     if (modLen === 0) continue;
     const func = bound$.paramFn[i] | 0;
     if (func < 0 || func >= hir$.nFns) continue;
     paramSpan(i);
-    const nodeStart = SP[0] | 0;
-    const nodeEnd = SP[1] | 0;
+    const nodeStart = SP$.s0 | 0;
+    const nodeEnd = SP$.s1 | 0;
     const modStart = hir$.paramModStart[i] | 0;
     const flags = hir$.paramFlags[i] | 0;
     const fnKind = hir$.fnKind[func] | 0;
@@ -947,6 +950,7 @@ function properties(): void {
   const hir$ = hir;
   const n = hir$.nProps | 0;
   // `modifiers_of_props`
+  const SP$ = SP;
   for (let id = 0; id < n; id++) {
     const modLen = hir$.propModLen[id] | 0;
     if (modLen === 0) continue;
@@ -957,7 +961,7 @@ function properties(): void {
     else if (pk === PROP_GETTER || pk === PROP_SETTER) kind = K_ACCESSOR;
     else kind = K_PROPERTY_ASSIGNMENT;
     propSpan(id);
-    checkModifiers(kind, PL_OBJECT_LITERAL, SP[0] | 0, SP[1] | 0, hir$.propModStart[id] | 0, modLen, D_INVALIDLY, 0, "");
+    checkModifiers(kind, PL_OBJECT_LITERAL, SP$.s0 | 0, SP$.s1 | 0, hir$.propModStart[id] | 0, modLen, D_INVALIDLY, 0, "");
   }
   const bound$ = bound;
   for (let i = 0; i < n; i++) {
@@ -981,7 +985,7 @@ function properties(): void {
         const os = hir$.exprPos[object] | 0;
         const oe = hir$.exprEnd[object] | 0;
         propSpan(i);
-        failAtStep(os, oe, i, (SP[1] | 0) > 0 ? (SP[1] | 0) - 1 : 0, "'{' expected.");
+        failAtStep(os, oe, i, (SP$.s1 | 0) > 0 ? (SP$.s1 | 0) - 1 : 0, "'{' expected.");
       }
       continue;
     }
@@ -992,7 +996,7 @@ function properties(): void {
     else continue;
     const token = byte(postfix) === 63 ? " cannot have a question token." : " cannot have an exclamation token.";
     propSpan(i);
-    fail(SP[0] | 0, SP[1] | 0, postfix, of + token);
+    fail(SP$.s0 | 0, SP$.s1 | 0, postfix, of + token);
   }
 }
 
@@ -1184,11 +1188,12 @@ function declarationWithHead(at: number): number {
   const hir$ = hir;
   const nc = hir$.nClasses | 0;
   const bound$ = bound;
+  const SP$ = SP;
   for (let i = 0; i < nc; i++) {
     if ((bound$.classOwnerTag[i] | 0) === CO_NONE) continue;
     classSpan(i);
-    const s0 = SP[0] | 0;
-    const e0 = SP[1] | 0;
+    const s0 = SP$.s0 | 0;
+    const e0 = SP$.s1 | 0;
     const first = (hir$.classMembersLen[i] | 0) > 0 ? hir$.memberStart[hir$.ids[hir$.classMembersStart[i] | 0] | 0] | 0 : e0;
     if (s0 <= at && at <= first && s0 >= bestStart) {
       bestStart = s0;

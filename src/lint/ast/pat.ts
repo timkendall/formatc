@@ -22,23 +22,24 @@ export function patTag(p: number): number {
 
 /** `Pat::span` into `SP`: without a type annotation or a default value, which belong to what contains the pattern. */
 export function patSpan(p: number): void {
+  const SP$ = SP;
   if (!inRange(p)) {
-    SP[0] = 0;
-    SP[1] = 0;
+    SP$.s0 = 0;
+    SP$.s1 = 0;
     return;
   }
   const hir$ = hir;
   const pos = hir$.patPos[p] | 0;
   const end = hir$.patEnd[p] | 0;
-  SP[0] = pos;
-  SP[1] = (hir$.patTag[p] | 0) === PAT_IDENT ? fileEndOfIdentifier(pos, end) : end;
+  SP$.s0 = (pos) | 0;
+  SP$.s1 = ((hir$.patTag[p] | 0) === PAT_IDENT ? fileEndOfIdentifier(pos, end) : end) | 0;
 }
 export function patStart(p: number): number {
   return inRange(p) ? hir.patPos[p] | 0 : 0;
 }
 export function patEnd(p: number): number {
   patSpan(p);
-  return SP[1] | 0;
+  return SP.s1 | 0;
 }
 
 /** `Pat::as_ident`: the atom of the name if it is an identifier, else -1. */
@@ -121,8 +122,9 @@ export function patPropSpan(p: number): void {
   const hir$ = hir;
   const end = hir$.patPropEnd[p] | 0;
   const ve = patEnd(hir$.patPropValue[p] | 0);
-  SP[0] = hir$.patPropPos[p] | 0;
-  SP[1] = end > ve ? end : ve;
+  const SP$ = SP;
+  SP$.s0 = hir$.patPropPos[p] | 0;
+  SP$.s1 = (end > ve ? end : ve) | 0;
 }
 /** `PatProp::parent`: the object pattern (a Node). */
 export function patPropParent(p: number): number {
@@ -154,8 +156,9 @@ export function patElemIsRest(e: number): boolean {
 }
 export function patElemSpan(e: number): void {
   const hir$ = hir;
-  SP[0] = hir$.patElemStart[e] | 0;
-  SP[1] = hir$.patElemEnd[e] | 0;
+  const SP$ = SP;
+  SP$.s0 = hir$.patElemStart[e] | 0;
+  SP$.s1 = hir$.patElemEnd[e] | 0;
 }
 /** `PatElem::parent`: the array pattern (a Node). */
 export function patElemParent(e: number): number {

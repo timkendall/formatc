@@ -18,11 +18,11 @@ export class JsGqlTemplate extends GqlTemplate {
   }
   rawStart(i: number): number {
     exprTemplateRawSpan(this.e, i);
-    return SP[0] | 0;
+    return SP.s0 | 0;
   }
   rawEnd(i: number): number {
     exprTemplateRawSpan(this.e, i);
-    return SP[1] | 0;
+    return SP.s1 | 0;
   }
   cooked(i: number): Uint8Array | null {
     const atom = exprTemplateCooked(this.e, i);

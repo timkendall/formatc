@@ -115,8 +115,9 @@ function isInAssignmentLike(kind: number, h: number): boolean {
 function writeObjectPatternLike(kind: number, h: number, listStart: number, listLen: number, f: Formatter): void {
   if (kind === 0) patSpan(h);
   else exprSpan(h);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   let layout: number;
   let expand = false;
   if (listLen === 0) layout = LAYOUT_EMPTY;
@@ -144,7 +145,7 @@ function writeObjectPatternLike(kind: number, h: number, listStart: number, list
       if (i > 0) {
         if (kind === 0) patPropSpan(p);
         else propSpan(p);
-        joinNodesSeparator(f, JOIN_SOFT_LINE, SP[0] | 0, SP[1] | 0);
+        joinNodesSeparator(f, JOIN_SOFT_LINE, SP$.s0 | 0, SP$.s1 | 0);
       }
       if (kind === 0) fmtPatProp(p, f);
       else fmtProp(p, f);

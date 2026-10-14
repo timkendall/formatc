@@ -173,6 +173,7 @@ export function parenthesisBeforeNeedsSemicolon(e: number, f: Formatter): boolea
   const inHtml = f.options.inHtml;
   if (f.options.semicolons !== SEMICOLONS_AS_NEEDED || inHtml.isInlineEventHandler || inHtml.root === HTML_ROOT_VUE_EVENT_BINDING) return false;
   let top = e;
+  const LEFT_SIDE$ = LEFT_SIDE;
   while (true) {
     const parent = exprParent(top);
     const kind = nodeKind(parent);
@@ -180,7 +181,7 @@ export function parenthesisBeforeNeedsSemicolon(e: number, f: Formatter): boolea
       const p = nodeId(parent);
       // Which writes one before this one.
       if (exprTag(p) === EXPR_COND) return false;
-      if (expressionLeftSideLeft(p, false) && (LEFT_SIDE[0] | 0) === top) {
+      if (expressionLeftSideLeft(p, false) && (LEFT_SIDE$.s0 | 0) === top) {
         top = p;
         continue;
       }
@@ -219,6 +220,7 @@ export function expressionStatementNeedsSemicolon(statement: number, expression:
   let e = expression;
   let isTarget = false;
   const hir$ = hir;
+  const LEFT_SIDE$ = LEFT_SIDE;
   while (true) {
     // `/** @type {T} */ (a).b` keeps its parentheses.
     if (cm.hasTypeCastComments && exprIsParenthesized(e)) {
@@ -257,8 +259,8 @@ export function expressionStatementNeedsSemicolon(statement: number, expression:
       }
     }
     if (!expressionLeftSideLeft(e, isTarget)) return false;
-    e = LEFT_SIDE[0] | 0;
-    isTarget = (LEFT_SIDE[1] | 0) !== 0;
+    e = LEFT_SIDE$.s0 | 0;
+    isTarget = (LEFT_SIDE$.s1 | 0) !== 0;
   }
 }
 
@@ -330,8 +332,9 @@ export function writeExpressionStatement(statement: number, expression: number, 
   const cx = cxOf(f);
   const semicolonInHtml = semicolonOfOnlyStatementInHtml(statement, expression, f);
   stmtSpan(statement);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   // Before a type cast comment, `FormatStatements` has written the `;`.
   if (
     f.options.semicolons === SEMICOLONS_AS_NEEDED &&
@@ -362,11 +365,12 @@ export function writeDoWhileStatement(statement: number, body: number, test: num
   const cm = cx.comments;
   const isBlock = stmtIsBlock(body);
   let needsSeparator = true;
+  const SP$ = SP;
   if (!cx.isQuiet && commentsStayBetweenHeadAndBody(f)) {
     if (isBlock) {
       f.token(KW_DO);
       stmtSpan(body);
-      writeHeadBodySeparator(SP[0] | 0, f);
+      writeHeadBodySeparator(SP$.s0 | 0, f);
       fmtNodeWithoutTrailingComments(WK_STMT, body, f);
     } else {
       f.startGroup();
@@ -375,7 +379,7 @@ export function writeDoWhileStatement(statement: number, body: number, test: num
       f.endGroup();
     }
     stmtSpan(body);
-    cm.commentsBeforeCharacter(SP[1] | 0, 119 /* w */);
+    cm.commentsBeforeCharacter(SP$.s1 | 0, 119 /* w */);
     needsSeparator = writeCommentsBetweenBlocks(cm.from, cm.to, f);
   } else {
     f.startGroup();
@@ -409,8 +413,9 @@ function headEnd(kind: number, stmt: number, f: Formatter): number {
   const cx = cxOf(f);
   const cm = cx.comments;
   stmtSpan(stmt);
+  const SP$ = SP;
   if (kind === HEAD_BEFORE) {
-    let end = SP[0] | 0;
+    let end = SP$.s0 | 0;
     const n = cm.commentsBefore(end);
     const from = cm.from;
     for (let i = from + n - 1; i >= from; i--) {
@@ -419,7 +424,7 @@ function headEnd(kind: number, stmt: number, f: Formatter): number {
     }
     return end;
   }
-  return cm.withoutSemicolon(SP[0] | 0, SP[1] | 0);
+  return cm.withoutSemicolon(SP$.s0 | 0, SP$.s1 | 0);
 }
 
 /** `FormatInHead`: begins writing what is in the head of a statement. Meanwhile the comments after the `)` are hidden. Returns what to restore. */
@@ -469,7 +474,8 @@ function writeCondition(test: number, headKind: number, headStmt: number, f: For
   const cm = cx.comments;
   const end = headEnd(headKind, headStmt, f);
   exprSpan(test);
-  const hasComments = cm.hasCommentBefore(SP[0] | 0) || cm.hasCommentInRange(SP[1] | 0, end);
+  const SP$ = SP;
+  const hasComments = cm.hasCommentBefore(SP$.s0 | 0) || cm.hasCommentInRange(SP$.s1 | 0, end);
   const hug = !hasComments && isNegatedLogicalExpression(test) && hugsNegatedCondition(f);
   if (!hug) {
     f.startGroup();
@@ -534,7 +540,7 @@ function writeForHeadSlot(wk: number, h: number, cursor: number, f: Formatter): 
     if (wk === WK_EXPR) anchor = exprEnd(h);
     else {
       forHeadSpan(h);
-      anchor = SP[1] | 0;
+      anchor = SP.s1 | 0;
     }
     fmtForHeadNodeWithoutTrailingComments(wk, h, f);
   }
@@ -562,7 +568,7 @@ function writeForHeadWithCommentsInPlace(statement: number, init: number, test: 
   const cm = cxOf(f).comments;
   const isEmpty = init < 0 && test < 0 && update < 0;
   stmtSpan(statement);
-  let cursor = cm.positionAfterCharacter(SP[0] | 0, 40 /* ( */);
+  let cursor = cm.positionAfterCharacter(SP.s0 | 0, 40 /* ( */);
   cursor = writeForHeadSlot(init >= 0 ? WK_STMT : -1, init, cursor, f);
   if (!isEmpty) f.softLineBreakOrSpace();
   cursor = writeForHeadSlot(test >= 0 ? WK_EXPR : -1, test, cursor, f);
@@ -580,7 +586,7 @@ export function writeForStatement(statement: number, init: number /* -1: none */
   const cx = cxOf(f);
   if (!cx.isQuiet && commentsStayBetweenHeadAndBody(f)) {
     stmtSpan(body);
-    if (cx.comments.hasCommentBefore(SP[0] | 0)) {
+    if (cx.comments.hasCommentBefore(SP.s0 | 0)) {
       f.startGroup();
       f.token(KW_FOR_PAREN);
       f.startGroup();
@@ -692,7 +698,7 @@ function writeForInOrOfHead(left: number, keyword: number, right: number, f: For
   }
   const cm = cx.comments;
   stmtSpan(left);
-  const previousLimit = cm.limitCommentsUpTo(SP[1] | 0);
+  const previousLimit = cm.limitCommentsUpTo(SP.s1 | 0);
   fmtForHead(left, f);
   cm.restoreViewLimit(previousLimit);
 
@@ -856,10 +862,11 @@ export function writeLabeledStatement(statement: number, body: number, f: Format
   const cm = cx.comments;
   const labelPos = stmtLabelPos(statement);
   identSpan(label, labelPos);
-  const labelStart = SP[0] | 0;
-  const labelEnd = SP[1] | 0;
+  const SP$ = SP;
+  const labelStart = SP$.s0 | 0;
+  const labelEnd = SP$.s1 | 0;
   stmtSpan(body);
-  const bodyStart = SP[0] | 0;
+  const bodyStart = SP$.s0 | 0;
   const isEmpty = stmtTag(body) === STMT_EMPTY;
   if (!cm.hasCommentBefore(bodyStart)) {
     f.sourceText(labelStart, labelEnd);
@@ -895,8 +902,8 @@ export function writeLabeledStatement(statement: number, body: number, f: Format
     if (p === COMMENT_PLACEMENT_OWN_LINE || p === COMMENT_PLACEMENT_END_OF_LINE) {
       if (cm.isSuppressionComment((from + k) | 0)) {
         stmtSpan(statement);
-        const start = SP[0] | 0;
-        const end = cm.withoutSemicolon(start, SP[1] | 0);
+        const start = SP$.s0 | 0;
+        const end = cm.withoutSemicolon(start, SP$.s1 | 0);
         writeSuppressedNode(start, end, f);
         if (endsBeforeSemicolon(statement)) optionalSemicolon(f);
         return;

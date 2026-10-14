@@ -37,9 +37,10 @@ export function linesBefore(start: number, end: number, f: Formatter): number {
   const cx = cxOf(f);
   let cs = -1;
   let ce = -1;
+  const SP$ = SP;
   if (cx.comments.firstUnprintedSpan()) {
-    cs = SP[0] | 0;
-    ce = SP[1] | 0;
+    cs = SP$.s0 | 0;
+    ce = SP$.s1 | 0;
   }
   return cx.src.getLinesBefore(start, end, cs, ce, !commaEndsTheSearchForLineBreaks(f));
 }
@@ -121,7 +122,7 @@ export function speculateWillBreak(wk: number, h: number, f: Formatter): boolean
   const printed = cm.snapshotPrinted();
   const limit = cm.snapshotLimit();
   nodeSpanOf(wk, h);
-  cm.skipCommentsBefore(SP[0] | 0);
+  cm.skipCommentsBefore(SP.s0 | 0);
   const slot = f.startCapture();
   writeNode(wk, h, f);
   const handle = f.endCapture(slot);

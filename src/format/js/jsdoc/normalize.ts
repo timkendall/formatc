@@ -3,6 +3,7 @@ import { Stack } from "../../../base/stack.ts";
 import { QUOTE_DOUBLE } from "../../options.ts";
 import { codePointAt, codePointBefore, cpLen, isAlphabetic, isUnicodeWhitespace, linesOf, trimUnicodeWhitespace, trimUnicodeWhitespaceEnd, trimUnicodeWhitespaceStart } from "../../../base/ustr.ts";
 import { isAsciiAlphanumeric, isAsciiDigit, parseIndex } from "./text.ts";
+import { Slots1 } from "../../../base/slots.ts";
 
 /** The name that stands for all the names of a tag: `TAGS_SYNONYMS` of prettier-plugin-jsdoc. */
 export function normalizeTagKind(kind: string): string {
@@ -420,14 +421,15 @@ export function normalizeTypeReturn(typeStr: string, quoteStyle: number, stack: 
 }
 
 /** The type without the `=` at its end (into `OPTIONAL_TYPE[0]`: whether there is one). */
-export const OPTIONAL_TYPE = new Int32Array(1);
+export const OPTIONAL_TYPE = new Slots1();
 export function stripOptionalTypeSuffix(typeStr: string): string {
   const trimmed = trimUnicodeWhitespace(typeStr);
-  OPTIONAL_TYPE[0] = 0;
+  const OPTIONAL_TYPE$ = OPTIONAL_TYPE;
+  OPTIONAL_TYPE$.s0 = 0;
   if (hasOptionalSuffix(trimmed)) {
     const inner = trimUnicodeWhitespaceEnd(trimmed.substring(0, trimmed.length - 1));
     if (inner.length > 0) {
-      OPTIONAL_TYPE[0] = 1;
+      OPTIONAL_TYPE$.s0 = 1;
       return inner;
     }
   }

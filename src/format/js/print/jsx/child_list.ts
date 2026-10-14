@@ -358,6 +358,7 @@ function classifyChildren(e: number, f: Formatter): void {
   const CH$ = CH;
   CH$.len = 0;
   jsxChildrenWithWhitespace(e, ROWS$);
+  const SP$ = SP;
   for (let i = 0; i < ROWS$.len; i = i + 3) {
     const kind = ROWS$.data[i] | 0;
     const a = ROWS$.data[i + 1] | 0;
@@ -370,8 +371,8 @@ function classifyChildren(e: number, f: Formatter): void {
     } else if (exprIsJsxText(a)) {
       exprSpan(a);
       CH$.push(CH_TEXT);
-      CH$.push(SP[0] | 0);
-      CH$.push(SP[1] | 0);
+      CH$.push(SP$.s0 | 0);
+      CH$.push(SP$.s1 | 0);
       CH$.push(0);
     } else if (isWhitespaceJsxExpression(a, f)) {
       CH$.push(CH_TEXT);
@@ -402,10 +403,11 @@ function buildChildren(e: number, isMdxBlock: boolean, f: Formatter): void {
   // `<fbt>`: Facebook's translation tag, in which white space is kept as it is.
   const tag = jsxTag(e);
   B$.isFbt = false;
+  const SP$ = SP;
   if (tag >= 0) {
     exprSpan(tag);
-    const ts = SP[0] | 0;
-    const te = SP[1] | 0;
+    const ts = SP$.s0 | 0;
+    const te = SP$.s1 | 0;
     const src = f.source;
     B$.isFbt = te - ts === 3 && (src[ts] | 0) === 102 && (src[ts + 1] | 0) === 98 && (src[ts + 2] | 0) === 116;
   }
@@ -479,6 +481,7 @@ export function formatChildren(e: number, forcedBreak0: boolean, isMdxBlock: boo
 
   // Pass 1: the nodes are formatted, in source order. The last child that is not white space with a line break is `{/* prettier-ignore */}`.
   let isAfterIgnoreComment = false;
+  const SP$ = SP;
   for (let p = 0; p < nParts; p++) {
     const kind = PARTS$.data[pb + 3 * p] | 0;
     const a = PARTS$.data[pb + 3 * p + 1] | 0;
@@ -498,8 +501,8 @@ export function formatChildren(e: number, forcedBreak0: boolean, isMdxBlock: boo
       // For Prettier it is about an element or a fragment. For oxfmt about `{e}` too.
       const isSuppressed = isAfterIgnoreComment && (exprTag(node) === EXPR_JSX || isOxfmt);
       if (!exprJsxContainerSpan(node)) exprSpan(node);
-      const nodeStart = SP[0] | 0;
-      const nodeEnd = SP[1] | 0;
+      const nodeStart = SP$.s0 | 0;
+      const nodeEnd = SP$.s1 | 0;
       isAfterIgnoreComment = exprTag(node) === EXPR_MISSING && cm.isSuppressed(nodeEnd);
       const slot = f.startCapture();
       if (isSuppressed) writeSuppressedNode(nodeStart, nodeEnd, f);

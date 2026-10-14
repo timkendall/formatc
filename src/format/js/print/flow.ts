@@ -363,10 +363,11 @@ const T_DASH = token("-");
 
 /** `static`, `proto`, `readonly`, `+`: as they are written, in the order of the source. */
 function writeModifiers(modsStart: number, modsLen: number, f: Formatter): void {
+  const SP$ = SP;
   for (let i = 0; i < modsLen; i++) {
     modifierTokenSpan(listAt(modsStart, i));
-    const s = SP[0] | 0;
-    const e = SP[1] | 0;
+    const s = SP$.s0 | 0;
+    const e = SP$.s1 | 0;
     f.sourceText(s, e);
     if (e - s > 1) f.space();
   }
@@ -374,19 +375,21 @@ function writeModifiers(modsStart: number, modsLen: number, f: Formatter): void 
 
 /** The `+` or `-` of a property of a class. */
 export function writeVarianceSign(modifiersStart: number, modifiersLen: number, f: Formatter): void {
+  const SP$ = SP;
   for (let i = 0; i < modifiersLen; i++) {
     const m = listAt(modifiersStart, i);
     if ((modifierFlagOf(m) & (FLAG_IN | FLAG_OUT)) !== 0) {
       modifierTokenSpan(m);
-      f.sourceText(SP[0] | 0, SP[1] | 0);
+      f.sourceText(SP$.s0 | 0, SP$.s1 | 0);
     }
   }
 }
 
 function tokenSpanIs(m: number, word: string): boolean {
   modifierTokenSpan(m);
-  const s = SP[0] | 0;
-  const e = SP[1] | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  const e = SP$.s1 | 0;
   if (e - s !== word.length) return false;
   const hir$ = hir;
   for (let i = 0; i < word.length; i++) if ((hir$.text[s + i] | 0) !== word.charCodeAt(i)) return false;
@@ -468,7 +471,7 @@ export function isInterfaceType(ty: number): boolean {
 function keywordOfFunctionType(ty: number, func: number): number {
   // In `hook => void` it is the type of the parameter.
   typeSpan(ty);
-  if (funcOpenParen(func) === (SP[0] | 0)) return 0;
+  if (funcOpenParen(func) === (SP.s0 | 0)) return 0;
   typeFirstToken(ty);
   if (spTokenIs("hook")) return 1;
   if (spTokenIs("component")) return 2;
@@ -825,9 +828,10 @@ export function isComponent(func: number, f: Formatter): boolean {
  */
 export function writeParameterStart(param: number, f: Formatter): boolean {
   const isUnnamed = patTag(paramPat(param)) === PAT_MISSING;
+  const SP$ = SP;
   if (paramModifiersLen(param) === 0 && paramFlowOuterName(param)) {
-    const s = SP[0] | 0;
-    const e = SP[1] | 0;
+    const s = SP$.s0 | 0;
+    const e = SP$.s1 | 0;
     const func = paramFuncOf(param);
     if (func >= 0 && isComponent(func, f)) {
       const first = hir.text[s] | 0;
@@ -868,7 +872,7 @@ export function arrowBehindParameters(func: number): number {
   const ret = funcReturnType(func);
   if (ret < 0) return -1;
   typeAnnotationSpan(ret);
-  return SP[0] | 0;
+  return SP.s0 | 0;
 }
 
 /** Prettier's `isFlowShorthandWithOneArg`: `A => B`, where it is written without a place to break at, and with parentheses only if arrow functions have them. */
@@ -960,10 +964,12 @@ export function writeTypeParameterBound(param: number, bound: number, f: Formatt
 /** `+a?: T`, `...a: T`, `...T`, `...` */
 export function writeTupleElement(element: number, f: Formatter): void {
   const bits = tupleElemFlowVarianceAndLabel(element);
-  const vs = SP[0] | 0;
-  const ve = SP[1] | 0;
-  const labelAtom = FLOW[FLOW_LABEL_ATOM] | 0;
-  const labelPos = FLOW[FLOW_LABEL_POS] | 0;
+  const SP$ = SP;
+  const vs = SP$.s0 | 0;
+  const ve = SP$.s1 | 0;
+  const FLOW$ = FLOW;
+  const labelAtom = FLOW$.s0 | 0;
+  const labelPos = FLOW$.s1 | 0;
   if (tupleElemIsRest(element)) f.token(ELLIPSIS);
   if ((bits & 1) !== 0) {
     f.sourceText(vs, ve);
@@ -983,8 +989,9 @@ export function writeTupleOfUnknownElements(ty: number, elementsStart: number, e
   if (elementsLen !== 1 || !isInexactTuple(elementsStart, elementsLen)) return false;
   const cm = cxOf(f).comments;
   typeSpan(ty);
-  const s = SP[0] | 0;
-  const e = SP[1] | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  const e = SP$.s1 | 0;
   const n = cm.commentsBefore(e);
   const from = cm.from;
   let hasLineComment = false;
@@ -1019,15 +1026,16 @@ export function writeObjectType(ty: number, membersStart: number, membersLen: nu
   if (parens) f.token(LPAREN);
   f.token(exact ? T_LBRACE_PIPE : LBRACE);
   typeSpan(ty);
-  const tyStart = SP[0] | 0;
-  const tyEnd = SP[1] | 0;
+  const SP$ = SP;
+  const tyStart = SP$.s0 | 0;
+  const tyEnd = SP$.s1 | 0;
   const cx = cxOf(f);
   if (membersLen === 0) {
     formatDanglingComments(tyStart, tyEnd, DANGLING_SOFT, f);
   } else {
     const first = listAt(membersStart, 0);
     memberSpan(first);
-    const firstStart = SP[0] | 0;
+    const firstStart = SP$.s0 | 0;
     if (isInexactMark(first) && cx.comments.hasCommentBefore(firstStart)) {
       // Prettier has no node for the `...`: the comments dangle.
       const cm = cx.comments;
@@ -1314,15 +1322,16 @@ function writeDeclaredClassOrRecord(cls: number, isRecordClass: boolean, f: Form
   let bodyStart = 0;
   let bodyEnd = 0;
   const hir$ = hir;
+  const SP$ = SP;
   if (mixinsLen > 0 && implLen === 0) {
     typeSpan(listAt(mixinsStart, mixinsLen - 1));
-    bodyStart = skipTrivia(hir$.text, hir$.sourceLen | 0, SP[1] | 0);
+    bodyStart = skipTrivia(hir$.text, hir$.sourceLen | 0, SP$.s1 | 0);
     classSpan(cls);
-    bodyEnd = SP[1] | 0;
+    bodyEnd = SP$.s1 | 0;
   } else {
     classBodySpan(cls);
-    bodyStart = SP[0] | 0;
-    bodyEnd = SP[1] | 0;
+    bodyStart = SP$.s0 | 0;
+    bodyEnd = SP$.s1 | 0;
   }
   if (classMembersLen(cls) === 0) {
     f.token(LBRACE);
@@ -1444,7 +1453,7 @@ export function writeComponentOrKeyword(func: number, f: Formatter): string {
     }
     // Those before the `;` trail the return type.
     if (!cx.isQuiet && stmtSemicolon(statement)) {
-      const n = cx.comments.commentsBefore(SP[0] | 0);
+      const n = cx.comments.commentsBefore(SP.s0 | 0);
       formatTrailingCommentsRange(cx.comments.from, (cx.comments.from + n) | 0, f);
     }
     optionalSemicolon(f);
@@ -1469,9 +1478,10 @@ function typeTypeofExprOf(ty: number): number {
 
 /** `of string `, after the name of an enum. */
 export function writeExplicitTypeOfEnum(declaration: number, f: Formatter): void {
+  const SP$ = SP;
   if (enumFlowExplicitType(declaration)) {
     f.token(T_OF_SPACE);
-    f.sourceText(SP[0] | 0, SP[1] | 0);
+    f.sourceText(SP$.s0 | 0, SP$.s1 | 0);
     f.space();
   }
 }
@@ -1487,11 +1497,11 @@ export function isUnknownMembersMark(member: number): boolean {
 import { enumMemberSpan } from "../../../lint/ast/index.ts";
 function enumMemberStartOf(member: number): number {
   enumMemberSpan(member);
-  return SP[0] | 0;
+  return SP.s0 | 0;
 }
 function enumMemberEndOf(member: number): number {
   enumMemberSpan(member);
-  return SP[1] | 0;
+  return SP.s1 | 0;
 }
 
 /** `typeof ` or `type `: how the import, or the specifier, that starts at `start` after its `import` is written. */
@@ -1595,7 +1605,7 @@ function hirNodeOfExpr(e: number): number {
 export function writeMatchStatement(statement: number, head: number, casesStart: number, casesLen: number, f: Formatter): boolean {
   const headCall = exprAsCall(head);
   stmtSpan(statement);
-  const stmtStart = SP[0] | 0;
+  const stmtStart = SP.s0 | 0;
   if (headCall < 0 || exprStart(head) !== stmtStart) return false;
   const headEnd = exprEnd(head);
   const hir$ = hir;
@@ -1607,14 +1617,15 @@ export function writeMatchStatement(statement: number, head: number, casesStart:
 /** Writes the cases of a match. `mode` 1: the properties of the object `a`; 2: the cases `b ..` (`c`) of the statement `a`. */
 function writeMatchCases(mode: number, a: number, b: number, c: number, f: Formatter): void {
   let has = false;
+  const SP$ = SP;
   if (mode === 1) {
     const s = exprObjectPropsStart(a);
     const n = exprObjectPropsLen(a);
     for (let i = 0; i < n; i++) {
       const prop = listAt(s, i);
       propSpan(prop);
-      const ps = SP[0] | 0;
-      const pe = SP[1] | 0;
+      const ps = SP$.s0 | 0;
+      const pe = SP$.s1 | 0;
       if (has) joinNodesSeparator(f, JOIN_HARDLINE, ps, pe);
       has = true;
       formatNodeWith(ps, pe, PK_PARENT, mkAn(AN_OBJECT_EXPRESSION, a), BK_MATCH_EXPR_CASE, prop, 0, 0, f);
@@ -1623,8 +1634,8 @@ function writeMatchCases(mode: number, a: number, b: number, c: number, f: Forma
     for (let i = 0; i < c; i++) {
       const cs = listAt(b, i);
       caseSpan(cs);
-      const s = SP[0] | 0;
-      const e = SP[1] | 0;
+      const s = SP$.s0 | 0;
+      const e = SP$.s1 | 0;
       if (has) joinNodesSeparator(f, JOIN_HARDLINE, s, e);
       has = true;
       formatNodeWith(s, e, PK_PARENT, mkAn(AN_SWITCH_STATEMENT, a), BK_MATCH_STMT_CASE, cs, 0, 0, f);
@@ -1663,11 +1674,12 @@ function writeMatchStatementCase(cs: number, f: Formatter): void {
   const n = caseBodyLen(cs);
   let isEmpty = false;
   let body = -1;
+  const SP$ = SP;
   if (n > 0) {
     body = listAt(caseBodyStart(cs), 0);
     stmtSpan(body);
-    const bs = SP[0] | 0;
-    const be = SP[1] | 0;
+    const bs = SP$.s0 | 0;
+    const be = SP$.s1 | 0;
     isEmpty = stmtTag(body) === STMT_BLOCK_TAG && !stmtIsWithBlock(body) && blockLen(body) === 0 && !cxOf(f).comments.hasCommentInRange(bs, be);
   }
   if (isEmpty) f.token(T_ARROW_EMPTY);
@@ -1693,6 +1705,7 @@ function fmtStmtForMatch(s: number, f: Formatter): void {
 /** `pattern`, `pattern if (guard)`, which is a `&&` in the tree. */
 function writeMatchPatternAndGuard(pattern: number, f: Formatter): void {
   if (pattern < 0) return;
+  const SP$ = SP;
   if (exprTag(pattern) === EXPR_BINARY && exprBinaryOp(pattern) === BIN_AND) {
     const left = exprBinaryLeft(pattern);
     const right = exprBinaryRight(pattern);
@@ -1703,7 +1716,7 @@ function writeMatchPatternAndGuard(pattern: number, f: Formatter): void {
     f.softLineBreakOrSpace();
     f.token(T_IF_OPEN);
     exprSpan(right);
-    formatNodeWith(SP[0] | 0, SP[1] | 0, PK_PARENT, exprAstParent(right), BK_GUARD, right, 0, 0, f);
+    formatNodeWith(SP$.s0 | 0, SP$.s1 | 0, PK_PARENT, exprAstParent(right), BK_GUARD, right, 0, 0, f);
     f.token(RPAREN);
     f.endIndent();
     f.endGroup();
@@ -1768,16 +1781,18 @@ function writeMatchPattern(pattern: number, parent: number, count: number, f: Fo
     tag === EXPR_SPREAD ||
     (tag === EXPR_UNARY && exprUnaryOpOf(pattern) === UN_VOID)
   );
+  const SP$ = SP;
   if (isLeaf) fmtExpr(pattern, f);
   else {
     exprSpan(pattern);
-    formatNodeWith(SP[0] | 0, SP[1] | 0, PK_PARENT, exprAstParent(pattern), BK_PATTERN_PARTS, pattern, parent, count, f);
+    formatNodeWith(SP$.s0 | 0, SP$.s1 | 0, PK_PARENT, exprAstParent(pattern), BK_PATTERN_PARTS, pattern, parent, count, f);
   }
   f.stack.leave();
 }
 
 function writeMatchPatternThatHasParts(pattern: number, parent: number, count: number, f: Formatter): void {
   const tag = exprTag(pattern);
+  const SP$ = SP;
   if (tag === EXPR_BINARY && exprBinaryOp(pattern) === BIN_BIT_OR) {
     writeMatchOrPattern(pattern, parent, count, f);
   } else if (tag === EXPR_BINARY) {
@@ -1832,7 +1847,7 @@ function writeMatchPatternThatHasParts(pattern: number, parent: number, count: n
       }
       const prop = listAt(s, i);
       propSpan(prop);
-      formatNodeWith(SP[0] | 0, SP[1] | 0, PK_PARENT, mkAn(AN_OBJECT_EXPRESSION, pattern), BK_OBJECT_PATTERN_PROPERTY, prop, 0, 0, f);
+      formatNodeWith(SP$.s0 | 0, SP$.s1 | 0, PK_PARENT, mkAn(AN_OBJECT_EXPRESSION, pattern), BK_OBJECT_PATTERN_PROPERTY, prop, 0, 0, f);
     }
     if (!hasRest) f.tokenIfBreaks(COMMA);
     f.endSoftBlockIndent();
@@ -1856,8 +1871,9 @@ function writeMatchObjectPatternProperty(property: number, f: Formatter): void {
     return;
   }
   keySpan(owner);
-  const s = SP[0] | 0;
-  const e = SP[1] | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  const e = SP$.s1 | 0;
   f.startGroup();
   if (keyKind(owner) === KEY_STRING) fmtStringLiteral(s, e, mkAn(AN_OBJECT_PROPERTY, property), f);
   else f.sourceText(s, e);
@@ -1897,8 +1913,9 @@ function writeMatchOrPattern(pattern: number, parent: number, count: number, f: 
   const end = alternativesScratch$.len;
   const cx = cxOf(f);
   exprSpan(pattern);
-  const ps = SP[0] | 0;
-  const pe = SP[1] | 0;
+  const SP$ = SP;
+  const ps = SP$.s0 | 0;
+  const pe = SP$.s1 | 0;
   // Prettier's `shouldHugMatchOrPattern`: one object pattern among simple ones.
   let objects = 0;
   let allSimple = true;
@@ -2002,11 +2019,12 @@ function writeRecordBody(cls: number, f: Formatter): void {
   f.token(LBRACE);
   f.startBlockIndent();
   let has = false;
+  const SP$ = SP;
   for (let i = 0; i < n; i++) {
     const m = listAt(s, i);
     memberSpan(m);
-    const ms = SP[0] | 0;
-    const me = SP[1] | 0;
+    const ms = SP$.s0 | 0;
+    const me = SP$.s1 | 0;
     if (has) joinNodesSeparator(f, JOIN_HARDLINE, ms, me);
     has = true;
     if (memberKind(m) === MEMBER_PROPERTY) {

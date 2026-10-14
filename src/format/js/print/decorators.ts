@@ -66,6 +66,7 @@ export function fmtDecorators(modsStart: number, modsLen: number, parent: number
     if (modifierDecorator(listAt(modsStart, i)) >= 0) count = (count + 1) | 0;
   }
   if (count === 0) return;
+  const SP$ = SP;
   switch (anTag(parent)) {
     case AN_PROPERTY_DEFINITION:
     case AN_METHOD_DEFINITION:
@@ -79,7 +80,7 @@ export function fmtDecorators(modsStart: number, modsLen: number, parent: number
         if (has) {
           if (keeps) {
             anSpan(mkAn(AN_DECORATOR, d));
-            joinNodesSeparator(f, JOIN_SOFT_LINE, SP[0] | 0, SP[1] | 0);
+            joinNodesSeparator(f, JOIN_SOFT_LINE, SP$.s0 | 0, SP$.s1 | 0);
           } else f.softLineBreakOrSpace();
         }
         has = true;
@@ -138,8 +139,9 @@ export function fmtDecorator(expression: number, f: Formatter): void {
   const cx = cxOf(f);
   const node = mkAn(AN_DECORATOR, expression);
   anSpan(node);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   // format_node(span, || node.parent(), f, |f| { .. })
   if (cx.isQuiet) {
     writeDecoratorBody(expression, f);

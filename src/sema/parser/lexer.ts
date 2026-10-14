@@ -231,6 +231,9 @@ export class Lexer {
   isBabel: boolean = false;
   /** `Dialect::oxc` */
   isOxc: boolean = false;
+  /** Where each `\` of an escape in a name is (`lint/ast` `unicodeEscapes`); not sorted when `idEscapesUnsorted` (a re-scan). */
+  idEscapes: I32Vec = new I32Vec(16);
+  idEscapesUnsorted: boolean = false;
   /** Where the first `<!--` is that was read as a `<`, outside a script (-1: none). */
   htmlOpensFirst: number = -1;
   /** The first of those that nothing but blanks and comments precedes on its line (-1: none). */
@@ -309,6 +312,8 @@ export class Lexer {
     this.htmlOpensFirst = -1;
     this.htmlOpensFirstOnItsLine = -1;
     this.privateNames.reset();
+    this.idEscapes.reset();
+    this.idEscapesUnsorted = false;
     this.commentDirectives.reset();
     this.leadingComments.reset();
     this.comments.reset();
@@ -801,7 +806,7 @@ export class Lexer {
       return;
     }
     const len = decode(this.src, pos, this.len);
-    if (len > 0 && (DEC[0] | 0) !== 0xfffd) {
+    if (len > 0 && (DEC.s0 | 0) !== 0xfffd) {
       this.report(1127, pos, (((pos | 0) + (len | 0)) | 0));
       this.set(T_INVALID, pos, (((pos | 0) + (len | 0)) | 0));
     } else {
@@ -894,7 +899,7 @@ export class Lexer {
       this.invalidCharacter(R_NOT_UTF8, pos);
       return -1;
     }
-    const c = DEC[0] | 0;
+    const c = DEC.s0 | 0;
     if (c === 0x2028 || c === 0x2029) {
       this.newlineBefore = true;
     } else if (!isWhiteSpaceSingleLine(c)) {
@@ -942,7 +947,7 @@ export class Lexer {
     if (pos < 2) return false;
     const len = decodeLast(this.src, pos - 2);
     if (len === 0) return false;
-    const c = DEC[0] | 0;
+    const c = DEC.s0 | 0;
     return c === 0x0a || c === 0x0d || c === 0x2028 || c === 0x2029;
   }
 
@@ -1059,6 +1064,7 @@ export class Lexer {
     // The text of a private name has the `#`.
     const isPrivate = at(this.src, n, start) === 35;
     const privateLen = isPrivate ? 1 : 0;
+    const DEC$ = DEC;
     while (true) {
       // `scanIdentifierParts`: with `recovers` the name ends before what is no part of it.
       let c = 0;
@@ -1068,6 +1074,7 @@ export class Lexer {
       const b = this.src[pos] | 0;
       if (b === 92) {
         isEscape = true;
+        this.noteIdEscape(pos);
         if (this.unicodeEscape((((pos | 0) + 1) | 0))) {
           c = ESC[0] | 0;
           len = ((ESC[1] | 0) - pos) | 0;
@@ -1083,7 +1090,7 @@ export class Lexer {
           this.refuse(R_NOT_UTF8);
           return;
         }
-        c = DEC[0] | 0;
+        c = DEC$.s0 | 0;
       }
       let belongs = false;
       if (text.len === privateLen) {
@@ -1141,6 +1148,18 @@ export class Lexer {
       }
     }
     this.set(kind, start, pos);
+  }
+
+  /** The `\` of an escape in a name is at `pos`. */
+  private noteIdEscape(pos: number): void {
+    const v = this.idEscapes;
+    const k = v.len;
+    if (k > 0) {
+      const last = v.data[k - 1] | 0;
+      if (pos === last) return;
+      if (pos < last) this.idEscapesUnsorted = true;
+    }
+    v.push(pos);
   }
 
   /** `u1234` or `u{1234}` at `pos` (the `u`): on success the code point is `ESC[0]` and the end `ESC[1]`. */
@@ -1412,7 +1431,7 @@ export class Lexer {
     } else if (c >= 0x80) {
       const len = decode(this.src, (((pos | 0) + 1) | 0), n);
       if (len === 0) return this.escapedByte(pos, text);
-      const cp = DEC[0] | 0;
+      const cp = DEC.s0 | 0;
       if (cp !== 0x2028 && cp !== 0x2029) text.append(this.src, (((pos | 0) + 1) | 0), (pos + 1 + len) | 0);
       return (pos + 1 + len) | 0;
     }
@@ -1812,7 +1831,7 @@ export class Lexer {
     if (c < 0x80) return (NAME_BYTE[c] | 0) !== 0 || c === 92;
     const len = decode(this.src, pos, n);
     if (len === 0) return true;
-    return isIdentifierPart(DEC[0] | 0);
+    return isIdentifierPart(DEC.s0 | 0);
   }
 
   /** The text src[start,end) without `_`, as a JS number (decimal). */
@@ -2000,17 +2019,19 @@ export class Lexer {
   private endOfIdentifierParts(pos0: number): number {
     const n = this.len;
     let pos = pos0 | 0;
+    const DEC$ = DEC;
     while (true) {
       let len = 0;
       let c = 0;
       if (at(this.src, n, pos) === 92) {
+        this.noteIdEscape(pos);
         if (this.unicodeEscape((((pos | 0) + 1) | 0))) {
           c = ESC[0] | 0;
           len = ((ESC[1] | 0) - pos) | 0;
         }
       } else {
         len = decode(this.src, pos, n);
-        if (len > 0) c = DEC[0] | 0;
+        if (len > 0) c = DEC$.s0 | 0;
       }
       if (len > 0 && isIdentifierPart(c)) pos = (((pos | 0) + (len | 0)) | 0);
       else return pos;
@@ -2151,7 +2172,7 @@ export class Lexer {
       end = (((end | 0) + 1) | 0);
     }
     const flen = decode(this.src, end, n);
-    const isBeforeName = flen > 0 && isIdentifierStart(DEC[0] | 0);
+    const isBeforeName = flen > 0 && isIdentifierStart(DEC.s0 | 0);
     if (!isBeforeName) {
       this.tmpToken = token;
       return end;
@@ -2245,6 +2266,7 @@ export class Lexer {
     }
     pos = (((pos | 0) + 1) | 0);
     // The flags: whatever can be part of a name.
+    const DEC$ = DEC;
     while (pos < n) {
       const c = this.src[pos] | 0;
       if ((NAME_BYTE[c] | 0) !== 0) {
@@ -2256,7 +2278,7 @@ export class Lexer {
           this.refuse(R_NOT_UTF8);
           return;
         }
-        if (isIdentifierPart(DEC[0] | 0)) pos = (((pos | 0) + (len | 0)) | 0);
+        if (isIdentifierPart(DEC$.s0 | 0)) pos = (((pos | 0) + (len | 0)) | 0);
         else break;
       } else break;
     }
@@ -2299,9 +2321,10 @@ export class Lexer {
       else if (c === 41 || c === 93 || c === 125) break;
     }
     // "Whitespaces and semicolons at the end are not likely to be part of the regex"
+    const DEC$ = DEC;
     while (end > start + 1) {
       const len = decodeLast(this.src, end);
-      if (len > 0 && (isWhiteSpaceLike(DEC[0] | 0) || (DEC[0] | 0) === 59)) end = (((end | 0) - (len | 0)) | 0);
+      if (len > 0 && (isWhiteSpaceLike(DEC$.s0 | 0) || (DEC$.s0 | 0) === 59)) end = (((end | 0) - (len | 0)) | 0);
       else break;
     }
     this.report(1161, start, end);
@@ -2422,9 +2445,10 @@ export class Lexer {
   /** `ScanJsxAttributeValue`: whether `Scan` scans the string at `start`, after a comment. */
   private isStringOfJavascript(before: number, start: number): boolean {
     let pos = before;
+    const DEC$ = DEC;
     while (pos < start) {
       const len = decode(this.src, pos, start);
-      if (len > 0 && isWhiteSpaceLike(DEC[0] | 0)) pos = (((pos | 0) + (len | 0)) | 0);
+      if (len > 0 && isWhiteSpaceLike(DEC$.s0 | 0)) pos = (((pos | 0) + (len | 0)) | 0);
       else break;
     }
     if ((pos < start && !this.skipsCommentsBeforeJsxStrings()) || (before < start && this.scansJsxStringsAsTypescript5())) {
@@ -2596,6 +2620,7 @@ export function fixWhitespaceAndDecodeJsxEntities(text: Uint8Array, start: numbe
   // The blanks at the start of the first line stay.
   let first = start;
   let p = start;
+  const DEC$ = DEC;
   while (p < end) {
     const b = text[p] | 0;
     let len = 1;
@@ -2608,7 +2633,7 @@ export function fixWhitespaceAndDecodeJsxEntities(text: Uint8Array, start: numbe
     } else {
       len = decode(text, p, end);
       if (len === 0) len = 1;
-      const c = len === 1 ? b : DEC[0] | 0;
+      const c = len === 1 ? b : DEC$.s0 | 0;
       isLineBreak = isJsLineTerminator(c);
       isBlank = isWhiteSpaceSingleLine(c);
     }

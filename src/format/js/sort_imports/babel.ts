@@ -214,11 +214,13 @@ export class Specifier {
   }
   importedSpan(): Span {
     identSpan(this.importedAtom, this.importedPos);
-    return new Span(SP[0] | 0, SP[1] | 0);
+    const SP$ = SP;
+    return new Span(SP$.s0 | 0, SP$.s1 | 0);
   }
   localSpan(): Span {
     identSpan(this.localAtom, this.localPos);
-    return new Span(SP[0] | 0, SP[1] | 0);
+    const SP$ = SP;
+    return new Span(SP$.s0 | 0, SP$.s1 | 0);
   }
   isRenamed(): boolean {
     const a = this.importedSpan();
@@ -407,7 +409,7 @@ export class Model {
     const hir$ = hir;
     const model = new Model(hir$.text.subarray(0, hir$.sourceLen | 0));
     stmtSpan(lastImport);
-    model.collectComments(SP[1] | 0);
+    model.collectComments(SP.s1 | 0);
     model.collectStatements();
     return model;
   }
@@ -560,7 +562,8 @@ export class Model {
         }
       }
     }
-    if (importSpecSpanOf(imp)) return new Span(SP[0] | 0, SP[1] | 0);
+    const SP$ = SP;
+    if (importSpecSpanOf(imp)) return new Span(SP$.s0 | 0, SP$.s1 | 0);
     return new Span(0, 0);
   }
 
@@ -653,11 +656,12 @@ export class Model {
     const n = fileBodyLen();
     const bs = fileBodyStart();
     const NO_LIST$ = NO_LIST;
+    const SP$ = SP;
     for (let i = 0; i < n; i++) {
       const statement = listAt(bs, i);
       stmtSpan(statement);
-      const spanStart = SP[0] | 0;
-      const spanEnd = SP[1] | 0;
+      const spanStart = SP$.s0 | 0;
+      const spanEnd = SP$.s1 | 0;
       const group = this.nextGroupBefore(spanStart);
       const start = group === null ? skipWhitespace(this.text, previousEnd) : group.end;
       const between = group === null ? NO_LIST$ : this.newRange(group.first, group.after);
@@ -674,7 +678,7 @@ export class Model {
       if (tag === STMT_EXPR && isInPrologue) {
         const index = this.directives.length;
         exprSpan(stmtExprExpr(statement));
-        this.directives.push(new Directive(spanStart, spanEnd, SP[0] | 0, SP[1] | 0));
+        this.directives.push(new Directive(spanStart, spanEnd, SP$.s0 | 0, SP$.s1 | 0));
         this.attach(mkNode(N_DIRECTIVE, index), WHICH_LEADING, between);
         while (true) {
           const g = this.nextGroupBefore(spanEnd);
@@ -707,19 +711,20 @@ export class Model {
 
   addDeclaration(statement: number, imp: number): number {
     stmtSpan(statement);
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const SP$ = SP;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     const index = this.declarations.length;
     const first = this.orders.length;
     const d = importDefault(imp);
     if (d >= 0) {
       const pos = importDefaultPos(imp);
       identSpan(d, pos);
-      this.addSpecifier(SPEC_DEFAULT, false, d, pos, d, pos, SP[0] | 0, SP[1] | 0);
+      this.addSpecifier(SPEC_DEFAULT, false, d, pos, d, pos, SP$.s0 | 0, SP$.s1 | 0);
     }
     const ns = importNamespace(imp);
     if (ns >= 0 && importNamespaceSpan(imp)) {
-      this.addSpecifier(SPEC_NAMESPACE, false, ns, importNamespacePos(imp), ns, importNamespacePos(imp), SP[0] | 0, SP[1] | 0);
+      this.addSpecifier(SPEC_NAMESPACE, false, ns, importNamespacePos(imp), ns, importNamespacePos(imp), SP$.s0 | 0, SP$.s1 | 0);
     }
     const len = importNamedLen(imp);
     const ns0 = importNamedStart(imp);
@@ -733,8 +738,8 @@ export class Model {
         importSpecImportedPos(named),
         importSpecLocal(named),
         importSpecLocalPos(named),
-        SP[0] | 0,
-        SP[1] | 0,
+        SP$.s0 | 0,
+        SP$.s1 | 0,
       );
     }
     const declaration = new Declaration(imp);
@@ -802,14 +807,15 @@ export class Model {
     const sourceEnd = declaration.sourceEnd;
     isAttached = this.attachIfAdjacent(mkNode(N_SOURCE, sourceStart), sourceStart, sourceEnd, group, list) || isAttached;
     const row = importAttributes(declaration.import);
+    const SP$ = SP;
     if (row >= 0) {
       const entries = importAttributesEntriesLen(row);
       const es = importAttributesEntriesStart(row);
       for (let k = 0; k < entries; k++) {
         const attribute = listAt(es, k);
         propSpan(attribute);
-        const aStart = SP[0] | 0;
-        const aEnd = SP[1] | 0;
+        const aStart = SP$.s0 | 0;
+        const aEnd = SP$.s1 | 0;
         const isIn = group.start > aStart && group.end < aEnd;
         if (!isIn) {
           isAttached = this.attachIfAdjacent(mkNode(N_ATTRIBUTE, aStart), aStart, aEnd, group, list) || isAttached;
@@ -820,7 +826,7 @@ export class Model {
         let value: Span | null = null;
         if (v >= 0) {
           exprSpan(v);
-          value = new Span(SP[0] | 0, SP[1] | 0);
+          value = new Span(SP$.s0 | 0, SP$.s1 | 0);
         }
         let a = false;
         if (key !== null) a = this.attachIfAdjacent(mkNode(N_ATTRIBUTE_KEY, aStart), key.start, key.end, group, list);
@@ -845,6 +851,7 @@ export class Model {
   span(node: number): Span | null {
     const kind = nodeKindOf(node);
     const payload = nodePayload(node);
+    const SP$ = SP;
     switch (kind) {
       case N_INTERPRETER:
         return this.interpreter === null ? null : new Span(this.interpreter.start, this.interpreter.end);
@@ -874,7 +881,7 @@ export class Model {
         const p = this.attributeAt(payload);
         if (p < 0) return null;
         propSpan(p);
-        return new Span(SP[0] | 0, SP[1] | 0);
+        return new Span(SP$.s0 | 0, SP$.s1 | 0);
       }
       case N_ATTRIBUTE_KEY: {
         const p = this.attributeAt(payload);
@@ -886,7 +893,7 @@ export class Model {
         const v = propValue(p);
         if (v < 0) return null;
         exprSpan(v);
-        return new Span(SP[0] | 0, SP[1] | 0);
+        return new Span(SP$.s0 | 0, SP$.s1 | 0);
       }
       default:
         return null;
@@ -907,6 +914,7 @@ export class Model {
 
   /** The attribute (a Prop) that starts at `start`, or -1. */
   attributeAt(start: number): number {
+    const SP$ = SP;
     for (let i = 0; i < this.declarations.length; i++) {
       const d = this.declarations[i] as Declaration;
       if (!(d.hasSpan && d.start <= start && start < d.end)) continue;
@@ -917,7 +925,7 @@ export class Model {
       for (let k = 0; k < entries; k++) {
         const p = listAt(es, k);
         propSpan(p);
-        if ((SP[0] | 0) === start) return p;
+        if ((SP$.s0 | 0) === start) return p;
       }
       return -1;
     }
@@ -931,5 +939,6 @@ export function attributeKeySpan(attribute: number): Span | null {
   const kind = keyKind(owner);
   if (kind !== KEY_STRING && kind !== KEY_IDENT) return null;
   if (!keySpan(owner)) return null;
-  return new Span(SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  return new Span(SP$.s0 | 0, SP$.s1 | 0);
 }

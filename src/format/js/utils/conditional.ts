@@ -288,7 +288,7 @@ function formatTest(kind: number, h: number, layout: number, f: Formatter): void
     // The comments before it are not aligned.
     const cm = cxOf(f).comments;
     conditionalSpan(kind, h);
-    cm.commentsBefore(SP[0] | 0);
+    cm.commentsBefore(SP.s0 | 0);
     formatLeadingCommentsRange(cm.from, cm.to, f);
     f.startAlign(2);
   }
@@ -334,9 +334,10 @@ function formatConsequentAndAlternate(kind: number, h: number, f: Formatter): vo
   else f.startIndent();
   fmtNodeWithoutTrailingComments(wk, consequent, f);
   operandSpan(isType, consequent);
-  const consequentEnd = SP[1] | 0;
+  const SP$ = SP;
+  const consequentEnd = SP$.s1 | 0;
   operandSpan(isType, alternate);
-  formatOperandTrailingComments(consequentEnd, SP[0] | 0, 58, f);
+  formatOperandTrailingComments(consequentEnd, SP$.s0 | 0, 58, f);
   if (isSpace) f.endAlign(2);
   else f.endIndent();
   if (isNestedConsequent) {

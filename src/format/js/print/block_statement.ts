@@ -28,21 +28,22 @@ export function writeBlockStatement(statement: number, bodyStart: number, bodyLe
 
   // See `write_catch_clause`.
   let commentsBeforeCatchClause = -1;
+  const SP$ = SP;
   if (cx.hasCachedElements()) {
     const parent = stmtParent(statement);
     if (nodeKind(parent) === N_STMT && stmtTag(nodeId(parent)) === STMT_TRY) {
       const an = stmtAstParent(statement);
       if (anTag(an) === AN_CATCH_CLAUSE) {
         anSpan(an);
-        commentsBeforeCatchClause = cx.getCachedElement(SP[0] | 0, SP[1] | 0);
+        commentsBeforeCatchClause = cx.getCachedElement(SP$.s0 | 0, SP$.s1 | 0);
       }
     }
   }
 
   if (isEmptyBlock(bodyStart, bodyLen)) {
     stmtSpan(statement);
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     // `try // comment\n{}`: the comments before the block that are not written yet are written in it.
     if (commentsBeforeCatchClause >= 0 || cx.comments.hasCommentBefore(end)) {
       f.startBlockIndent();

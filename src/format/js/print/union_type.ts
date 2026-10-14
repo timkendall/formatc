@@ -109,8 +109,9 @@ export function writeTsUnionTypeIn(ty: number, typesStart: number, typesLen: num
   const aboutAll = prettierIgnoreBeforeUnionIsAboutAllOfIt(f);
   const isSuppressed = aboutAll ? !unionPrintsItself(ty, f) || followsPrintedSuppressionComment(ty, f) : suppression >= 0 && !cm.precededByNewline(suppression);
   typeSpan(ty);
-  const tyStart = SP[0] | 0;
-  const tyEnd = SP[1] | 0;
+  const SP$ = SP;
+  const tyStart = SP$.s0 | 0;
+  const tyEnd = SP$.s1 | 0;
   if (isSuppressed) {
     formatLeadingCommentsRange(leadingFrom, leadingTo, f);
     writeSuppressedNode(tyStart, tyEnd, f);
@@ -186,7 +187,7 @@ export function writeTsUnionTypeIn(ty: number, typesStart: number, typesLen: num
   let isAfterLineBreak = false;
   if (f.options.experimentalTernaries && parentTag === AN_TS_CONDITIONAL_TYPE) {
     typeSpan(typeCondExtends(anId(parent)));
-    isAfterLineBreak = (SP[0] | 0) <= tyStart && tyEnd <= (SP[1] | 0);
+    isAfterLineBreak = (SP$.s0 | 0) <= tyStart && tyEnd <= (SP$.s1 | 0);
   }
   f.startGroup();
   f.startIndent();
@@ -241,7 +242,7 @@ function followsPrintedSuppressionComment(ty: number, f: Formatter): boolean {
   const cm = cxOf(f).comments;
   if (!cm.hasSuppressionComments) return false;
   typeSpan(ty);
-  let end = SP[0] | 0;
+  let end = SP.s0 | 0;
   const src = cm.source;
   for (let i = cm.printedCount - 1; i >= 0; i--) {
     const isAdjacent = !cm.isMoved(i) && (cm.spanEnd[i] | 0) <= end && src.allBytes(cm.spanEnd[i] | 0, end, BT_WS_OPEN_PAREN);
@@ -274,9 +275,10 @@ function isBranchOfConditionalType(parent: number, tyStart: number, tyEnd: numbe
   if (anTag(parent) !== AN_TS_CONDITIONAL_TYPE) return false;
   const cond = anId(parent);
   typeSpan(typeCondYes(cond));
-  if ((SP[0] | 0) <= tyStart && tyEnd <= (SP[1] | 0)) return true;
+  const SP$ = SP;
+  if ((SP$.s0 | 0) <= tyStart && tyEnd <= (SP$.s1 | 0)) return true;
   typeSpan(typeCondNo(cond));
-  return (SP[0] | 0) <= tyStart && tyEnd <= (SP[1] | 0);
+  return (SP$.s0 | 0) <= tyStart && tyEnd <= (SP$.s1 | 0);
 }
 
 /**
@@ -294,8 +296,9 @@ function writeUnionOnePerLine(
   const cx = cxOf(f);
   const cm = cx.comments;
   typeSpan(ty);
-  const tyStart = SP[0] | 0;
-  const tyEnd = SP[1] | 0;
+  const SP$ = SP;
+  const tyStart = SP$.s0 | 0;
+  const tyEnd = SP$.s1 | 0;
   let leadingFrom = 0;
   let leadingTo = 0;
   if (!cx.isQuiet) {
@@ -437,7 +440,7 @@ export function typeAliasUnionBreaksAfterOperator(statement: number, leadingFrom
   if (stmtTag(statement) !== STMT_TYPE_ALIAS) return false;
   const alias = stmtTypeAliasAlias(statement);
   let leftEnd = 0;
-  if (typeParamListAngleBrackets(aliasTypeParamsStart(alias), aliasTypeParamsLen(alias))) leftEnd = SP[1] | 0;
+  if (typeParamListAngleBrackets(aliasTypeParamsStart(alias), aliasTypeParamsLen(alias))) leftEnd = SP.s1 | 0;
   else leftEnd = identEndOf(aliasName(alias), aliasNamePos(alias));
   const cm = cxOf(f).comments;
   for (let i = leadingFrom; i < leadingTo; i++) {
@@ -456,19 +459,21 @@ export function unionPrintsItself(ty: number, f: Formatter): boolean {
   const cx = cxOf(f);
   if (cx.isQuiet) return true;
   typeSpan(ty);
-  return !(cx.comments.isSuppressed(SP[0] | 0) || cx.comments.hasTrailingSuppressionComment(SP[1] | 0));
+  const SP$ = SP;
+  return !(cx.comments.isSuppressed(SP$.s0 | 0) || cx.comments.hasTrailingSuppressionComment(SP$.s1 | 0));
 }
 
 /** Prettier's `shouldIndentUnionType`. */
 function shouldIndentUnionType(ty: number, parent: number): boolean {
+  const SP$ = SP;
   switch (anTag(parent)) {
     case AN_TS_TYPE_ASSERTION:
     case AN_TS_TUPLE_TYPE:
       return false;
     case AN_TS_CONDITIONAL_TYPE: {
       typeSpan(ty);
-      const tyStart = SP[0] | 0;
-      const tyEnd = SP[1] | 0;
+      const tyStart = SP$.s0 | 0;
+      const tyEnd = SP$.s1 | 0;
       return !isBranchOfConditionalType(parent, tyStart, tyEnd);
     }
     default:
@@ -497,6 +502,7 @@ function writeMembers(ty: number, typesStart: number, typesLen: number, parent: 
   let isSuppressed = isFirstTypeSuppressed;
   const oneEndsItsLine = prettierIgnoreBehindTypeEndsItsLine(f);
   const breaksOnePerLine = unionBreaksOnePerLine(f);
+  const SP$ = SP;
   for (let index = 0; index < typesLen; index++) {
     const member = listAt(typesStart, index);
     const next = index + 1 < typesLen ? listAt(typesStart, index + 1) : -1;
@@ -515,9 +521,9 @@ function writeMembers(ty: number, typesStart: number, typesLen: number, parent: 
     }
     if (!isMemberSuppressed && !oneEndsItsLine && next >= 0) {
       typeSpan(member);
-      const memberEnd = SP[1] | 0;
+      const memberEnd = SP$.s1 | 0;
       typeSpan(next);
-      const nextStart = SP[0] | 0;
+      const nextStart = SP$.s0 | 0;
       cm.commentsIn(memberEnd, nextStart);
       const from = cm.from;
       const to = cm.to;
@@ -579,7 +585,7 @@ function writeTrailingOfMember(ty: number, parent: number, next: number, f: Form
   } else {
     // `A | (B /* comment */)`
     typeSpan(ty);
-    cm.commentsBefore(SP[1] | 0);
+    cm.commentsBefore(SP.s1 | 0);
     formatTrailingCommentsRange(cm.from, cm.to, f);
     const t = commentsAfterLastMember(ty, parent, f);
     formatTrailingCommentsRange(cm.from, t, f);
@@ -609,8 +615,9 @@ function commentsAfterLastMember(ty: number, parent: number, f: Formatter): numb
   }
   // Only those that are in the parent.
   typeSpan(ty);
-  const start = SP[0] | 0;
-  const spanEnd = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const spanEnd = SP$.s1 | 0;
   const parentEnd = anEnd(parent);
   const following = followingSpanStartIn(start, spanEnd, parent, f.options.flavor);
   let end = parentEnd;
@@ -632,7 +639,7 @@ const MB = new Int32Array(3);
 function commentsBeforeMember(member: number, f: Formatter): void {
   const cm = cxOf(f).comments;
   typeSpan(member);
-  const start = SP[0] | 0;
+  const start = SP.s0 | 0;
   if (typeTag(member) === TYPE_UNION && typeUnionTypesLen(member) > 1) {
     const at = unionLeadingComments(member, f);
     MB[0] = cm.from;
@@ -667,8 +674,9 @@ function countLeadingComments(from: number, to: number, start: number, f: Format
 /** A type of a union. The comments before it are written, those after it are not. */
 function writeMember(member: number, isSuppressed: boolean, f: Formatter): void {
   typeSpan(member);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   if (!isSuppressed && !cxOf(f).comments.hasTrailingSuppressionComment(end)) {
     // It takes some of the comments after it: see `commentsAfterLastMember`.
     if (typeTag(member) === TYPE_UNION && typeUnionTypesLen(member) > 1) fmtType(member, f);

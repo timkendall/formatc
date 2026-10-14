@@ -119,8 +119,9 @@ function writeParenthesizedExpression(
   // The comments in the parentheses are written in them, also where those after the expression are left to somebody else.
   const previousLimit = cm.showCommentsUpTo(end);
   exprSpan(e);
-  const targetStart = SP[0] | 0;
-  const targetEnd = SP[1] | 0;
+  const SP$ = SP;
+  const targetStart = SP$.s0 | 0;
+  const targetEnd = SP$.s1 | 0;
   const t = exprTag(e);
   const hugs =
     idx + 1 >= count && (t === EXPR_OBJECT || t === EXPR_ARRAY) && !cm.hasCommentInRange(start, targetStart) && !cm.hasCommentInRange(targetEnd, end);

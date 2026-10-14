@@ -266,6 +266,7 @@ export function fmtArgumentsOfCall(e: number, call: number, f: Formatter): void 
 
 export function fmtArguments(argsStart: number, argsLen: number, parent: number, f: Formatter): void {
   const cx = cxOf(f);
+  const SP$ = SP;
   if (argsLen === 0) {
     if (cx.isQuiet) {
       f.token(EMPTY_PARENS);
@@ -274,7 +275,7 @@ export function fmtArguments(argsStart: number, argsLen: number, parent: number,
     // `call/* comment1 */(/* comment2 */)`
     f.token(LPAREN);
     anSpan(parent);
-    formatDanglingComments(SP[0] | 0, SP[1] | 0, DANGLING_SOFT, f);
+    formatDanglingComments(SP$.s0 | 0, SP$.s1 | 0, DANGLING_SOFT, f);
     f.token(RPAREN);
     return;
   }
@@ -413,10 +414,11 @@ function isFollowedByEmptyLine(argsStart: number, argsLen: number, index: number
 
 /** Whether there is an empty line after the argument at `index`, which has been written. */
 function isEmptyLineKeptAfter(argsStart: number, argsLen: number, index: number, f: Formatter): boolean {
+  const SP$ = SP;
   if (countsLineBreaksBetweenArguments(f) && index + 1 < argsLen) {
     const next = listAt(argsStart, index + 1);
     exprSpan(next);
-    return linesBefore(SP[0] | 0, SP[1] | 0, f) > 1;
+    return linesBefore(SP$.s0 | 0, SP$.s1 | 0, f) > 1;
   }
   return isFollowedByEmptyLine(argsStart, argsLen, index, f);
 }
@@ -537,11 +539,12 @@ function shouldGroupFirstArgument(first: number, second: number, f: Formatter): 
 
   // Not if there are comments around the first argument: before it, between it and the comma, or behind the comma at the end of the line.
   const cx = cxOf(f);
+  const SP$ = SP;
   if (!cx.isQuiet) {
     const cm = cx.comments;
     exprSpan(first);
-    const firstStart = SP[0] | 0;
-    const firstEnd = SP[1] | 0;
+    const firstStart = SP$.s0 | 0;
+    const firstEnd = SP$.s1 | 0;
     if (cm.hasCommentBefore(firstStart)) return false;
     cm.commentsIn(firstEnd, exprStart(second));
     const to = cm.to;
@@ -575,11 +578,12 @@ function shouldGroupLastArgumentImpl(argsStart: number, argsLen: number, penulti
   if (penultimate >= 0 && !isCastTarget(penultimate, f) && sameKindOfNode(penultimate, last)) return false;
 
   // Not if there are comments around the last argument.
+  const SP$ = SP;
   if (!cx.isQuiet) {
     const cm = cx.comments;
     exprSpan(last);
-    const lastStart = SP[0] | 0;
-    const lastEnd = SP[1] | 0;
+    const lastStart = SP$.s0 | 0;
+    const lastEnd = SP$.s1 | 0;
     // A comment at the end of the line of the argument before, or before the comma, trails that.
     let hasCommentBeforeLast = false;
     if (previousEnd >= 0) {
@@ -604,7 +608,7 @@ function shouldGroupLastArgumentImpl(argsStart: number, argsLen: number, penulti
     // Not for `useEffect(() => {}, [a, b])`.
     if (argsLen === 2 && penultimate >= 0 && exprArrowFunction(penultimate) >= 0) return false;
     exprSpan(last);
-    return !canConciselyPrintArrayList(SP[0] | 0, SP[1] | 0, exprArrayElemsStart(last), exprArrayElemsLen(last), f);
+    return !canConciselyPrintArrayList(SP$.s0 | 0, SP$.s1 | 0, exprArrayElemsStart(last), exprArrayElemsLen(last), f);
   }
   return true;
 }
@@ -662,17 +666,18 @@ function isHopefullyShortCallArgument(argument: number, f: Formatter): boolean {
 /** Prettier's `couldExpandArg`. */
 function canGroupExpressionArgument(argument0: number, f: Formatter): boolean {
   let argument = argument0;
+  const SP$ = SP;
   for (;;) {
     if (isCastTarget(argument, f)) return false;
     switch (exprTag(argument)) {
       case EXPR_OBJECT:
         if (exprObjectPropsLen(argument) > 0) return true;
         exprSpan(argument);
-        return cxOf(f).comments.hasCommentInRange(SP[0] | 0, SP[1] | 0);
+        return cxOf(f).comments.hasCommentInRange(SP$.s0 | 0, SP$.s1 | 0);
       case EXPR_ARRAY:
         if (exprArrayElemsLen(argument) > 0) return true;
         exprSpan(argument);
-        return cxOf(f).comments.hasCommentInRange(SP[0] | 0, SP[1] | 0);
+        return cxOf(f).comments.hasCommentInRange(SP$.s0 | 0, SP$.s1 | 0);
       case EXPR_AS:
         if (exprIsFlowTypeCast(argument)) return false;
         argument = exprOperand(argument);
@@ -845,6 +850,7 @@ function writeGroupedArguments(argsStart: number, argsLen: number, parent: numbe
 
   // A function that is grouped is formatted again, without the soft line breaks in its signature. Its body is taken from the cache, so
   // that this is not quadratic for nested calls.
+  const SP$ = SP;
   if (hasCached) {
     const groupedIndex = groupedFirst ? 0 : lastIndex;
     const argument = listAt(argsStart, groupedIndex);
@@ -863,7 +869,7 @@ function writeGroupedArguments(argsStart: number, argsLen: number, parent: numbe
         const returnType = funcReturnType(func);
         if (returnType >= 0 && f.options.flavor !== FLAVOR_OXFMT) {
           typeSpan(returnType);
-          const cached = cx.getCachedElement(SP[0] | 0, SP[1] | 0);
+          const cached = cx.getCachedElement(SP$.s0 | 0, SP$.s1 | 0);
           if (cached >= 0 && f.willBreak(cached)) {
             formatAllElementsBrokenOut(ebase, argsLen, parent, true, f);
             av$.len = ebase;
@@ -874,8 +880,8 @@ function writeGroupedArguments(argsStart: number, argsLen: number, parent: numbe
       }
       // If the signature breaks even without soft line breaks, grouping is not a good fit.
       anSpan(mkAn(AN_FORMAL_PARAMETERS, func));
-      const pStart = SP[0] | 0;
-      const pEnd = SP[1] | 0;
+      const pStart = SP$.s0 | 0;
+      const pEnd = SP$.s1 | 0;
       const hasParameters = funcParamsLen(func) > 0 || funcThisParam(func) >= 0;
       if (
         !removeSoftLinesOfCachedElement(pStart, pEnd, f) ||
@@ -957,11 +963,12 @@ function isReactHookWithDepsArray(argsStart: number, argsLen: number, parent: nu
   const cm = cxOf(f).comments;
   const parentEnd = anEnd(parent);
   exprSpan(callback);
-  const cbStart = SP[0] | 0;
-  const cbEnd = SP[1] | 0;
+  const SP$ = SP;
+  const cbStart = SP$.s0 | 0;
+  const cbEnd = SP$.s1 | 0;
   exprSpan(deps);
-  const depsStart = SP[0] | 0;
-  const depsEnd = SP[1] | 0;
+  const depsStart = SP$.s0 | 0;
+  const depsEnd = SP$.s1 | 0;
   cm.commentsBefore(parentEnd);
   const to = cm.to;
   for (let i = cm.from; i < to; i++) {

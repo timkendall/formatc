@@ -53,9 +53,10 @@ function asStringLiteralAttributeValue(attribute: number): number {
 function hasLineBreak(string: number, f: Formatter): boolean {
   exprSpan(string);
   const text = f.source;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const end = SP$.s1 | 0;
   let found = false;
-  for (let i = SP[0] | 0; i < end; i++) {
+  for (let i = SP$.s0 | 0; i < end; i++) {
     const b = text[i] | 0;
     if (b === 10 || b === 13) {
       found = true;
@@ -79,22 +80,23 @@ export function writeOpeningElement(e: number, f: Formatter): void {
 
   // compute_layout
   jsxOpeningSpan(e);
-  const spanStart = SP[0] | 0;
-  const spanEnd = SP[1] | 0;
+  const SP$ = SP;
+  const spanStart = SP$.s0 | 0;
+  const spanEnd = SP$.s1 | 0;
   let lastAttributeHasComment = false;
   if (attrsLen > 0) {
     propSpan(listAt(attrsStart, attrsLen - 1));
-    lastAttributeHasComment = cm.hasCommentInRange(SP[1] | 0, spanEnd);
+    lastAttributeHasComment = cm.hasCommentInRange(SP$.s1 | 0, spanEnd);
   }
   let typeArgumentsOrNameEnd = spanStart;
-  if (typeListAngleBrackets(typeArgsStart, typeArgsLen)) typeArgumentsOrNameEnd = SP[1] | 0;
+  if (typeListAngleBrackets(typeArgsStart, typeArgsLen)) typeArgumentsOrNameEnd = SP$.s1 | 0;
   else if (tag >= 0) {
     typeArgumentsOrNameEnd = exprEnd(tag);
   }
   let firstAttributeStartOrElementEnd = spanEnd;
   if (attrsLen > 0) {
     propSpan(listAt(attrsStart, 0));
-    firstAttributeStartOrElementEnd = SP[0] | 0;
+    firstAttributeStartOrElementEnd = SP$.s0 | 0;
   }
   const nameHasComment = cm.hasCommentInRange(typeArgumentsOrNameEnd, firstAttributeStartOrElementEnd);
 
@@ -180,12 +182,13 @@ function writeAttributes(attrsStart: number, attrsLen: number, f: Formatter): vo
   const multiline = f.options.attributePosition === ATTRIBUTE_POSITION_MULTILINE && attrsLen > 1;
   const src = cxOf(f).src;
   let previous = -1;
+  const SP$ = SP;
   for (let i = 0; i < attrsLen; i++) {
     const attribute = listAt(attrsStart, i);
     // An empty line between two attributes is kept.
     if (previous >= 0) {
       propSpan(previous);
-      if (isNextLineEmpty(src, SP[1] | 0)) f.emptyLine();
+      if (isNextLineEmpty(src, SP$.s1 | 0)) f.emptyLine();
       else if (multiline) f.hardLineBreak();
       else f.softLineBreakOrSpace();
     }

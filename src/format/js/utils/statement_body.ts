@@ -30,8 +30,9 @@ export function fmtStatementBody(body: number, forcedSpace: boolean, f: Formatte
   const isEmpty = tag === STMT_EMPTY;
   const isBlock = stmtIsBlock(body);
   stmtSpan(body);
-  const bodyStart = SP[0] | 0;
-  const bodyEnd = SP[1] | 0;
+  const SP$ = SP;
+  const bodyStart = SP$.s0 | 0;
+  const bodyEnd = SP$.s1 | 0;
   const cm = cx.comments;
   if (commentsStayBetweenHeadAndBody(f) && (isEmpty || isBlock)) {
     if (!isEmpty || cm.hasCommentBefore(bodyStart)) writeHeadBodySeparator(bodyStart, f);
@@ -85,8 +86,9 @@ function hasLineCommentBeforeSemicolon(body: number, f: Formatter): boolean {
   const tag = stmtTag(body);
   if (tag === STMT_RETURN || tag === STMT_THROW) return false;
   stmtSpan(body);
-  const start = SP[0] | 0;
-  const spanEnd = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const spanEnd = SP$.s1 | 0;
   let end = spanEnd > 0 ? spanEnd - 1 : 0;
   const text = cx.src.text;
   if (!(end < spanEnd && end < text.length && (text[end] | 0) === 59)) return false;
@@ -137,8 +139,9 @@ function writeBodyAndItsComments(body: number, f: Formatter): void {
   }
   const cm = cx.comments;
   stmtSpan(body);
-  const bodyStart = SP[0] | 0;
-  const bodyEnd = SP[1] | 0;
+  const SP$ = SP;
+  const bodyStart = SP$.s0 | 0;
+  const bodyEnd = SP$.s1 | 0;
   const end = cm.withoutSemicolon(bodyStart, bodyEnd);
   // `statement; // prettier-ignore` has to see its comment. The `;` can be behind the comment.
   let limit = end;
@@ -173,9 +176,10 @@ export function commentsBeforeElse(consequent: number, alternate: number, f: For
   const cx = cxOf(f);
   const cm = cx.comments;
   stmtSpan(alternate);
-  const alternateStart = SP[0] | 0;
+  const SP$ = SP;
+  const alternateStart = SP$.s0 | 0;
   stmtSpan(consequent);
-  let position = SP[1] | 0;
+  let position = SP$.s1 | 0;
   cm.commentsBefore(alternateStart);
   const from = cm.from;
   const to = cm.to;

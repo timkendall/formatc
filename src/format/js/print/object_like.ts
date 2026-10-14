@@ -62,14 +62,15 @@ function breaksWithPattern(ty: number, spanEnd: number, f: Formatter): boolean {
 function writeObjectLike(kind: number, h: number, listStart: number, listLen: number, f: Formatter): void {
   if (kind === 0) exprSpan(h);
   else typeSpan(h);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   f.token(LBRACE);
   if (listLen > 0) {
     const first = listAt(listStart, 0);
     if (kind === 0) propSpan(first);
     else memberSpan(first);
-    const firstMemberStart = SP[0] | 0;
+    const firstMemberStart = SP$.s0 | 0;
     // An object that has a line break after its `{` in the source stays broken.
     const src = cxOf(f).src;
     const shouldExpand =
@@ -84,7 +85,7 @@ function writeObjectLike(kind: number, h: number, listStart: number, listLen: nu
         const p = listAt(listStart, i);
         if (i > 0) {
           propSpan(p);
-          joinNodesSeparator(f, JOIN_SOFT_LINE, SP[0] | 0, SP[1] | 0);
+          joinNodesSeparator(f, JOIN_SOFT_LINE, SP$.s0 | 0, SP$.s1 | 0);
         }
         fmtObjectMember(p, f);
         writeSeparatorAfter(f, COMMA, i === listLen - 1, separator, 0);

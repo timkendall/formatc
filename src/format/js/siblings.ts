@@ -574,10 +574,11 @@ function list(kind: number, start: number, len: number, isOpen: boolean): void {
 function listOf(kind: number, start: number, len: number, isOpen: boolean): void {
   const fd = finder;
   if (fd.following >= 0) return;
+  const SP$ = SP;
   if (fd.isFound) {
     for (let i = 0; i < len; i++) {
       if (elemSpan(kind, listAt(start, i))) {
-        fd.following = SP[0] | 0;
+        fd.following = SP$.s0 | 0;
         return;
       }
     }
@@ -591,15 +592,15 @@ function listOf(kind: number, start: number, len: number, isOpen: boolean): void
     const id = listAt(start, middle);
     // `span_of(it).unwrap_or_else(|| it.span()).end`: a hole has the span of the element.
     if (!elemSpan(kind, id)) elemSpanAny(kind, id);
-    if ((SP[1] | 0) < fd.meEnd) low = (middle + 1) | 0;
+    if ((SP$.s1 | 0) < fd.meEnd) low = (middle + 1) | 0;
     else high = middle;
   }
-  if (low < len && elemSpan(kind, listAt(start, low)) && fd.containsMe(SP[0] | 0, SP[1] | 0)) {
+  if (low < len && elemSpan(kind, listAt(start, low)) && fd.containsMe(SP$.s0 | 0, SP$.s1 | 0)) {
     fd.isFound = true;
     let next = -1;
     for (let at = low + 1; at < len; at++) {
       if (elemSpan(kind, listAt(start, at))) {
-        next = SP[0] | 0;
+        next = SP$.s0 | 0;
         break;
       }
     }
@@ -617,11 +618,13 @@ function elemSpanAny(kind: number, id: number): void {
 /** `key_span(key, node)`: the key of the owner (a Node), if it has one. */
 function key(owner: number): void {
   const has = keyKind(owner) !== KEY_NONE && keySpan(owner);
-  finder.one(has, has ? SP[0] | 0 : 0, has ? SP[1] | 0 : 0);
+  const SP$ = SP;
+  finder.one(has, has ? SP$.s0 | 0 : 0, has ? SP$.s1 | 0 : 0);
 }
 
 function oneSpan(has: boolean): void {
-  finder.one(has, has ? SP[0] | 0 : 0, has ? SP[1] | 0 : 0);
+  const SP$ = SP;
+  finder.one(has, has ? SP$.s0 | 0 : 0, has ? SP$.s1 | 0 : 0);
 }
 
 function oneExpr(e: number): void {
@@ -631,7 +634,8 @@ function oneExpr(e: number): void {
     return;
   }
   exprSpan(e);
-  finder$.one(true, SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  finder$.one(true, SP$.s0 | 0, SP$.s1 | 0);
 }
 
 function oneStmt(s: number): void {
@@ -641,7 +645,8 @@ function oneStmt(s: number): void {
     return;
   }
   stmtSpan(s);
-  finder$.one(true, SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  finder$.one(true, SP$.s0 | 0, SP$.s1 | 0);
 }
 
 function oneType(t: number): void {
@@ -651,7 +656,8 @@ function oneType(t: number): void {
     return;
   }
   typeSpan(t);
-  finder$.one(true, SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  finder$.one(true, SP$.s0 | 0, SP$.s1 | 0);
 }
 
 function oneTypeAnnotation(t: number): void {
@@ -661,7 +667,8 @@ function oneTypeAnnotation(t: number): void {
     return;
   }
   typeAnnotationSpan(t);
-  finder$.one(true, SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  finder$.one(true, SP$.s0 | 0, SP$.s1 | 0);
 }
 
 function oneIdent(atom: number, pos: number): void {
@@ -671,18 +678,20 @@ function oneIdent(atom: number, pos: number): void {
     return;
   }
   identSpan(atom, pos);
-  finder$.one(true, SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  finder$.one(true, SP$.s0 | 0, SP$.s1 | 0);
 }
 
 /** The decorators among the modifiers `(start, len)`. */
 function decorators(start: number, len: number): void {
   const fd = finder;
   fd.spansBegin();
+  const SP$ = SP;
   for (let i = 0; i < len; i++) {
     const d = modifierDecorator(listAt(start, i));
     if (d >= 0) {
       anSpan(mkAn(AN_DECORATOR, d));
-      fd.spansItem(SP[0] | 0, SP[1] | 0);
+      fd.spansItem(SP$.s0 | 0, SP$.s1 | 0);
     }
   }
   fd.spansEnd(false);
@@ -697,17 +706,18 @@ function functionFields(func: number): void {
   const tn = funcTypeParamsLen(func);
   oneSpan(typeParamListAngleBrackets(ts, tn));
   const thisParam = funcThisParam(func);
+  const SP$ = SP;
   if (thisParam >= 0) {
     paramSpan(thisParam);
-    fd.one(true, SP[0] | 0, SP[1] | 0);
+    fd.one(true, SP$.s0 | 0, SP$.s1 | 0);
   } else fd.one(false, 0, 0);
   // `this` is in the parentheses. If it is the only parameter, nothing follows it there.
   if (fd.isFound && fd.following < 0 && thisParam >= 0) {
     paramSpan(thisParam);
-    if (fd.containsMe(SP[0] | 0, SP[1] | 0)) fd.following = firstParameter >= 0 ? firstParameter : 0;
+    if (fd.containsMe(SP$.s0 | 0, SP$.s1 | 0)) fd.following = firstParameter >= 0 ? firstParameter : 0;
   }
   const hasParams = funcParamsSpan(func);
-  fd.transparent(hasParams, hasParams ? SP[0] | 0 : 0, hasParams ? SP[1] | 0 : 0, firstParameter);
+  fd.transparent(hasParams, hasParams ? SP$.s0 | 0 : 0, hasParams ? SP$.s1 | 0 : 0, firstParameter);
   oneTypeAnnotation(funcReturnType(func));
   switch (funcBodyKind(func)) {
     case BODY_BLOCK: {
@@ -725,7 +735,7 @@ function functionFields(func: number): void {
 
 function firstSpanStart(kind: number, start: number): number {
   elemSpan(kind, listAt(start, 0));
-  return SP[0] | 0;
+  return SP.s0 | 0;
 }
 
 /**
@@ -736,15 +746,17 @@ function methodFunction(func: number): void {
   let first = -1;
   if (funcParamsLen(func) > 0 && fileIsJavascript()) first = firstSpanStart(LK_PARAM, funcParamsStart(func));
   funcEstreeSpan(func);
-  finder.transparent(true, SP[0] | 0, SP[1] | 0, first);
+  const SP$ = SP;
+  finder.transparent(true, SP$.s0 | 0, SP$.s1 | 0, first);
 }
 
 function memberFields(member: number): void {
   decorators(memberModifiersStart(member), memberModifiersLen(member));
   const kw = memberConstructorKeyword(member);
+  const SP$ = SP;
   if (kw >= 0) {
     identSpan(kw, memberNamePos(member));
-    finder.one(true, SP[0] | 0, SP[1] | 0);
+    finder.one(true, SP$.s0 | 0, SP$.s1 | 0);
   } else {
     key(nodeOfMember(member));
   }
@@ -773,12 +785,13 @@ export function followingSpanStartIn(start: number, end: number, parent: number,
   let s = start;
   let e = end;
   let p = parent;
+  const SP$ = SP;
   while (true) {
     const following = followingSpanStartAmongSiblings(s, e, p, flavor);
     if (following >= 0) return following;
     anSpan(p);
-    s = SP[0] | 0;
-    e = SP[1] | 0;
+    s = SP$.s0 | 0;
+    e = SP$.s1 | 0;
     p = anParent(p);
   }
 }
@@ -791,6 +804,7 @@ function followingSpanStartAmongSiblings(start: number, end: number, parent: num
   let inherits = true;
   const id = anId(parent);
 
+  const SP$ = SP;
   switch (anTag(parent)) {
     case AN_PROGRAM:
       inherits = false;
@@ -821,7 +835,7 @@ function followingSpanStartAmongSiblings(start: number, end: number, parent: num
         const v = propValue(id);
         if (v >= 0) {
           if (!exprJsxContainerSpan(v)) exprSpan(v);
-          fd.one(true, SP[0] | 0, SP[1] | 0);
+          fd.one(true, SP$.s0 | 0, SP$.s1 | 0);
         } else fd.one(false, 0, 0);
       }
       break;
@@ -871,7 +885,7 @@ function followingSpanStartAmongSiblings(start: number, end: number, parent: num
       fd.spansBegin();
       for (let i = base; i < out.len; i++) {
         exprSpan(out.data[i] | 0);
-        fd.spansItem(SP[0] | 0, SP[1] | 0);
+        fd.spansItem(SP$.s0 | 0, SP$.s1 | 0);
       }
       out.len = base;
       fd.spansEnd(false);
@@ -928,7 +942,7 @@ function followingSpanStartAmongSiblings(start: number, end: number, parent: num
     case AN_JSX_FRAGMENT:
       if (exprTag(id) === EXPR_JSX) {
         jsxOpeningSpan(id);
-        fd.one(true, SP[0] | 0, SP[1] | 0);
+        fd.one(true, SP$.s0 | 0, SP$.s1 | 0);
         listOf(LK_JSX_CHILD, jsxChildrenStart(id), jsxChildrenLen(id), false);
         oneSpan(jsxClosingSpan(id));
       }
@@ -940,9 +954,9 @@ function followingSpanStartAmongSiblings(start: number, end: number, parent: num
         while (name >= 0 && exprTag(name) === EXPR_DOT) {
           const obj = exprDotObj(name);
           exprSpan(obj);
-          if ((SP[0] | 0) === start && (SP[1] | 0) === end) {
+          if ((SP$.s0 | 0) === start && (SP$.s1 | 0) === end) {
             identSpan(exprDotName(name), exprDotNamePos(name));
-            return SP[0] | 0;
+            return SP$.s0 | 0;
           }
           name = obj;
         }
@@ -969,7 +983,7 @@ function followingSpanStartAmongSiblings(start: number, end: number, parent: num
     case AN_TS_THIS_PARAMETER: {
       decorators(paramModifiersStart(id), paramModifiersLen(id));
       patSpan(paramPat(id));
-      fd.one(true, SP[0] | 0, SP[1] | 0);
+      fd.one(true, SP$.s0 | 0, SP$.s1 | 0);
       oneTypeAnnotation(paramTy(id));
       oneExpr(paramDefault(id));
       break;
@@ -982,7 +996,7 @@ function followingSpanStartAmongSiblings(start: number, end: number, parent: num
       oneSpan(typeListAngleBrackets(classExtendsArgsStart(id), classExtendsArgsLen(id)));
       list(LK_TYPE, classImplementsStart(id), classImplementsLen(id), false);
       classBodySpan(id);
-      fd.one(true, SP[0] | 0, SP[1] | 0);
+      fd.one(true, SP$.s0 | 0, SP$.s1 | 0);
       break;
     }
     case AN_CLASS_BODY:
@@ -1007,7 +1021,7 @@ function followingSpanStartAmongSiblings(start: number, end: number, parent: num
     case AN_VARIABLE_DECLARATOR:
     case AN_CATCH_PARAMETER:
       patSpan(varDeclPat(id));
-      fd.one(true, SP[0] | 0, SP[1] | 0);
+      fd.one(true, SP$.s0 | 0, SP$.s1 | 0);
       oneTypeAnnotation(varDeclTy(id));
       oneExpr(varDeclInit(id));
       break;
@@ -1030,15 +1044,15 @@ function followingSpanStartAmongSiblings(start: number, end: number, parent: num
       const def = patPropDefault(id);
       patSpan(patPropValue(id));
       if (def >= 0) {
-        const s = SP[0] | 0;
+        const s = SP$.s0 | 0;
         exprSpan(def);
-        fd.one(true, s, SP[1] | 0);
-      } else fd.one(true, SP[0] | 0, SP[1] | 0);
+        fd.one(true, s, SP$.s1 | 0);
+      } else fd.one(true, SP$.s0 | 0, SP$.s1 | 0);
       break;
     }
     case AN_ASSIGNMENT_PATTERN_PROP: {
       patSpan(patPropValue(id));
-      fd.one(true, SP[0] | 0, SP[1] | 0);
+      fd.one(true, SP$.s0 | 0, SP$.s1 | 0);
       oneExpr(patPropDefault(id));
       break;
     }
@@ -1046,7 +1060,7 @@ function followingSpanStartAmongSiblings(start: number, end: number, parent: num
       const pat = patElemPat(id);
       if (pat >= 0) {
         patSpan(pat);
-        fd.one(true, SP[0] | 0, SP[1] | 0);
+        fd.one(true, SP$.s0 | 0, SP$.s1 | 0);
       } else fd.one(false, 0, 0);
       oneExpr(patElemDefault(id));
       break;
@@ -1061,7 +1075,7 @@ function followingSpanStartAmongSiblings(start: number, end: number, parent: num
         const param = stmtTryParam(id);
         if (param >= 0) {
           varDeclSpan(param);
-          fd.one(true, SP[0] | 0, SP[1] | 0);
+          fd.one(true, SP$.s0 | 0, SP$.s1 | 0);
         } else fd.one(false, 0, 0);
         oneStmt(stmtTryHandler(id));
       }
@@ -1190,7 +1204,7 @@ function followingSpanStartAmongSiblings(start: number, end: number, parent: num
       switch (typeTag(id)) {
         case TYPE_REF:
           entitySpan(typeRefNameStart(id), typeRefNameLen(id));
-          fd.one(true, SP[0] | 0, SP[1] | 0);
+          fd.one(true, SP$.s0 | 0, SP$.s1 | 0);
           break;
         case TYPE_HERITAGE:
           oneExpr(typeHeritageExpr(id));
@@ -1274,6 +1288,7 @@ const sequenceScratch = new I32Vec(16);
 function statementFields(s: number): void {
   const fd = finder;
   // What is in the head of a `for`: the declaration, or the expression.
+  const SP$ = SP;
   switch (stmtTag(s)) {
     case STMT_BLOCK:
       if (stmtIsWith(s)) {
@@ -1342,7 +1357,7 @@ function statementFields(s: number): void {
       oneSpan(typeParamListAngleBrackets(interfaceTypeParamsStart(i), interfaceTypeParamsLen(i)));
       list(LK_TYPE, interfaceExtendsStart(i), interfaceExtendsLen(i), false);
       interfaceBodySpan(i);
-      fd.one(true, SP[0] | 0, SP[1] | 0);
+      fd.one(true, SP$.s0 | 0, SP$.s1 | 0);
       break;
     }
     case STMT_TYPE_ALIAS: {
@@ -1356,7 +1371,7 @@ function statementFields(s: number): void {
       const en = stmtEnumEnum(s);
       oneIdent(enumName(en), enumNamePos(en));
       enumBodySpan(en);
-      fd.one(true, SP[0] | 0, SP[1] | 0);
+      fd.one(true, SP$.s0 | 0, SP$.s1 | 0);
       break;
     }
     case STMT_MODULE: {
@@ -1372,7 +1387,7 @@ function statementFields(s: number): void {
       if (importEqualsTargetKind(imp) === IET_REQUIRE) oneSpan(importEqualsRequireSpan(imp));
       else {
         entitySpan(importEqualsEntityStart(imp), importEqualsEntityLen(imp));
-        fd.one(true, SP[0] | 0, SP[1] | 0);
+        fd.one(true, SP$.s0 | 0, SP$.s1 | 0);
       }
       break;
     }

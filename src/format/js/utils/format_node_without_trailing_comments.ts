@@ -17,8 +17,9 @@ export function fmtNodeWithoutTrailingComments(wk: number, h: number, f: Formatt
     return;
   }
   nodeSpanOf(wk, h);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const cm = cx.comments;
   if (cm.hasTrailingSuppressionComment(end)) {
     formatLeadingComments(start, end, f);

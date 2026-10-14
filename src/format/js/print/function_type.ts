@@ -173,7 +173,8 @@ function writeCommentsAroundParenthesis(func: number, f: Formatter): void {
   const cx = cxOf(f);
   if (cx.isQuiet) return;
   if (!funcParamsSpan(func)) return;
-  const spanStart = SP[0] | 0;
+  const SP$ = SP;
+  const spanStart = SP$.s0 | 0;
   const cm = cx.comments;
   let first = funcThisParam(func);
   if (first < 0 && funcParamsLen(func) > 0) first = listAt(funcParamsStart(func), 0);
@@ -181,7 +182,7 @@ function writeCommentsAroundParenthesis(func: number, f: Formatter): void {
     // For oxfmt the parentheses are a node, and the comments in it lead the first parameter.
     if (f.options.flavor === FLAVOR_OXFMT) return;
     paramSpan(first);
-    cm.commentsBefore(SP[0] | 0);
+    cm.commentsBefore(SP$.s0 | 0);
     const from = cm.from;
     formatTrailingCommentsRange(from, endOfLineComments(f, from, cm.to), f);
   } else {
@@ -198,8 +199,9 @@ function writeReturnTypeWithoutTrailingComments(func: number, f: Formatter): voi
     return;
   }
   typeAnnotationSpan(funcReturnType(func));
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const cm = cx.comments;
   if (cm.hasTrailingSuppressionComment(end)) {
     formatLeadingComments(start, end, f);
@@ -220,7 +222,7 @@ function writeReturnType(func: number, f: Formatter): void {
   if (returnType < 0) return;
   if (!cxOf(f).isQuiet) {
     typeAnnotationSpan(returnType);
-    if (cxOf(f).comments.hasCommentBefore(SP[0] | 0)) f.space();
+    if (cxOf(f).comments.hasCommentBefore(SP.s0 | 0)) f.space();
   }
   if (nodeKind(funcOwner(func)) === N_TYPE) fmtReturnTypeOfFunctionType(returnType, f);
   else fmtTypeAnnotation(returnType, f);

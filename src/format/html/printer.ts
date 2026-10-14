@@ -346,6 +346,7 @@ function printText(p: Printer, id: number): void {
     }
     return;
   }
+  const TRIM$ = TRIM;
   if (has(t, parent, IS_WHITESPACE_SENSITIVE)) {
     // All that is between the parts of the `fill` is forced line breaks, so it is as good as an array.
     builtOpeningTagPrefix(p, id);
@@ -353,8 +354,8 @@ function printText(p: Printer, id: number): void {
       w.text(b, vs, ve);
     } else {
       htmlTrimPreserveIndentation(b, vs, ve);
-      const ts = TRIM[0] | 0;
-      const te = TRIM[1] | 0;
+      const ts = TRIM$.s0 | 0;
+      const te = TRIM$.s1 | 0;
       const dedent = minIndentation(b, ts, te);
       let ls = ts;
       let index = 0;
@@ -594,13 +595,14 @@ function printElement(p: Printer, id: number): void {
   const t = p.t;
   const o = p.o;
   const w = p.w;
+  const NODE_CONTENT$ = NODE_CONTENT;
   if (has(t, id, PRESERVES_CONTENT)) {
     builtOpeningTagPrefix(p, id);
     w.startGroup();
     printOpeningTag(p, id);
     w.endGroup();
     nodeContent(t, o, id);
-    w.text(o.originalText, NODE_CONTENT[0] | 0, NODE_CONTENT[1] | 0);
+    w.text(o.originalText, NODE_CONTENT$.s0 | 0, NODE_CONTENT$.s1 | 0);
     if (!isWrittenToItsEnd(t, id)) builtClosingTag(p, id);
     builtClosingTagSuffix(p, id);
     return;

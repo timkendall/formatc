@@ -177,6 +177,7 @@ function functionBehind(commentEnd: number): number {
   }
   let node = NODE_FILE;
   const kids$ = kids;
+  const SP$ = SP;
   while (true) {
     let child = -1;
     const base = kids$.len;
@@ -184,13 +185,13 @@ function functionBehind(commentEnd: number): number {
     for (let i = base; i < kids$.len; i++) {
       const c = kids$.data[i] | 0;
       nodeSpan(c);
-      if (child < 0 && (SP[0] | 0) <= start && start < (SP[1] | 0)) child = c;
+      if (child < 0 && (SP$.s0 | 0) <= start && start < (SP$.s1 | 0)) child = c;
     }
     kids$.len = base;
     if (child < 0) return -1;
     node = child;
     nodeSpan(node);
-    if ((SP[0] | 0) === start) {
+    if ((SP$.s0 | 0) === start) {
       const func = functionWithKnownHead(node);
       if (func >= 0) return func;
     }
@@ -309,12 +310,13 @@ function parameterNames(func: number): string[] {
   const n = funcParamsLen(func);
   const s = funcParamsStart(func);
   const hir$ = hir;
+  const SP$ = SP;
   for (let i = -1; i < n; i++) {
     const p = i < 0 ? thisParam : listAt(s, i);
     if (p < 0) continue;
     paramSpan(p);
-    let from = SP[0] | 0;
-    const to = SP[1] | 0;
+    let from = SP$.s0 | 0;
+    const to = SP$.s1 | 0;
     if (to - from >= 3 && (hir$.text[from] | 0) === 46 && (hir$.text[from + 1] | 0) === 46 && (hir$.text[from + 2] | 0) === 46) from = from + 3;
     let e = from;
     while (e < to && isIdentifierByte(hir$.text[e] | 0)) e = e + 1;

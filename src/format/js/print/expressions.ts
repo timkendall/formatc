@@ -240,8 +240,9 @@ export function fmtObjectMember(property: number, f: Formatter): void {
   }
   // format_node(property.span(), || property.as_ast_nodes().parent(), f, write)
   propSpan(property);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const cm = cx.comments;
   const isSuppressed = cm.isSuppressed(start) || cm.hasTrailingSuppressionComment(end);
   formatLeadingComments(start, end, f);
@@ -266,10 +267,11 @@ function writeObjectMember(property: number, f: Formatter): void {
 function writeObjectProperty(property: number, f: Formatter): void {
   const cx = cxOf(f);
   const cm = cx.comments;
+  const SP$ = SP;
   if (!cx.isQuiet) {
     propSpan(property);
-    if (cm.hasTrailingSuppressionComment(SP[1] | 0)) {
-      writeSuppressedNode(SP[0] | 0, SP[1] | 0, f);
+    if (cm.hasTrailingSuppressionComment(SP$.s1 | 0)) {
+      writeSuppressedNode(SP$.s0 | 0, SP$.s1 | 0, f);
       return;
     }
   }
@@ -280,15 +282,15 @@ function writeObjectProperty(property: number, f: Formatter): void {
       const owner = nodeOfProp(property);
       const v = propValue(property);
       if (keyLoad(owner) !== KEY_NONE && v >= 0 && keySpan(owner)) {
-        const keyStart = SP[0] | 0;
-        const keyEnd = SP[1] | 0;
+        const keyStart = SP$.s0 | 0;
+        const keyEnd = SP$.s1 | 0;
         if (!cm.hasCommentInRange(keyStart, keyEnd)) {
           const n = cm.commentsLeadingProperty(keyEnd, exprStart(v));
           const from = cm.from;
           for (let i = 0; i < n; i++) {
             if (cm.isSuppressionComment((from + i) | 0)) {
               propSpan(property);
-              writeSuppressedNode(SP[0] | 0, SP[1] | 0, f);
+              writeSuppressedNode(SP$.s0 | 0, SP$.s1 | 0, f);
               return;
             }
           }
@@ -326,8 +328,9 @@ export function writeMetaProperty(e: number, f: Formatter): void {
     return;
   }
   exprSpan(e);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const text = f.source;
   // With its escapes: `new.t\u0061rget`, `new.t\u{61}rget`.
   let name = start;
@@ -388,11 +391,12 @@ export function unaryArgumentHasComments(unary: number, argument: number, f: For
   if (f.options.flavor !== FLAVOR_OXFMT && !cx.hasTreeOfBabel && exprIsChainRoot(argument)) return false;
   const cm = cx.comments;
   exprSpan(unary);
-  const outerStart = SP[0] | 0;
-  const outerEnd = SP[1] | 0;
+  const SP$ = SP;
+  const outerStart = SP$.s0 | 0;
+  const outerEnd = SP$.s1 | 0;
   exprSpan(argument);
-  const innerStart = SP[0] | 0;
-  const innerEnd = SP[1] | 0;
+  const innerStart = SP$.s0 | 0;
+  const innerEnd = SP$.s1 | 0;
   const lastPrinted = cm.lastPrinted();
   if (lastPrinted >= 0 && (cm.cs[lastPrinted] | 0) >= outerStart && (cm.ce[lastPrinted] | 0) <= innerStart) return true;
   const n = cm.unprinted();
@@ -457,9 +461,10 @@ export function writeConditionalExpression(e: number, f: Formatter): void {
 /** `[a, b] = c` */
 export function writeArrayAssignmentTarget(e: number, elementsStart: number, elementsLen: number, f: Formatter): void {
   f.token(LBRACKET);
+  const SP$ = SP;
   if (elementsLen === 0) {
     exprSpan(e);
-    formatDanglingComments(SP[0] | 0, SP[1] | 0, DANGLING_SOFT, f);
+    formatDanglingComments(SP$.s0 | 0, SP$.s1 | 0, DANGLING_SOFT, f);
   } else {
     const last = listAt(elementsStart, elementsLen - 1);
     const rest = exprTag(last) === EXPR_SPREAD ? last : -1;

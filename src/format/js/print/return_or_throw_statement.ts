@@ -64,7 +64,7 @@ function writeReturnOrThrow(keyword: number, keywordLen: number, statement: numb
     cm.restoreViewLimit(previousLimit);
   }
   stmtSpan(statement);
-  cm.commentsBefore(SP[1] | 0);
+  cm.commentsBefore(SP.s1 | 0);
   const from = cm.from;
   const to = cm.to;
   let onTheLine = 0;
@@ -82,8 +82,9 @@ function endBeforeCommentsThatCountForTheWidth(statement: number, argument: numb
   const cx = cxOf(f);
   if (f.options.flavor !== FLAVOR_OXFMT || cx.isQuiet) return -1;
   stmtSpan(statement);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const contentEnd = argument >= 0 ? exprOuterEnd(argument) : (start + keywordLen) | 0;
   const cm = cx.comments;
   if (cm.commentsIn(contentEnd, end > contentEnd ? end : contentEnd) === 0) return -1;
@@ -118,6 +119,7 @@ function writeAdjacentArgument(argument: number, f: Formatter): void {
   const argumentStart = exprStart(argument);
   const hasOwnParentheses = tag === EXPR_JSX && !(ignoredJsxGetsNoParentheses(f) && cx.comments.isSuppressed(argumentStart));
 
+  const SP$ = SP;
   if (!hasOwnParentheses && !cx.isQuiet && hasArgumentLeadingComments(argument, f)) {
     f.token(LPAREN);
     f.startBlockIndent();
@@ -145,8 +147,8 @@ function writeAdjacentArgument(argument: number, f: Formatter): void {
     }
     const cm = cx.comments;
     exprSpan(argument);
-    const spanStart = SP[0] | 0;
-    const spanEnd = SP[1] | 0;
+    const spanStart = SP$.s0 | 0;
+    const spanEnd = SP$.s1 | 0;
     if (cm.getTypeCastCommentIndex(spanStart) < 0) formatLeadingComments(spanStart, spanEnd, f);
     // The comments before the `)` go behind it. After `return`, only those that start their line: see `write_comments_before_closing_parenthesis`.
     const isReturn = anTag(exprAstParent(argument)) === AN_RETURN_STATEMENT;
@@ -190,6 +192,7 @@ export function hasArgumentLeadingComments(argument: number, f: Formatter): bool
   const isYield = anTag(exprAstParent(argument)) === AN_YIELD_EXPRESSION;
   let e = argument;
   let isAssignmentTarget = false;
+  const LEFT_SIDE$ = LEFT_SIDE;
   while (true) {
     const leftStart = exprStart(e);
     const n = cm.commentsBefore(leftStart);
@@ -217,8 +220,8 @@ export function hasArgumentLeadingComments(argument: number, f: Formatter): bool
       }
     }
     if (!expressionLeftSideLeft(e, isAssignmentTarget)) break;
-    e = LEFT_SIDE[0] | 0;
-    isAssignmentTarget = (LEFT_SIDE[1] | 0) !== 0;
+    e = LEFT_SIDE$.s0 | 0;
+    isAssignmentTarget = (LEFT_SIDE$.s1 | 0) !== 0;
   }
   return false;
 }

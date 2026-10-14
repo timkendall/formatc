@@ -248,7 +248,7 @@ export function funcBodySpan(f: number): boolean {
     if (start < 0) return false;
   }
   funcSpan(f);
-  SP[0] = start;
+  SP.s0 = (start) | 0;
   return true;
 }
 
@@ -264,8 +264,9 @@ export function funcArrowSpan(f: number): boolean {
   const hir$ = hir;
   if ((hir$.fnKind[f] | 0) !== FN_ARROW) return false;
   const at = hir$.fnAnchor[f] | 0;
-  SP[0] = at;
-  SP[1] = (at + 2) | 0;
+  const SP$ = SP;
+  SP$.s0 = (at) | 0;
+  SP$.s1 = (at + 2) | 0;
   return true;
 }
 
@@ -310,8 +311,9 @@ export function funcSpan(f: number): void {
     default:
       break;
   }
-  SP[0] = start;
-  SP[1] = end;
+  const SP$ = SP;
+  SP$.s0 = (start) | 0;
+  SP$.s1 = (end) | 0;
 }
 function exprEndOf(e: number): number {
   return exprEnd(e);
@@ -321,7 +323,7 @@ export function funcStart(f: number): number {
 }
 export function funcEnd(f: number): number {
   funcSpan(f);
-  return SP[1] | 0;
+  return SP.s1 | 0;
 }
 
 /** `Func::start_of_params`: the position of the `<` of the type parameters, or of the `(`. */
@@ -340,7 +342,7 @@ export function funcStartOfParams(f: number): number {
 export function funcSpanFromParams(f: number): void {
   const start = funcStartOfParams(f);
   funcSpan(f);
-  SP[0] = start;
+  SP.s0 = (start) | 0;
 }
 
 /**
@@ -375,13 +377,14 @@ export function funcEstreeSpan(f: number): void {
     memberSpan(a);
     return;
   }
+  const SP$ = SP;
   if (ot === FO_TYPE) {
-    SP[0] = hir$.typePos[a] | 0;
-    SP[1] = hir$.typeEnd[a] | 0;
+    SP$.s0 = hir$.typePos[a] | 0;
+    SP$.s1 = hir$.typeEnd[a] | 0;
     return;
   }
-  SP[0] = 0;
-  SP[1] = 0;
+  SP$.s0 = 0;
+  SP$.s1 = 0;
 }
 
 /** `Func::close_paren`: the position of the `)` of the parameters. -1 for an arrow function without parentheses, and for a static block. */
@@ -397,7 +400,7 @@ export function funcCloseParen(f: number): number {
   let at = 0;
   if (last >= 0) {
     paramSpan(last);
-    at = skipTrivia(text, len, SP[1] | 0);
+    at = skipTrivia(text, len, SP.s1 | 0);
   } else if (open >= 0) {
     at = skipTrivia(text, len, open + 1);
   } else if ((hir$.fnKind[f] | 0) === FN_ARROW) {
@@ -406,7 +409,7 @@ export function funcCloseParen(f: number): number {
     let before = hir$.fnAnchor[f] | 0;
     if (ret >= 0) {
       typeAnnotationSpan(ret);
-      before = SP[0] | 0;
+      before = SP.s0 | 0;
     }
     const e = fileEndOfTokenBefore(before);
     return e > 0 ? (e - 1) | 0 : 0;
@@ -421,16 +424,17 @@ export function funcCloseParen(f: number): number {
 /** `Func::params_span` into `SP`: from the `(` to the `)` of the parameters. For an arrow function without parentheses, the parameter. For an index signature, the brackets. */
 export function funcParamsSpan(f: number): boolean {
   const fs = F;
+  const SP$ = SP;
   if (fs.paramsFn === f) {
-    SP[0] = fs.paramsStart;
-    SP[1] = fs.paramsEnd;
+    SP$.s0 = (fs.paramsStart) | 0;
+    SP$.s1 = (fs.paramsEnd) | 0;
     return true;
   }
   const found = funcParamsSpanFound(f);
   if (found) {
     fs.paramsFn = f;
-    fs.paramsStart = SP[0] | 0;
-    fs.paramsEnd = SP[1] | 0;
+    fs.paramsStart = SP$.s0 | 0;
+    fs.paramsEnd = SP$.s1 | 0;
   }
   return found;
 }
@@ -446,6 +450,7 @@ function funcParamsSpanFound(f: number): boolean {
     return false;
   }
   let open = funcOpenParen(f);
+  const SP$ = SP;
   if (open < 0) {
     // the first of `params_with_this`
     let first = close;
@@ -454,13 +459,13 @@ function funcParamsSpanFound(f: number): boolean {
       first = hir$.paramPos[tp] | 0;
     } else if ((hir$.fnParamsLen[f] | 0) > 0) {
       paramSpan(hir$.ids[hir$.fnParamsStart[f] | 0] | 0);
-      first = SP[0] | 0;
+      first = SP$.s0 | 0;
     }
     const e = fileEndOfTokenBefore(first);
     open = e > 0 ? (e - 1) | 0 : 0;
   }
-  SP[0] = open;
-  SP[1] = (close + 1) | 0;
+  SP$.s0 = (open) | 0;
+  SP$.s1 = (close + 1) | 0;
   return true;
 }
 
@@ -511,7 +516,8 @@ export function paramSpan(p: number): void {
   const pos = hir$.paramPos[p] | 0;
   const locEnd = hir$.paramLocEnd[p] | 0;
   patSpan(hir$.paramPat[p] | 0);
-  const patEnd = SP[1] | 0;
+  const SP$ = SP;
+  const patEnd = SP$.s1 | 0;
   let end = 0;
   if (locEnd === 0) {
     end = pos;
@@ -530,43 +536,45 @@ export function paramSpan(p: number): void {
     // The HIR has the end of a name that is written with an escape too early.
     end = locEnd > patEnd ? locEnd : patEnd;
   }
-  SP[0] = pos;
-  SP[1] = end;
+  SP$.s0 = (pos) | 0;
+  SP$.s1 = (end) | 0;
 }
 
 /** `Param::binding_span` into `SP`: the pattern, the `?` and the type annotation. The range of ESLint's `Identifier`, `ObjectPattern` or `ArrayPattern` for the parameter. */
 export function paramBindingSpan(p: number): void {
   const hir$ = hir;
   patSpan(hir$.paramPat[p] | 0);
-  const ps = SP[0] | 0;
-  const pe = SP[1] | 0;
+  const SP$ = SP;
+  const ps = SP$.s0 | 0;
+  const pe = SP$.s1 | 0;
   const ty = hir$.paramTy[p] | 0;
   let end = pe;
   if (ty >= 0) end = typeOuterEndOf(ty);
   else if (paramIsOptional(p)) end = (skipTrivia(hir$.text, hir$.sourceLen | 0, pe) + 1) | 0;
-  SP[0] = ps;
-  SP[1] = end;
+  SP$.s0 = (ps) | 0;
+  SP$.s1 = (end) | 0;
 }
 function typeOuterEndOf(t: number): number {
   typeOuterStart(t);
-  return SP[1] | 0;
+  return SP.s1 | 0;
 }
 
 /** `Param::span_without_modifiers` into `SP`: without decorators and modifiers. The range of ESLint's node for the parameter. */
 export function paramSpanWithoutModifiers(p: number): void {
   paramSpan(p);
-  const ws = SP[0] | 0;
-  const we = SP[1] | 0;
+  const SP$ = SP;
+  const ws = SP$.s0 | 0;
+  const we = SP$.s1 | 0;
   const hir$ = hir;
   const ml = hir$.paramModLen[p] | 0;
   let start = ws;
   if (ml > 0) {
     const last = hir$.ids[((hir$.paramModStart[p] | 0) + ml - 1) | 0] | 0;
     modifierSpan(last);
-    start = skipTrivia(hir$.text, hir$.sourceLen | 0, SP[1] | 0);
+    start = skipTrivia(hir$.text, hir$.sourceLen | 0, SP$.s1 | 0);
   }
-  SP[0] = start;
-  SP[1] = we;
+  SP$.s0 = (start) | 0;
+  SP$.s1 = (we) | 0;
 }
 
 // ───────────────────────────── TypeParam ─────────────────────────────
@@ -591,8 +599,9 @@ export function typeParamFlags(p: number): number {
 }
 export function typeParamSpan(p: number): void {
   const hir$ = hir;
-  SP[0] = hir$.typeParamStart[p] | 0;
-  SP[1] = hir$.typeParamEnd[p] | 0;
+  const SP$ = SP;
+  SP$.s0 = hir$.typeParamStart[p] | 0;
+  SP$.s1 = hir$.typeParamEnd[p] | 0;
 }
 /** `const`, and the variance (`+`, `-`, `in`, `out`): a list of ModifierIds. */
 export function typeParamModifiersStart(p: number): number {
@@ -619,14 +628,14 @@ function keyFrom(pkKind: number, pkVal: number, nameKind: number, start: number)
   const text = hir$.text;
   const len = hir$.sourceLen | 0;
   const c = start >= 0 && start < len ? text[start] | 0 : -1;
-  K[KEY_NAME] = -1;
-  K[KEY_EXPR] = -1;
-  K[KEY_START] = start;
-  K[KEY_JSX] = 0;
+  K.s1 = (-1) | 0;
+  K.s2 = (-1) | 0;
+  K.s3 = (start) | 0;
+  K.s4 = 0;
   let kind = -1;
   if (pkKind === PK_NAME && nameKind === NK_IDENTIFIER && c >= 0 && c !== 34 && c !== 39 && !(c >= 48 && c <= 57)) {
-    K[KEY_NAME] = pkVal;
-    K[KEY_KIND] = KEY_IDENT;
+    K.s1 = (pkVal) | 0;
+    K.s0 = (KEY_IDENT) | 0;
     return KEY_IDENT;
   }
   // `new_in_general`
@@ -634,23 +643,23 @@ function keyFrom(pkKind: number, pkVal: number, nameKind: number, start: number)
     if (c === 35) {
       // `#name` that is not in a class
       const e = tokenEnd(text, len, start, false);
-      K[KEY_NAME] = F.names.atomOfBytes(text, start, e);
+      K.s1 = (F.names.atomOfBytes(text, start, e)) | 0;
       kind = KEY_PRIVATE;
     } else {
       kind = keyOfBigint(start);
       if (kind < 0) {
-        K[KEY_KIND] = KEY_NONE;
+        K.s0 = (KEY_NONE) | 0;
         return KEY_NONE;
       }
     }
   } else if (pkKind === PK_PRIVATE) {
-    K[KEY_NAME] = pkVal;
+    K.s1 = (pkVal) | 0;
     kind = KEY_PRIVATE;
   } else if (pkKind === PK_COMPUTED) {
-    K[KEY_EXPR] = pkVal;
+    K.s2 = (pkVal) | 0;
     kind = KEY_COMPUTED;
   } else {
-    K[KEY_NAME] = pkVal;
+    K.s1 = (pkVal) | 0;
     switch (nameKind) {
       case NK_IDENTIFIER:
         if (c === 34 || c === 39) {
@@ -660,7 +669,7 @@ function keyFrom(pkKind: number, pkVal: number, nameKind: number, start: number)
           if (k >= 0) {
             kind = k;
           } else {
-            K[KEY_NAME] = pkVal;
+            K.s1 = (pkVal) | 0;
             kind = KEY_IDENT;
           }
         } else {
@@ -684,8 +693,8 @@ function keyFrom(pkKind: number, pkVal: number, nameKind: number, start: number)
         break;
     }
   }
-  K[KEY_KIND] = kind;
-  K[KEY_JSX] = nameKind === NK_JSX ? 1 : 0;
+  K.s0 = (kind) | 0;
+  K.s4 = (nameKind === NK_JSX ? 1 : 0) | 0;
   return kind;
 }
 
@@ -701,7 +710,7 @@ function keyOfBigint(start: number): number {
   if (end <= start || (text[end - 1] | 0) !== 110) return -1;
   decimalDigits(text, start, end - 1);
   const BIGINT_SCRATCH$ = BIGINT_SCRATCH;
-  KEY[KEY_NAME] = F.names.atomOfBytes(BIGINT_SCRATCH$.data, 0, BIGINT_SCRATCH$.len);
+  KEY.s1 = (F.names.atomOfBytes(BIGINT_SCRATCH$.data, 0, BIGINT_SCRATCH$.len)) | 0;
   return KEY_NUMBER;
 }
 
@@ -766,20 +775,20 @@ export function keyLoad(k: number): number {
     case N_MEMBER: {
       const mk = hir$.memberKind[id] | 0;
       if (mk !== MEMBER_PROPERTY && mk !== MEMBER_METHOD && mk !== MEMBER_GETTER && mk !== MEMBER_SETTER) {
-        KEY[KEY_KIND] = KEY_NONE;
+        KEY.s0 = (KEY_NONE) | 0;
         return KEY_NONE;
       }
       return keyFrom(hir$.memberKeyKind[id] | 0, hir$.memberKeyVal[id] | 0, memberNameKind(id), hir$.memberNamePos[id] | 0);
     }
     case N_PROP:
       if ((hir$.propKind[id] | 0) === PROP_SPREAD) {
-        KEY[KEY_KIND] = KEY_NONE;
+        KEY.s0 = (KEY_NONE) | 0;
         return KEY_NONE;
       }
       return keyFrom(hir$.propKeyKind[id] | 0, hir$.propKeyVal[id] | 0, hir$.propNameKind[id] | 0, hir$.propPos[id] | 0);
     case N_PAT_PROP:
       if ((hir$.patPropIsRest[id] | 0) !== 0) {
-        KEY[KEY_KIND] = KEY_NONE;
+        KEY.s0 = (KEY_NONE) | 0;
         return KEY_NONE;
       }
       return keyFrom(hir$.patPropKeyKind[id] | 0, hir$.patPropKeyVal[id] | 0, hir$.patPropNameKind[id] | 0, hir$.patPropKeyPos[id] | 0);
@@ -789,7 +798,7 @@ export function keyLoad(k: number): number {
       return keyFrom(PK_NAME, hir$.enumMemberName[id] | 0, hir$.enumMemberNameKind[id] | 0, hir$.enumMemberPos[id] | 0);
     }
     default:
-      KEY[KEY_KIND] = KEY_NONE;
+      KEY.s0 = (KEY_NONE) | 0;
       return KEY_NONE;
   }
 }
@@ -800,15 +809,15 @@ export function keyKind(k: number): number {
 }
 /** The name of a key that has one (an atom): everything but `KEY_COMPUTED`. -1 otherwise. That of `#a` includes the `#`. */
 export function keyName(k: number): number {
-  return keyLoad(k) >= 0 ? KEY[KEY_NAME] | 0 : -1;
+  return keyLoad(k) >= 0 ? KEY.s1 | 0 : -1;
 }
 /** The `e` of a `KEY_COMPUTED` key (ExprId), else -1. */
 export function keyExpr(k: number): number {
-  return keyLoad(k) === KEY_COMPUTED ? KEY[KEY_EXPR] | 0 : -1;
+  return keyLoad(k) === KEY_COMPUTED ? KEY.s2 | 0 : -1;
 }
 /** Where the key starts (the `[` of a computed key, the quote, the name). */
 export function keyStart(k: number): number {
-  return keyLoad(k) >= 0 ? KEY[KEY_START] | 0 : -1;
+  return keyLoad(k) >= 0 ? KEY.s3 | 0 : -1;
 }
 /** `Key::is_computed`: it is written in brackets. */
 export function keyIsComputed(k: number): boolean {
@@ -820,12 +829,12 @@ export function keyIsPrivate(k: number): boolean {
 }
 /** `Key::is_jsx`: it is the name of a JSX attribute. */
 export function keyIsJsx(k: number): boolean {
-  return keyLoad(k) >= 0 && (KEY[KEY_JSX] | 0) !== 0;
+  return keyLoad(k) >= 0 && (KEY.s4 | 0) !== 0;
 }
 /** `Key::is(name)`: the property is named `lit` (it has a name that is the ASCII text). */
 export function keyIs(k: number, lit: string): boolean {
   const kind = keyLoad(k);
-  return kind >= 0 && kind !== KEY_COMPUTED && F.names.atomIs(KEY[KEY_NAME] | 0, lit);
+  return kind >= 0 && kind !== KEY_COMPUTED && F.names.atomIs(KEY.s1 | 0, lit);
 }
 
 /** The length of the ASCII name `text[start, ...)` if it and what follows it is ASCII without a `\`, else -1. */
@@ -888,10 +897,11 @@ export function jsxNamespaceAndName(start: number): boolean {
   const colon = skipTrivia(text, len, nsEnd);
   if (colon >= len || (text[colon] | 0) !== 58) return false;
   const name = skipTrivia(text, len, colon + 1);
-  SP[0] = start;
-  SP[1] = nsEnd;
-  SP[2] = name;
-  SP[3] = jsxIdentifierEndOxc(name);
+  const SP$ = SP;
+  SP$.s0 = (start) | 0;
+  SP$.s1 = (nsEnd) | 0;
+  SP$.s2 = (name) | 0;
+  SP$.s3 = (jsxIdentifierEndOxc(name)) | 0;
   return true;
 }
 
@@ -899,53 +909,57 @@ function keySpanGeneral(inner: boolean): void {
   const hir$ = hir;
   const text = hir$.text;
   const len = hir$.sourceLen | 0;
-  const kind = KEY[KEY_KIND] | 0;
-  const start = KEY[KEY_START] | 0;
+  const KEY$ = KEY;
+  const kind = KEY$.s0 | 0;
+  const start = KEY$.s3 | 0;
+  const SP$ = SP;
   if (kind === KEY_COMPUTED) {
-    const e = KEY[KEY_EXPR] | 0;
+    const e = KEY$.s2 | 0;
     if (inner) {
       exprSpan(e);
       return;
     }
     const end = (skipTrivia(text, len, exprOuterEnd(e)) + 1) | 0;
-    SP[0] = start;
-    SP[1] = end;
+    SP$.s0 = (start) | 0;
+    SP$.s1 = (end) | 0;
     return;
   }
   if (kind === KEY_COMPUTED_STRING || kind === KEY_COMPUTED_NUMBER) {
     const literal = skipTrivia(text, len, start + 1);
     const litEnd = tokenEnd(text, len, literal, false);
     if (inner) {
-      SP[0] = literal;
-      SP[1] = litEnd;
+      SP$.s0 = (literal) | 0;
+      SP$.s1 = (litEnd) | 0;
       return;
     }
-    SP[0] = start;
-    SP[1] = (skipTrivia(text, len, litEnd) + 1) | 0;
+    SP$.s0 = (start) | 0;
+    SP$.s1 = (skipTrivia(text, len, litEnd) + 1) | 0;
     return;
   }
   let end = 0;
-  if ((KEY[KEY_JSX] | 0) !== 0) {
+  if ((KEY$.s4 | 0) !== 0) {
     end = jsxIdentifierEndOxc(start);
     const colon = skipTrivia(text, len, end);
     if (colon < len && (text[colon] | 0) === 58) end = jsxIdentifierEndOxc(skipTrivia(text, len, colon + 1));
   } else {
     end = tokenEnd(text, len, start, false);
   }
-  SP[0] = start;
-  SP[1] = end;
+  SP$.s0 = (start) | 0;
+  SP$.s1 = (end) | 0;
 }
 
 /** `Key::span(file)` into `SP`: with the brackets or the quotes. False if there is no key. */
 export function keySpan(k: number): boolean {
   const kind = keyLoad(k);
   if (kind < 0) return false;
-  if (kind === KEY_IDENT && (KEY[KEY_JSX] | 0) === 0) {
-    const start = KEY[KEY_START] | 0;
+  const KEY$ = KEY;
+  const SP$ = SP;
+  if (kind === KEY_IDENT && (KEY$.s4 | 0) === 0) {
+    const start = KEY$.s3 | 0;
     const n = asciiNameLen(start);
     if (n >= 0) {
-      SP[0] = start;
-      SP[1] = (start + n) | 0;
+      SP$.s0 = (start) | 0;
+      SP$.s1 = (start + n) | 0;
       return true;
     }
   }
@@ -957,12 +971,14 @@ export function keySpan(k: number): boolean {
 export function keyInnerSpan(k: number): boolean {
   const kind = keyLoad(k);
   if (kind < 0) return false;
-  if (kind === KEY_IDENT && (KEY[KEY_JSX] | 0) === 0) {
-    const start = KEY[KEY_START] | 0;
+  const KEY$ = KEY;
+  const SP$ = SP;
+  if (kind === KEY_IDENT && (KEY$.s4 | 0) === 0) {
+    const start = KEY$.s3 | 0;
     const n = asciiNameLen(start);
     if (n >= 0) {
-      SP[0] = start;
-      SP[1] = (start + n) | 0;
+      SP$.s0 = (start) | 0;
+      SP$.s1 = (start + n) | 0;
       return true;
     }
   }
@@ -1055,8 +1071,9 @@ export function classSpan(c: number): void {
     default:
       break;
   }
-  SP[0] = start;
-  SP[1] = end > start ? end : start;
+  const SP$ = SP;
+  SP$.s0 = (start) | 0;
+  SP$.s1 = (end > start ? end : start) | 0;
 }
 
 /** `Class::estree_span` into `SP`: the range of ESLint's `ClassDeclaration` or `ClassExpression`: without `export` and `export default`, and without the decorators before them. */
@@ -1074,13 +1091,14 @@ export function classKeywordSpan(c: number): void {
   const hir$ = hir;
   const ml = hir$.classModLen[c] | 0;
   let start = hir$.classStart[c] | 0;
+  const SP$ = SP;
   if (ml > 0) {
     const last = hir$.ids[((hir$.classModStart[c] | 0) + ml - 1) | 0] | 0;
     modifierSpan(last);
-    start = skipTrivia(hir$.text, hir$.sourceLen | 0, SP[1] | 0);
+    start = skipTrivia(hir$.text, hir$.sourceLen | 0, SP$.s1 | 0);
   }
-  SP[0] = start;
-  SP[1] = (start + 5) | 0;
+  SP$.s0 = (start) | 0;
+  SP$.s1 = (start + 5) | 0;
 }
 
 /** `Class::body_span` into `SP`: the `{ .. }` around the members. */
@@ -1091,25 +1109,26 @@ export function classBodySpan(c: number): void {
   // The last thing before the `{`.
   let headEnd = -1;
   const il = hir$.classImplementsLen[c] | 0;
+  const SP$ = SP;
   if (il > 0) {
     headEnd = typeEnd(hir$.ids[((hir$.classImplementsStart[c] | 0) + il - 1) | 0] | 0);
   } else if (typeListAngleBrackets(hir$.classExtendsArgsStart[c] | 0, hir$.classExtendsArgsLen[c] | 0)) {
-    headEnd = SP[1] | 0;
+    headEnd = SP$.s1 | 0;
   } else if ((hir$.classExtends[c] | 0) >= 0) {
     headEnd = exprOuterEnd(hir$.classExtends[c] | 0);
   } else if (typeParamListAngleBrackets(hir$.classTypeParamsStart[c] | 0, hir$.classTypeParamsLen[c] | 0)) {
-    headEnd = SP[1] | 0;
+    headEnd = SP$.s1 | 0;
   } else if ((hir$.className[c] | 0) >= 0) {
     headEnd = identEndOf(hir$.className[c] | 0, hir$.classNamePos[c] | 0);
   } else {
     classKeywordSpan(c);
-    headEnd = SP[1] | 0;
+    headEnd = SP$.s1 | 0;
   }
   let start = skipTrivia(text, len, headEnd);
   // `class A extends B, {}`: TypeScript's parser takes the comma, and its checker reports it.
   if (start < len && (text[start] | 0) === 44) start = skipTrivia(text, len, start + 1);
   classSpan(c);
-  SP[0] = start;
+  SP$.s0 = (start) | 0;
 }
 
 // ───────────────────────────── Member ─────────────────────────────
@@ -1184,8 +1203,9 @@ export function memberModifiersLen(m: number): number {
 /** `Member::span` into `SP`: from its first token, which can be a decorator or a modifier. Its `;` or `,` is part of it. */
 export function memberSpan(m: number): void {
   const hir$ = hir;
-  SP[0] = hir$.memberStart[m] | 0;
-  SP[1] = hir$.memberLocEnd[m] | 0;
+  const SP$ = SP;
+  SP$.s0 = hir$.memberStart[m] | 0;
+  SP$.s1 = hir$.memberLocEnd[m] | 0;
 }
 
 // ───────────────────────────── Modifier ─────────────────────────────
@@ -1242,12 +1262,13 @@ export function modifierTextLen(flag: number): number {
 export function modifierSpan(m: number): void {
   const hir$ = hir;
   const start = hir$.modifierPos[m] | 0;
+  const SP$ = SP;
   if ((hir$.modifierKind[m] | 0) === MODK_DECORATOR) {
-    SP[0] = start;
-    SP[1] = exprOuterEnd(hir$.modifierValue[m] | 0);
+    SP$.s0 = (start) | 0;
+    SP$.s1 = (exprOuterEnd(hir$.modifierValue[m] | 0)) | 0;
   } else {
-    SP[0] = start;
-    SP[1] = (start + modifierTextLen(hir$.modifierValue[m] | 0)) | 0;
+    SP$.s0 = (start) | 0;
+    SP$.s1 = (start + modifierTextLen(hir$.modifierValue[m] | 0)) | 0;
   }
 }
 export function modifierStart(m: number): number {
@@ -1316,8 +1337,9 @@ export function propSpan(p: number): void {
     const v = hir$.propValue[p] | 0;
     e = v >= 0 ? exprOuterEnd(v) : hir$.propPos[p] | 0;
   }
-  SP[0] = hir$.propStart[p] | 0;
-  SP[1] = e;
+  const SP$ = SP;
+  SP$.s0 = hir$.propStart[p] | 0;
+  SP$.s1 = (e) | 0;
 }
 export function propModifiersStart(p: number): number {
   return hir.propModStart[p] | 0;
@@ -1373,12 +1395,13 @@ export function interfaceBodySpan(i: number): void {
   const len = hir$.sourceLen | 0;
   let headEnd = -1;
   const el = hir$.interfaceExtendsLen[i] | 0;
+  const SP$ = SP;
   if (el > 0) headEnd = typeEnd(hir$.ids[((hir$.interfaceExtendsStart[i] | 0) + el - 1) | 0] | 0);
-  else if (typeParamListAngleBrackets(hir$.interfaceTypeParamsStart[i] | 0, hir$.interfaceTypeParamsLen[i] | 0)) headEnd = SP[1] | 0;
+  else if (typeParamListAngleBrackets(hir$.interfaceTypeParamsStart[i] | 0, hir$.interfaceTypeParamsLen[i] | 0)) headEnd = SP$.s1 | 0;
   else headEnd = identEndOf(hir$.interfaceName[i] | 0, hir$.interfaceNamePos[i] | 0);
   const start = skipTrivia(text, len, headEnd);
   stmtSpan(hir$.interfaceStmt[i] | 0);
-  SP[0] = start;
+  SP$.s0 = (start) | 0;
 }
 
 export function aliasName(a: number): number {
@@ -1421,7 +1444,7 @@ export function enumBodySpan(e: number): void {
   const hir$ = hir;
   const start = skipTrivia(hir$.text, hir$.sourceLen | 0, identEndOf(hir$.enumName[e] | 0, hir$.enumNamePos[e] | 0));
   stmtSpan(hir$.enumStmt[e] | 0);
-  SP[0] = start;
+  SP.s0 = (start) | 0;
 }
 
 // EnumMember: `A = init`. Its key: `keyKind(nodeOfEnumMember(m))` etc.
@@ -1434,8 +1457,9 @@ export function enumMemberInit(m: number): number {
 }
 export function enumMemberSpan(m: number): void {
   const hir$ = hir;
-  SP[0] = hir$.enumMemberPos[m] | 0;
-  SP[1] = hir$.enumMemberLocEnd[m] | 0;
+  const SP$ = SP;
+  SP$.s0 = hir$.enumMemberPos[m] | 0;
+  SP$.s1 = hir$.enumMemberLocEnd[m] | 0;
 }
 /** `EnumMember::parent`: the `Stmt` of the enum (a Node). */
 export function enumMemberParent(m: number): number {
@@ -1519,13 +1543,14 @@ export function moduleBodyLen(m: number): number {
 export function moduleNameSpan(m: number): void {
   const hir$ = hir;
   const pos = hir$.moduleNamePos[m] | 0;
+  const SP$ = SP;
   if ((hir$.moduleNameKind[m] | 0) === MODNAME_GLOBAL) {
-    SP[0] = pos;
-    SP[1] = (pos + 6) | 0;
+    SP$.s0 = (pos) | 0;
+    SP$.s1 = (pos + 6) | 0;
     return;
   }
-  SP[0] = pos;
-  SP[1] = identEndOf(hir$.moduleName[m] | 0, pos);
+  SP$.s0 = (pos) | 0;
+  SP$.s1 = (identEndOf(hir$.moduleName[m] | 0, pos)) | 0;
 }
 /** `Module::body_span` into `SP`: the `{ .. }`, for each of the names of `namespace A.B.C { .. }`. */
 export function moduleBodySpan(m: number): boolean {
@@ -1533,9 +1558,10 @@ export function moduleBodySpan(m: number): boolean {
   if (!moduleHasBody(last)) return false;
   moduleNameSpan(last);
   const hir$ = hir;
-  const start = skipTrivia(hir$.text, hir$.sourceLen | 0, SP[1] | 0);
+  const SP$ = SP;
+  const start = skipTrivia(hir$.text, hir$.sourceLen | 0, SP$.s1 | 0);
   stmtSpan(hir$.moduleStmt[last] | 0);
-  SP[0] = start;
+  SP$.s0 = (start) | 0;
   return true;
 }
 
@@ -1563,8 +1589,9 @@ export function importNamespaceSpan(i: number): boolean {
   const hir$ = hir;
   const n = hir$.importNamespace[i] | 0;
   if (n < 0) return false;
-  SP[0] = hir$.importNamespaceStart[i] | 0;
-  SP[1] = identEndOf(n, hir$.importNamespacePos[i] | 0);
+  const SP$ = SP;
+  SP$.s0 = hir$.importNamespaceStart[i] | 0;
+  SP$.s1 = (identEndOf(n, hir$.importNamespacePos[i] | 0)) | 0;
   return true;
 }
 /** The named imports: a list of ImportSpecIds. */
@@ -1606,8 +1633,9 @@ export function importAttributes(i: number): number {
 /** `Import::clause_span` into `SP`: what is between `import` and `from`. */
 export function importClauseSpan(i: number): void {
   const hir$ = hir;
-  SP[0] = hir$.importClauseStart[i] | 0;
-  SP[1] = hir$.importClauseEnd[i] | 0;
+  const SP$ = SP;
+  SP$.s0 = hir$.importClauseStart[i] | 0;
+  SP$.s1 = hir$.importClauseEnd[i] | 0;
 }
 export function importStmt(i: number): number {
   return hir.importStmt[i] | 0;
@@ -1642,8 +1670,9 @@ export function importSpecImport(s: number): number {
 }
 export function importSpecSpan(s: number): void {
   const hir$ = hir;
-  SP[0] = hir$.importSpecStart[s] | 0;
-  SP[1] = hir$.importSpecEnd[s] | 0;
+  const SP$ = SP;
+  SP$.s0 = hir$.importSpecStart[s] | 0;
+  SP$.s1 = hir$.importSpecEnd[s] | 0;
 }
 
 // ImportEquals: `import name = require("spec")`, `import name = A.B.C`
@@ -1680,13 +1709,14 @@ export function importEqualsFlags(i: number): number {
 export function importEqualsRequireSpan(i: number): boolean {
   const hir$ = hir;
   if (!stmtModuleSpecifierSpan(hir$.importEqualsStmt[i] | 0)) return false;
-  const specStart = SP[0] | 0;
-  const specEnd = SP[1] | 0;
+  const SP$ = SP;
+  const specStart = SP$.s0 | 0;
+  const specEnd = SP$.s1 | 0;
   const open0 = fileEndOfTokenBefore(specStart);
   const open = open0 > 0 ? (open0 - 1) | 0 : 0;
   const keywordEnd = fileEndOfTokenBefore(open);
-  SP[0] = keywordEnd > 7 ? (keywordEnd - 7) | 0 : 0;
-  SP[1] = (skipTrivia(hir$.text, hir$.sourceLen | 0, specEnd) + 1) | 0;
+  SP$.s0 = (keywordEnd > 7 ? (keywordEnd - 7) | 0 : 0) | 0;
+  SP$.s1 = (skipTrivia(hir$.text, hir$.sourceLen | 0, specEnd) + 1) | 0;
   return true;
 }
 
@@ -1753,6 +1783,7 @@ export function exportSpecExport(s: number): number {
 }
 export function exportSpecSpan(s: number): void {
   const hir$ = hir;
-  SP[0] = hir$.exportSpecStart[s] | 0;
-  SP[1] = hir$.exportSpecEnd[s] | 0;
+  const SP$ = SP;
+  SP$.s0 = hir$.exportSpecStart[s] | 0;
+  SP$.s1 = hir$.exportSpecEnd[s] | 0;
 }

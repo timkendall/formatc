@@ -381,13 +381,14 @@ function isBlank(text: Uint8Array, start: number, end: number): boolean {
  */
 function computedKeyWidth(owner: number, f: Formatter): number {
   const cx = cxOf(f);
+  const SP$ = SP;
   if (f.options.flavor === FLAVOR_OXFMT) {
     keyInnerSpan(owner);
-    return (cx.src.spanWidth(SP[0] | 0, SP[1] | 0) + 2) | 0;
+    return (cx.src.spanWidth(SP$.s0 | 0, SP$.s1 | 0) + 2) | 0;
   }
   keySpan(owner);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const text = cx.src.text;
   if (keyKind(owner) === KEY_COMPUTED) {
     const e = keyExpr(owner);
@@ -608,14 +609,15 @@ function writePropertyDefinitionLeft(member: number, f: Formatter): void {
 function nameOnTheLeft(kind: number, h: number, f: Formatter): boolean {
   if (!cxOf(f).isQuiet) return false;
   let owner: number;
+  const SP$ = SP;
   switch (kind) {
     case ASSIGNMENT_LIKE_VARIABLE_DECLARATOR: {
       const id = varDeclPat(h);
       if (patTag(id) !== PAT_IDENT || varDeclTy(h) >= 0 || varDeclIsDefinite(h)) return false;
       patSpan(id);
       NAME[0] = 1;
-      NAME[1] = SP[0] | 0;
-      NAME[2] = SP[1] | 0;
+      NAME[1] = SP$.s0 | 0;
+      NAME[2] = SP$.s1 | 0;
       NAME[3] = 0;
       return true;
     }
@@ -638,8 +640,8 @@ function nameOnTheLeft(kind: number, h: number, f: Formatter): boolean {
   }
   if (keyKind(owner) !== KEY_IDENT || f.options.quoteProperties === QUOTE_PROPS_CONSISTENT) return false;
   keySpan(owner);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const textWidthForBreak = (f.options.indentWidth + MIN_OVERLAP_FOR_BREAK) | 0;
   // No text is wider than it is long.
   const isShort = end - start < textWidthForBreak || f.stringWidth(f.source, start, end) < textWidthForBreak;
@@ -831,8 +833,9 @@ function leadingCommentsOfRightSide(right: number, f: Formatter): number {
   if (cx.isQuiet || commentsLeadWhatIsInChainExpression(right, f)) return LC_NONE;
   const cm = cx.comments;
   exprSpan(right);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   if (exprTag(right) === EXPR_JSX) {
     return cm.isSuppressed(start) && ignoredJsxGetsNoParentheses(f) ? LC_BREAK : LC_NONE;
   }
@@ -1258,7 +1261,7 @@ function sidesWithCommentsBetween(kind: number, h: number, rightExpression: numb
       const owner = nodeOfProp(h);
       if (keyKind(owner) < 0 || rightStartOfExpression < 0) return false;
       keySpan(owner);
-      leftEnd = SP[1] | 0;
+      leftEnd = SP.s1 | 0;
       rightStart = rightStartOfExpression;
       operator = 58;
       break;
@@ -1267,7 +1270,7 @@ function sidesWithCommentsBetween(kind: number, h: number, rightExpression: numb
       const owner = nodeOfPatProp(h);
       if (keyKind(owner) < 0) return false;
       keySpan(owner);
-      leftEnd = SP[1] | 0;
+      leftEnd = SP.s1 | 0;
       rightStart = patStart(patPropValue(h));
       operator = 58;
       break;
@@ -1278,7 +1281,7 @@ function sidesWithCommentsBetween(kind: number, h: number, rightExpression: numb
       if (ty >= 0) leftEnd = typeEnd(ty);
       else if (keyKind(owner) >= 0) {
         keySpan(owner);
-        leftEnd = SP[1] | 0;
+        leftEnd = SP.s1 | 0;
       } else return false;
       if (rightStartOfExpression < 0) return false;
       rightStart = rightStartOfExpression;
@@ -1466,19 +1469,20 @@ export function isShortArgument(argument0: number, threshold: number, f: Formatt
   const isOxfmt = f.options.flavor === FLAVOR_OXFMT;
   const text = hir.text;
   const nt = anTag(node);
+  const SP$ = SP;
   switch (nt) {
     case AN_IDENTIFIER_REFERENCE:
       return textLength(text, exprStart(argument), exprEnd(argument), isOxfmt) <= threshold;
     case AN_REG_EXP_LITERAL:
       exprRegexPatternSpan(argument);
-      return textLength(text, SP[0] | 0, SP[1] | 0, isOxfmt) <= threshold;
+      return textLength(text, SP$.s0 | 0, SP$.s1 | 0, isOxfmt) <= threshold;
     case AN_STRING_LITERAL:
       return stringLiteralLength(argument, isOxfmt, f) <= threshold;
     case AN_TEMPLATE_LITERAL: {
       if (exprTag(argument) !== EXPR_TEMPLATE || exprTemplateQuasiCount(argument) !== 1) return false;
       exprTemplateRawSpan(argument, 0);
-      const a = SP[0] | 0;
-      const b = SP[1] | 0;
+      const a = SP$.s0 | 0;
+      const b = SP$.s1 | 0;
       if (textLength(text, a, b, isOxfmt) > threshold) return false;
       for (let i = a; i < b; i++) {
         const c = text[i] | 0;
@@ -1544,7 +1548,7 @@ function stringLiteralLength(e: number, isOxfmt: boolean, f: Formatter): number 
 /** Prettier's `isComplexTypeArguments`, for the type arguments of the call `owner`. */
 function isComplexTypeArguments(owner: number, paramsStart: number, paramsLen: number, f: Formatter): boolean {
   if (!typeListAngleBrackets(paramsStart, paramsLen)) return false;
-  const spanStart = SP[0] | 0;
+  const spanStart = SP.s0 | 0;
   if (paramsLen > 1) return true;
   const first = listAt(paramsStart, 0);
   const t = typeTag(first);

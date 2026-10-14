@@ -86,6 +86,7 @@ import {
   hir,
 } from "../hir.ts";
 import { importCallTypeArgsRow } from "../hir_util.ts";
+import { Slots1 } from "../../base/slots.ts";
 
 // `Parent`
 export const P_NONE: number = 0;
@@ -186,7 +187,7 @@ export class Bound {
 
 export const bound = new Bound();
 
-const SAVED = new Int32Array(1);
+const SAVED = new Slots1();
 
 /** Makes the tables as long as the HIR's and empties them. */
 function refill(): void {
@@ -239,7 +240,7 @@ function refill(): void {
   b.typeReached.fill(0, 0, hir$.nTypes);
   b.typeParamReached.fill(0, 0, hir$.nTypeParams);
   b.typeQueryOperandsLen = 0;
-  SAVED[0] = 0;
+  SAVED.s0 = 0;
 }
 
 // ───────────── small setters (`set!`): an id that is NONE is the index of nothing ─────────────

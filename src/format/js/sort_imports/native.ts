@@ -179,12 +179,14 @@ function isAlpha(b: number): boolean {
 /** Written as `ImportSpec::span()`. */
 function specSpan(spec: number): Span {
   importSpecSpan(spec);
-  return new Span(SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  return new Span(SP$.s0 | 0, SP$.s1 | 0);
 }
 
 function identSpanOf(atom: number, pos: number): Span {
   identSpan(atom, pos);
-  return new Span(SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  return new Span(SP$.s0 | 0, SP$.s1 | 0);
 }
 
 class Tidy {
@@ -251,9 +253,10 @@ class Tidy {
     if (!importHasNamedImports(imp)) return null;
     // Everything between `import` and the module specifier.
     stmtSpan(statement);
-    const keywordEnd = ((SP[0] | 0) + 6) | 0;
+    const SP$ = SP;
+    const keywordEnd = ((SP$.s0 | 0) + 6) | 0;
     if (!importSpecSpanOf(imp)) return null;
-    const clause = new Span(keywordEnd, SP[0] | 0);
+    const clause = new Span(keywordEnd, SP$.s0 | 0);
     const n = importNamedLen(imp);
     const ns = importNamedStart(imp);
     const first = n > 0 ? specSpan(listAt(ns, 0)) : new Span(clause.end, clause.end);
@@ -289,8 +292,8 @@ class Tidy {
     }
     // `lead` starts after `type` or after the default import.
     importClauseSpan(imp);
-    const kindStart = SP[0] | 0;
-    const kindEnd = SP[1] | 0;
+    const kindStart = SP$.s0 | 0;
+    const kindEnd = SP$.s1 | 0;
     let letters = 0;
     while (kindStart + letters < kindEnd && isAlpha(this.text[kindStart + letters] | 0)) letters = letters + 1;
     let leadStart = clause.start;
@@ -365,7 +368,8 @@ class Tidy {
   /** `before` starts after the previous statement's line. `behind` is the rest of this statement's line. */
   entry(statement: number, imp: number, before: Span, behind: Span): Entry {
     stmtSpan(statement);
-    const span = new Span(SP[0] | 0, SP[1] | 0);
+    const SP$ = SP;
+    const span = new Span(SP$.s0 | 0, SP$.s1 | 0);
     const braces = this.bracesOf(statement, imp);
     // Comments inside the statement that no name can carry along.
     let hasCommentsInside: boolean;
@@ -402,8 +406,9 @@ class Tidy {
   kindOf(e: Entry): string {
     if (!importIsTypeOnly(e.imp)) return "";
     importClauseSpan(e.imp);
-    const s = SP[0] | 0;
-    const end = SP[1] | 0;
+    const SP$ = SP;
+    const s = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     let n = 0;
     while (s + n < end && isAlpha(this.text[s + n] | 0)) n = n + 1;
     return "t" + bytesString(this.text, s, s + n);
@@ -416,19 +421,20 @@ class Tidy {
     const start = importAttributesEntriesStart(row);
     const len = importAttributesEntriesLen(row);
     importAttributesKeywordSpan(row);
-    let out = bytesString(this.text, SP[0] | 0, SP[1] | 0) + "\u0000";
+    const SP$ = SP;
+    let out = bytesString(this.text, SP$.s0 | 0, SP$.s1 | 0) + "\u0000";
     for (let i = 0; i < len; i++) {
       const p = listAt(start, i);
       let key = "";
       if (keySpan(nodeOfProp(p))) {
-        const q = withoutQuotes(this.text, SP[0] | 0, SP[1] | 0);
+        const q = withoutQuotes(this.text, SP$.s0 | 0, SP$.s1 | 0);
         key = bytesString(this.text, q.start, q.end);
       }
       let value = "";
       const v = propValue(p);
       if (v >= 0) {
         exprSpan(v);
-        const q = withoutQuotes(this.text, SP[0] | 0, SP[1] | 0);
+        const q = withoutQuotes(this.text, SP$.s0 | 0, SP$.s1 | 0);
         value = bytesString(this.text, q.start, q.end);
       }
       out += key + "\u0001" + value + "\u0002";
@@ -521,8 +527,9 @@ class Tidy {
   /** Deletes `statement`, and the whole line if nothing else is on it. */
   remove(statement: number): void {
     stmtSpan(statement);
-    let start = SP[0] | 0;
-    let end = SP[1] | 0;
+    const SP$ = SP;
+    let start = SP$.s0 | 0;
+    let end = SP$.s1 | 0;
     const t = this.text;
     let lineStart = 0;
     for (let i = start - 1; i >= 0; i--) {
@@ -560,6 +567,7 @@ class Tidy {
     const ownDefault = importDefault(target.imp);
     const braces = target.braces;
     const commentRange$ = commentRange;
+    const SP$ = SP;
     if (braces !== null) {
       // These comments are part of `chunks` now.
       if (braces.chunks.length > 0) {
@@ -584,7 +592,7 @@ class Tidy {
     } else if (ownDefault >= 0 && chunks.length > 0) {
       // Insert after any comments that belong to the default import.
       const d = identSpanOf(ownDefault, importDefaultPos(target.imp));
-      const source = importSpecSpanOf(target.imp) ? new Span(SP[0] | 0, SP[1] | 0) : new Span(0, 0);
+      const source = importSpecSpanOf(target.imp) ? new Span(SP$.s0 | 0, SP$.s1 | 0) : new Span(0, 0);
       const from = this.find(new Span(d.end, source.start), 102);
       const aboutDefault = new Span(d.end, from >= 0 ? from : d.end);
       let lastComment = -1;
@@ -702,14 +710,15 @@ export function preprocess(): Uint8Array | null {
   const bs = fileBodyStart();
   let entries: Entry[] = [];
   let previousEnd = 0;
+  const SP$ = SP;
   for (let index = 0; index < n; index++) {
     const statement = listAt(bs, index);
     stmtSpan(statement);
-    const span = new Span(SP[0] | 0, SP[1] | 0);
+    const span = new Span(SP$.s0 | 0, SP$.s1 | 0);
     let nextStart = text.length;
     if (index + 1 < n) {
       stmtSpan(listAt(bs, index + 1));
-      nextStart = SP[0] | 0;
+      nextStart = SP$.s0 | 0;
     }
     const before = new Span(previousEnd, span.start);
     const behind = tidy.restOfLine(span, nextStart);
@@ -757,6 +766,7 @@ export function summary(): Summary {
   const out = new Summary();
   const n = fileBodyLen();
   const bs = fileBodyStart();
+  const SP$ = SP;
   for (let i = 0; i < n; i++) {
     const statement = listAt(bs, i);
     if (stmtTag(statement) !== STMT_IMPORT) continue;
@@ -765,9 +775,9 @@ export function summary(): Summary {
     const row = importAttributes(imp);
     if (row >= 0) {
       importAttributesKeywordSpan(row);
-      const s = SP[0] | 0;
+      const s = SP$.s0 | 0;
       importAttributesBracesSpan(row);
-      const e = SP[1] | 0;
+      const e = SP$.s1 | 0;
       for (let k = s; k < e; k++) {
         const b = text[k] | 0;
         if (!(isAsciiBlank(b) || b === 34 || b === 39 || b === 44)) attributes += String.fromCharCode(b);

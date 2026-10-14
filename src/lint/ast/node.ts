@@ -166,10 +166,11 @@ export function nodeIsFile(n: number): boolean { return n === 0; }
 /** `Node::span` into `SP`: from its first token to the end of its last. Parentheses around an expression or a type are not part of it. */
 export function nodeSpan(n: number): void {
   const id = n & 67108863;
+  const SP$ = SP;
   switch (n >> 26) {
     case N_FILE:
-      SP[0] = 0;
-      SP[1] = hir.sourceLen | 0;
+      SP$.s0 = 0;
+      SP$.s1 = hir.sourceLen | 0;
       return;
     case N_EXPR: exprSpan(id); return;
     case N_STMT: stmtSpan(id); return;
@@ -193,11 +194,11 @@ export function nodeSpan(n: number): void {
 }
 export function nodeStart(n: number): number {
   nodeSpan(n);
-  return SP[0] | 0;
+  return SP.s0 | 0;
 }
 export function nodeEnd(n: number): number {
   nodeSpan(n);
-  return SP[1] | 0;
+  return SP.s1 | 0;
 }
 
 /** `Node::as_written`: the `Expr`, the `Stmt`, the `Member` or the `Prop` that a function or a class is written as. Any other node is itself. */
@@ -373,7 +374,7 @@ export function stmtParent(s: number): number {
     const p = nodeId(parent);
     if ((hir$.stmtTag[p] | 0) === STMT_SWITCH) {
       stmtSpan(s);
-      const c = listAroundCase(hir$.stmtB[p] | 0, hir$.stmtC[p] | 0, SP[0] | 0);
+      const c = listAroundCase(hir$.stmtB[p] | 0, hir$.stmtC[p] | 0, SP.s0 | 0);
       return c >= 0 ? nodeOfCase(c) : parent;
     }
   }
@@ -813,8 +814,9 @@ export function importAttributesSearchSpanOfType(t: number): boolean {
     const first = hir$.ids[hir$.typeD[t] | 0] | 0;
     if (first >= 0) argEnd = hir$.typeEnd[first] | 0;
   }
-  SP[0] = argEnd >= 0 ? argEnd : hir$.typePos[t] | 0;
-  SP[1] = hir$.typeEnd[t] | 0;
+  const SP$ = SP;
+  SP$.s0 = (argEnd >= 0 ? argEnd : hir$.typePos[t] | 0) | 0;
+  SP$.s1 = hir$.typeEnd[t] | 0;
   return true;
 }
 
@@ -825,9 +827,10 @@ function ownersOfImportAttributes(): void {
   TP$.importAttributes = growFill(TP$.importAttributes, n);
   if (n === 0) return;
   // The first owner wins: a type in a JSDoc comment is parsed once for each node that it annotates.
+  const SP$ = SP;
   for (let i = 0; i < hir$.nTypes; i++) {
     if (importAttributesSearchSpanOfType(i)) {
-      const row = importAttributesIndexWithin(SP[0] | 0, SP[1] | 0);
+      const row = importAttributesIndexWithin(SP$.s0 | 0, SP$.s1 | 0);
       if (row >= 0 && (TP$.importAttributes[row] | 0) === 0) TP$.importAttributes[row] = nodeOfType(i);
     }
   }

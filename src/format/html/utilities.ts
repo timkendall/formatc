@@ -88,6 +88,7 @@ import {
   F_END_S,
 } from "./ast.ts";
 import { HOptions } from "./hoptions.ts";
+import { Slots2 } from "../../base/slots.ts";
 
 export function isAsciiWs(b: number): boolean {
   return b === 32 || b === 9 || b === 10 || b === 12 || b === 13;
@@ -150,7 +151,7 @@ export function dedentString(buf: Uint8Array, s: number, e: number, out: ByteBuf
 }
 
 /** The range that `htmlTrimPreserveIndentation` makes of `buf[s, e)`: `TRIM[0]`, `TRIM[1]`. */
-export const TRIM = new Int32Array(2);
+export const TRIM = new Slots2();
 
 /** `htmlTrimPreserveIndentation` */
 export function htmlTrimPreserveIndentation(buf: Uint8Array, s: number, e: number): void {
@@ -162,12 +163,13 @@ export function htmlTrimPreserveIndentation(buf: Uint8Array, s: number, e: numbe
     if (b === 9 || b === 12 || b === 13 || b === 32) at = at + 1;
     else break;
   }
+  const TRIM$ = TRIM;
   if (at < end && (buf[at] | 0) === 10) {
-    TRIM[0] = at + 1;
+    TRIM$.s0 = (at + 1) | 0;
   } else {
-    TRIM[0] = s;
+    TRIM$.s0 = (s) | 0;
   }
-  TRIM[1] = end;
+  TRIM$.s1 = (end) | 0;
 }
 
 // ───────────────────────────── nodes ─────────────────────────────

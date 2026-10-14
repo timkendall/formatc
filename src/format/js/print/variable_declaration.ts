@@ -69,9 +69,10 @@ function bodyOfForLoopIsWrittenLikeItsHead(f: Formatter): boolean {
 /** `const a = 1, b = 2;` */
 export function writeVariableDeclaration(statement: number, declarationsStart: number, declarationsLen: number, f: Formatter): void {
   // The keyword is a property of what is declared.
+  const SP$ = SP;
   if (declarationsLen === 0) {
     stmtSpan(statement);
-    writeSuppressedNode(SP[0] | 0, SP[1] | 0, f);
+    writeSuppressedNode(SP$.s0 | 0, SP$.s1 | 0, f);
     return;
   }
   const cx = cxOf(f);
@@ -145,7 +146,7 @@ function writeVariableDeclarators(start: number, length: number, isParentForLoop
   const first = listAt(start, 0);
   if (length === 1) {
     varDeclSpan(first);
-    if (!cx.comments.hasCommentBefore(SP[0] | 0)) {
+    if (!cx.comments.hasCommentBefore(SP.s0 | 0)) {
       fmtVarDecl(first, f);
       return;
     }

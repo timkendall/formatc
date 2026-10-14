@@ -48,10 +48,11 @@ export function writeSwitchStatement(statement: number, discriminant: number, ca
   f.token(RPAREN);
   f.space();
   f.token(LBRACE);
+  const SP$ = SP;
   if (casesLen === 0) {
     stmtSpan(statement);
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     if (cx.comments.hasCommentBefore(end)) formatDanglingComments(start, end, DANGLING_BLOCK, f);
     else f.hardLineBreak();
     f.token(RBRACE);
@@ -63,7 +64,7 @@ export function writeSwitchStatement(statement: number, discriminant: number, ca
     const c = listAt(casesStart, i);
     if (previous >= 0) {
       caseSpan(previous);
-      if (isNextLineEmpty(cx.src, SP[1] | 0)) f.emptyLine();
+      if (isNextLineEmpty(cx.src, SP$.s1 | 0)) f.emptyLine();
       else f.hardLineBreak();
     }
     fmtCase(c, f);
@@ -78,8 +79,9 @@ export function writeSwitchCase(cs: number, f: Formatter): void {
   const cx = cxOf(f);
   const cm = cx.comments;
   caseSpan(cs);
-  const caseStart = SP[0] | 0;
-  const caseEnd = SP[1] | 0;
+  const SP$ = SP;
+  const caseStart = SP$.s0 | 0;
+  const caseEnd = SP$.s1 | 0;
   // `case 1: a(); // prettier-ignore`: the comment is not in the `case`, so it trails all of it.
   if (!cx.isQuiet && cm.hasTrailingSuppressionComment(caseEnd)) {
     writeSuppressedNode(caseStart, caseEnd, f);

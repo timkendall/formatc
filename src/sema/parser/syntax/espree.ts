@@ -409,12 +409,12 @@ function exprEnd(e: number): number {
 
 function outerStart(e: number): number {
   exprOuterSpan(e);
-  return SP[0] | 0;
+  return SP.s0 | 0;
 }
 
 function outerEnd(e: number): number {
   exprOuterSpan(e);
-  return SP[1] | 0;
+  return SP.s1 | 0;
 }
 
 function stmtInTree(i: number): boolean {
@@ -611,6 +611,7 @@ function toAssignable(target: number, depth: number): void {
     fail(exprStart(target), "Assigning to rvalue");
     return;
   }
+  const SP$ = SP;
   if (t === EXPR_OBJECT) {
     const start = hir$.exprA[target] | 0;
     const count = hir$.exprB[target] | 0;
@@ -621,10 +622,10 @@ function toAssignable(target: number, depth: number): void {
       const kind = hir$.propKind[prop] | 0;
       if (kind === PROP_GETTER || kind === PROP_SETTER) {
         let key: number;
-        if (keySpan((12 << 26) | prop)) key = SP[0] | 0;
+        if (keySpan((12 << 26) | prop)) key = SP$.s0 | 0;
         else {
           propSpan(prop);
-          key = SP[0] | 0;
+          key = SP$.s0 | 0;
         }
         fail(key, "Object pattern can't contain getter or setter");
       } else if (kind === PROP_METHOD) {
@@ -632,7 +633,7 @@ function toAssignable(target: number, depth: number): void {
         let at: number;
         if (f >= 0) {
           funcSpanFromParams(f);
-          at = SP[0] | 0;
+          at = SP$.s0 | 0;
         } else at = exprStart(value);
         fail(at, "Assigning to rvalue");
       } else if (kind === PROP_SPREAD) {
@@ -729,6 +730,7 @@ function restElements(): void {
   };
   const hir$ = hir;
   const ne = hir$.nPatElems | 0;
+  const SP$ = SP;
   for (let i = 0; i < ne; i++) {
     if ((hir$.patElemIsRest[i] | 0) === 0) continue;
     const pat = hir$.patElemPat[i] | 0;
@@ -759,7 +761,7 @@ function restElements(): void {
     const def = hir$.patElemDefault[i] | 0;
     if (arrow >= 0 && isParameter && def >= 0) {
       let noticedAt = hir$.patElemEnd[i] | 0;
-      if (funcArrowSpan(arrow)) noticedAt = SP[0] | 0;
+      if (funcArrowSpan(arrow)) noticedAt = SP$.s0 | 0;
       const saved = noticed;
       noticed = noticedAt;
       fail(hir$.patPos[pat] | 0, "Rest elements cannot have a default value");
@@ -783,7 +785,7 @@ function restElements(): void {
     if (((hir$.paramFlags[i] | 0) & FLAG_REST) === 0) continue;
     if ((bound$.paramFn[i] | 0) < 0) continue;
     paramSpan(i);
-    rest(hir$.paramDefault[i] | 0, SP[1] | 0);
+    rest(hir$.paramDefault[i] | 0, SP$.s1 | 0);
   }
 }
 
@@ -950,11 +952,12 @@ function atomIs(atom: number, text: string): boolean {
 
 /** `validateRegExpFlags` */
 function regularExpressions(): void {
+  const SP$ = SP;
   for (let k = 0; k < regexes.len; k++) {
     const it = regexes.data[k] | 0;
     exprRegexFlagsSpan(it);
-    const fs = SP[0] | 0;
-    const fe = SP[1] | 0;
+    const fs = SP$.s0 | 0;
+    const fe = SP$.s1 | 0;
     const at = ((exprStart(it) | 0) + 1) | 0;
     let invalid = false;
     let duplicate = false;
@@ -977,6 +980,7 @@ function regularExpressions(): void {
 /** `??` beside `&&` or `||`, a template after an optional chain. */
 function operators(): void {
   const hir$ = hir;
+  const SP$ = SP;
   for (let k = 0; k < binaries.len; k++) {
     const it = binaries.data[k] | 0;
     const op = hir$.exprAux[it] | 0;
@@ -991,9 +995,9 @@ function operators(): void {
     };
     // It is noticed at the second operator.
     if (isMixed(left)) {
-      if (exprOperatorSpan(it)) fail(SP[0] | 0, "Logical expressions and coalesce expressions cannot be mixed. Wrap either by parentheses");
+      if (exprOperatorSpan(it)) fail(SP$.s0 | 0, "Logical expressions and coalesce expressions cannot be mixed. Wrap either by parentheses");
     } else if (isMixed(right)) {
-      if (exprOperatorSpan(right)) fail(SP[0] | 0, "Logical expressions and coalesce expressions cannot be mixed. Wrap either by parentheses");
+      if (exprOperatorSpan(right)) fail(SP$.s0 | 0, "Logical expressions and coalesce expressions cannot be mixed. Wrap either by parentheses");
     }
   }
   for (let k = 0; k < taggedTemplates.len; k++) {
@@ -1082,6 +1086,7 @@ function mentions(text_: string): boolean {
 function functions(mayHaveDirective: boolean): void {
   const hir$ = hir;
   const n = hir$.nFns | 0;
+  const SP$ = SP;
   for (let i = 0; i < n; i++) {
     const kind = hir$.fnKind[i] | 0;
     if (!mayHaveDirective && kind !== FN_GETTER && kind !== FN_SETTER) continue;
@@ -1092,24 +1097,24 @@ function functions(mayHaveDirective: boolean): void {
     let wrongMessage = "";
     if (kind === FN_GETTER && paramsLen !== 0) {
       funcSpanFromParams(i);
-      wrongAt = SP[0] | 0;
+      wrongAt = SP$.s0 | 0;
       wrongMessage = "getter should have no params";
     } else if (kind === FN_SETTER && paramsLen !== 1) {
       funcSpanFromParams(i);
-      wrongAt = SP[0] | 0;
+      wrongAt = SP$.s0 | 0;
       wrongMessage = "setter should have exactly one param";
     } else if (kind === FN_SETTER) {
       const first = hir$.ids[paramsStart] | 0;
       if (((hir$.paramFlags[first] | 0) & FLAG_REST) !== 0) {
         paramSpan(first);
-        wrongAt = SP[0] | 0;
+        wrongAt = SP$.s0 | 0;
         wrongMessage = "Setter cannot use rest params";
       }
     }
     if (wrongAt >= 0) {
       funcSpan(i);
       const saved = noticed;
-      noticed = SP[1] | 0;
+      noticed = SP$.s1 | 0;
       fail(wrongAt, wrongMessage);
       noticed = saved;
     }
@@ -1132,18 +1137,18 @@ function functions(mayHaveDirective: boolean): void {
     for (let k = 0; k < bodyLen; k++) {
       const st = hir$.ids[(bodyStart + k) | 0] | 0;
       if (!stmtDirectiveSpan(st)) break;
-      if (SP[1] - SP[0] === 10 && sliceText(SP[0] | 0, SP[1] | 0) === "use strict") {
+      if (SP$.s1 - SP$.s0 === 10 && sliceText(SP$.s0 | 0, SP$.s1 | 0) === "use strict") {
         hasDirective = true;
         break;
       }
     }
     if (hasDirective) {
       // `body_span().start`: the `{`.
-      const body = funcBodySpan(i) ? SP[0] | 0 : 0;
+      const body = funcBodySpan(i) ? SP$.s0 | 0 : 0;
       const saved = noticed;
       noticed = body;
       funcEstreeSpan(i);
-      fail(SP[0] | 0, "Illegal 'use strict' directive in function with non-simple parameter list");
+      fail(SP$.s0 | 0, "Illegal 'use strict' directive in function with non-simple parameter list");
       noticed = saved;
     }
   }
@@ -1230,6 +1235,8 @@ function privateNames(): void {
 function classes(): void {
   const hir$ = hir;
   const nc = hir$.nClasses | 0;
+  const KEY$ = KEY;
+  const SP$ = SP;
   for (let c = 0; c < nc; c++) {
     if (!classInTree(c)) continue;
     const membersStart = hir$.classMembersStart[c] | 0;
@@ -1252,7 +1259,7 @@ function classes(): void {
       if (loaded !== KEY_PRIVATE) continue;
       // An overload in TypeScript: `#m(): void; #m() {}`.
       if (f >= 0 && f < hir$.nFns && (hir$.fnBodyKind[f] | 0) === 0) continue;
-      const name = atomText(KEY[KEY_NAME] | 0);
+      const name = atomText(KEY$.s1 | 0);
       const mk = hir$.memberKind[m] | 0;
       const half = mk === MEMBER_GETTER || mk === MEMBER_SETTER ? (memberIsStatic(m) ? 2 : 0) | (mk === MEMBER_GETTER ? 4 : 8) : 0;
       let seen = -1;
@@ -1271,7 +1278,7 @@ function classes(): void {
         privHalf[seen] = 0;
         if (!completes) {
           keySpan((N_MEMBER << 26) | m);
-          fail(SP[0] | 0, "Identifier '" + name + "' has already been declared");
+          fail(SP$.s0 | 0, "Identifier '" + name + "' has already been declared");
         }
       }
     }
@@ -1294,9 +1301,10 @@ function classElement(member: number): void {
     return;
   }
   keySpan((N_MEMBER << 26) | member);
-  const start = SP[0] | 0;
-  const keyKind = KEY[0] | 0;
-  const keyName = KEY[KEY_NAME] | 0;
+  const start = SP.s0 | 0;
+  const KEY$ = KEY;
+  const keyKind = KEY$.s0 | 0;
+  const keyName = KEY$.s1 | 0;
   const isNamed = (name: string): boolean => (keyKind === KEY_IDENT || keyKind === KEY_STRING) && names.atomIs(keyName, name);
   const isField = mk === MEMBER_PROPERTY;
   const isStatic = memberIsStatic(member);
@@ -1325,10 +1333,11 @@ function classElement(member: number): void {
 function arrows(): void {
   const hir$ = hir;
   const n = hir$.nFns | 0;
+  const SP$ = SP;
   for (let i = 0; i < n; i++) {
     if ((hir$.fnKind[i] | 0) !== FN_ARROW || !funcInTree(i)) continue;
     if (!funcArrowSpan(i)) continue;
-    const arrow = SP[0] | 0;
+    const arrow = SP$.s0 | 0;
     const before = fileEndOfTokenBefore(arrow);
     let hasBreak = false;
     for (let k = before; k < arrow; k++) {
@@ -1436,7 +1445,8 @@ function namesInQuotes(): void {
   const check = (atom: number, pos_: number): void => {
     if (!identIsString(pos_)) return;
     identSpan(atom, pos_);
-    if (hasLoneSurrogate(sliceText(SP[0] | 0, SP[1] | 0))) fail(pos_, "An export name cannot include a lone surrogate.");
+    const SP$ = SP;
+    if (hasLoneSurrogate(sliceText(SP$.s0 | 0, SP$.s1 | 0))) fail(pos_, "An export name cannot include a lone surrogate.");
   };
   const hir$ = hir;
   const bodyStart = hir$.bodyStart | 0;
@@ -1508,11 +1518,12 @@ function decoratorsBeforeDefault(): void {
   const hir$ = hir;
   const bodyStart = hir$.bodyStart | 0;
   const bodyLen = hir$.bodyLen | 0;
+  const SP$ = SP;
   for (let k = 0; k < bodyLen; k++) {
     const st = hir$.ids[(bodyStart + k) | 0] | 0;
     let exportAt = -1;
     if ((hir$.stmtTag[st] | 0) === STMT_EXPORT_DEFAULT) exportAt = hir$.stmtStart[st] | 0;
-    else if (stmtIsDefaultExport(st) && stmtExportSpan(st)) exportAt = SP[0] | 0;
+    else if (stmtIsDefaultExport(st) && stmtExportSpan(st)) exportAt = SP$.s0 | 0;
     if (exportAt >= 0 && tokenAt(exportAt) === "export" && tokenAt(afterToken(exportAt)).startsWith("@")) {
       fail(exportAt, "Leading decorators must be attached to a class declaration");
     }
@@ -1543,6 +1554,7 @@ function exports_(): void {
   const bodyStart = hir$.bodyStart | 0;
   const bodyLen = hir$.bodyLen | 0;
   const names$ = names;
+  const SP$ = SP;
   for (let k = 0; k < bodyLen; k++) {
     const st = hir$.ids[(bodyStart + k) | 0] | 0;
     const tag = hir$.stmtTag[st] | 0;
@@ -1570,7 +1582,7 @@ function exports_(): void {
       }
     } else if (stmtIsExported(st) && stmtIsDefaultExport(st)) {
       stmtExportSpan(st);
-      note(afterToken(SP[0] | 0));
+      note(afterToken(SP$.s0 | 0));
     }
   }
   if (secondDefault >= 0) fail(secondDefault, "Duplicate export 'default'");

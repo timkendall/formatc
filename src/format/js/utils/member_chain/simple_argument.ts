@@ -92,6 +92,7 @@ function isSimple(e0: number, depth: number, oxfmt: boolean): boolean {
   const base = pending$.len;
   let next = e0;
   let result = true;
+  const SP$ = SP;
   while (next >= 0) {
     let e = next;
     for (;;) {
@@ -112,7 +113,7 @@ function isSimple(e0: number, depth: number, oxfmt: boolean): boolean {
       }
       if (t === EXPR_REGEX) {
         exprRegexPatternSpan(e);
-        if (isShortPattern(SP[0] | 0, SP[1] | 0, oxfmt)) break;
+        if (isShortPattern(SP$.s0 | 0, SP$.s1 | 0, oxfmt)) break;
         result = false;
         break;
       }
@@ -226,10 +227,11 @@ function areSimple(start: number, n: number, depth: number, oxfmt: boolean): boo
 function isSimpleTemplateLiteral(e: number, depth: number, oxfmt: boolean): boolean {
   const quasis = exprTemplateQuasiCount(e);
   const text = hir.text;
+  const SP$ = SP;
   for (let i = 0; i < quasis; i++) {
     exprTemplateRawSpan(e, i);
-    const s = SP[0] | 0;
-    const end = SP[1] | 0;
+    const s = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     for (let k = s; k < end; k++) if ((text[k] | 0) === 10) return false;
   }
   const start = exprTemplateExprsStart(e);

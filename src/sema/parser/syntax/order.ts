@@ -172,6 +172,8 @@ function rank(parent: number, child: number): number {
   const isNode = (kind: number, id: number): boolean => id >= 0 && ((kind << 26) | id) === child;
   const ck = nodeKind(child);
   const hir$ = hir;
+  const SP$ = SP;
+  const KEY$ = KEY;
   switch (pk) {
     case N_STMT: {
       if (stmtIsWith(pid)) return isNode(N_STMT, stmtWithBody(pid)) ? 1 : 2;
@@ -192,10 +194,10 @@ function rank(parent: number, child: number): number {
           if (isNode(N_EXPR, test)) return 3;
           if (init >= 0) {
             nodeSpan(nodeOfStmt(init));
-            const is_ = SP[0] | 0;
-            const ie = SP[1] | 0;
+            const is_ = SP$.s0 | 0;
+            const ie = SP$.s1 | 0;
             outerSpanOf(child);
-            if (contains(is_, ie, SP[0] | 0, SP[1] | 0)) return 2;
+            if (contains(is_, ie, SP$.s0 | 0, SP$.s1 | 0)) return 2;
           }
           return 4;
         }
@@ -254,8 +256,8 @@ function rank(parent: number, child: number): number {
     }
     case N_MEMBER: {
       keyLoad(nodeOfMember(pid));
-      const keyKind = KEY[0] | 0;
-      const isKey = keyKind === KEY_COMPUTED && isNode(N_EXPR, KEY[KEY_EXPR] | 0);
+      const keyKind = KEY$.s0 | 0;
+      const isKey = keyKind === KEY_COMPUTED && isNode(N_EXPR, KEY$.s2 | 0);
       const f = memberFunc(pid);
       const isMeth = f >= 0 && isMethod(f);
       if (ck === N_FUNC) return isMeth ? 1 : 3;
@@ -397,6 +399,7 @@ export function orderFirst(): number {
   for (let i = 0; i < n; i++) inside.push(i);
   let at = NODE_FILE;
   const kids$ = kids;
+  const SP$ = SP;
   for (;;) {
     kids$.len = 0;
     nodeChildren(at, -1, kids$);
@@ -405,8 +408,8 @@ export function orderFirst(): number {
     childEnd = [];
     for (let k = 0; k < count; k++) {
       outerSpanOf(kids$.data[k] | 0);
-      childStart.push(SP[0] | 0);
-      childEnd.push(SP[1] | 0);
+      childStart.push(SP$.s0 | 0);
+      childEnd.push(SP$.s1 | 0);
     }
     const areMany = count > 16;
     const childWith = (ns: number, ne: number): number => {

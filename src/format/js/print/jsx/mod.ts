@@ -99,8 +99,9 @@ export function writeJsxElement(e: number, f: Formatter): void {
 /** The name in a tag: `a`, `a.b`, `a-b`, `a:b`. `parent`: the element (an `AstNodes`). */
 export function fmtJsxName(name: number, parent: number, f: Formatter): void {
   exprSpan(name);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const cx = cxOf(f);
   // format_node(name.span(), || parent, f, |f| ..)
   if (cx.isQuiet) {
@@ -120,12 +121,13 @@ export function fmtJsxName(name: number, parent: number, f: Formatter): void {
 }
 
 function writeJsxNameBody(name: number, start: number, end: number, parent: number, f: Formatter): void {
+  const SP$ = SP;
   if (exprTag(name) === EXPR_DOT) {
     if (!f.stack.enter()) return;
     fmtJsxName(exprDotObj(name), parent, f);
     f.token(DOT);
     identSpan(exprDotName(name), exprDotNamePos(name));
-    f.sourceText(SP[0] | 0, SP[1] | 0);
+    f.sourceText(SP$.s0 | 0, SP$.s1 | 0);
     f.stack.leave();
   } else {
     writeJsxIdentifier(start, end, f);
@@ -223,8 +225,9 @@ export function fmtJsxChild(e: number, f: Formatter): void {
     fmtExpr(e, f);
     return;
   }
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const cx = cxOf(f);
   const isSpread = exprTag(e) === EXPR_SPREAD;
   const node = mkAn(isSpread ? AN_JSX_SPREAD_CHILD : AN_JSX_EXPRESSION_CONTAINER, e);
@@ -277,8 +280,9 @@ function writeJsxExpressionContainer(expression: number, node: number, spanStart
   }
 
   exprSpan(expression);
-  const exprStart = SP[0] | 0;
-  const exprEnd = SP[1] | 0;
+  const SP$ = SP;
+  const exprStart = SP$.s0 | 0;
+  const exprEnd = SP$.s1 | 0;
   let hasComment = false;
   if (!cx.isQuiet) {
     hasComment =
@@ -314,13 +318,14 @@ function writeJsxExpressionContainer(expression: number, node: number, spanStart
 function hasOnlyComments(expression: number, f: Formatter): boolean {
   const cm = cxOf(f).comments;
   const tag = exprTag(expression);
+  const SP$ = SP;
   if (tag === EXPR_OBJECT && exprObjectPropsLen(expression) === 0) {
     exprSpan(expression);
-    return cm.hasCommentInRange(SP[0] | 0, SP[1] | 0);
+    return cm.hasCommentInRange(SP$.s0 | 0, SP$.s1 | 0);
   }
   if (tag === EXPR_ARRAY && exprArrayElemsLen(expression) === 0) {
     exprSpan(expression);
-    return cm.hasCommentInRange(SP[0] | 0, SP[1] | 0);
+    return cm.hasCommentInRange(SP$.s0 | 0, SP$.s1 | 0);
   }
   if (tag === EXPR_CALL || tag === EXPR_NEW) {
     const call = tag === EXPR_CALL ? exprCallCall(expression) : exprNewCall(expression);
@@ -391,11 +396,12 @@ function shouldInlineJsxExpression(expression0: number, isChild0: boolean): bool
 /** `a="b"`, `a={b}`, `a`, `{...a}` */
 export function writeJsxAttribute(attribute: number, f: Formatter): void {
   const cx = cxOf(f);
+  const SP$ = SP;
   if (propKind(attribute) === PROP_SPREAD) {
     const argument = propValue(attribute);
     if (argument >= 0) {
       propSpan(attribute);
-      writeJsxSpread(argument, SP[0] | 0, SP[1] | 0, f);
+      writeJsxSpread(argument, SP$.s0 | 0, SP$.s1 | 0, f);
     }
     return;
   }
@@ -403,8 +409,8 @@ export function writeJsxAttribute(attribute: number, f: Formatter): void {
   let nameStart = -1;
   let nameEnd = -1;
   if (keyKind(key) !== KEY_NONE && keySpan(key)) {
-    nameStart = SP[0] | 0;
-    nameEnd = SP[1] | 0;
+    nameStart = SP$.s0 | 0;
+    nameEnd = SP$.s1 | 0;
     const parent = mkAn(AN_JSX_ATTRIBUTE, attribute);
     // format_node(span, || AstNodes::JSXAttribute(attribute), f, |f| write_jsx_identifier(span, f))
     if (cx.isQuiet) {
@@ -437,8 +443,9 @@ function writeJsxSpread(argument: number, spanStart: number, spanEnd: number, f:
   const cx = cxOf(f);
   void spanStart;
   exprSpan(argument);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const hasComment = !cx.isQuiet && (cx.comments.hasCommentBefore(start) || cx.comments.hasCommentInRange(end, spanEnd));
   f.token(LBRACE_TOKEN);
   if (hasComment) f.startSoftBlockIndent();
@@ -451,16 +458,18 @@ function writeJsxSpread(argument: number, spanStart: number, spanEnd: number, f:
 
 /** `{...e}` among the children of an element. `e`: the `Spread`. */
 export function writeJsxSpreadChild(e: number, f: Formatter): void {
+  const SP$ = SP;
   if (exprTag(e) === EXPR_SPREAD) {
     anSpan(mkAn(AN_JSX_SPREAD_CHILD, e));
-    writeJsxSpread(exprSpreadExpr(e), SP[0] | 0, SP[1] | 0, f);
+    writeJsxSpread(exprSpreadExpr(e), SP$.s0 | 0, SP$.s1 | 0, f);
   }
 }
 
 /** Text that is written by itself. That among the children of an element is written word by word: see `child_list.ts`. */
 export function writeJsxText(e: number, f: Formatter): void {
   exprSpan(e);
-  f.textSource(SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  f.textSource(SP$.s0 | 0, SP$.s1 | 0);
 }
 
 

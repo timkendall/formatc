@@ -156,7 +156,7 @@ export function writeAsOrSatisfiesExpression(e: number, f: Formatter): void {
   } else return;
   let typeStartPos: number;
   if (ty >= 0) typeStartPos = typeStart(ty);
-  else if (exprConstKeywordSpan(e)) typeStartPos = SP[0] | 0;
+  else if (exprConstKeywordSpan(e)) typeStartPos = SP.s0 | 0;
   else {
     typeStartPos = exprEnd(e);
   }

@@ -115,6 +115,8 @@ import { Comments, collectComments } from "./js/comments.ts";
 import { endsBeforeSemicolon } from "./js/print/program.ts";
 import { isNoSourceElement } from "./js/print/flow.ts";
 import { cursorResult, formatWith } from "./cursor.ts";
+import { Slots2 } from "../base/slots.ts";
+import { Slots3 } from "../base/slots.ts";
 
 /** `parse(slice)`: see the head of this file. */
 export type ParseSlice = (slice: Uint8Array) => boolean;
@@ -138,8 +140,9 @@ export function formatWithCursor(text: Uint8Array, options: FormatOptions, out: 
   if (options.isMdxEsSyntax && !allImportsOrExports()) return FORMAT_SYNTAX_ERROR;
   const first = startsWithBom(text) ? BOM_LEN : 0;
   offsets(text, first, options);
-  const start0 = OFFSETS[0] | 0;
-  const end0 = OFFSETS[1] | 0;
+  const OFFSETS$ = OFFSETS;
+  const start0 = OFFSETS$.s0 | 0;
+  const end0 = OFFSETS$.s1 | 0;
   if (start0 >= end0 && text.length > first) {
     out.append(text, 0, text.length);
     cursorResult$.value = options.cursorOffset;
@@ -150,15 +153,16 @@ export function formatWithCursor(text: Uint8Array, options: FormatOptions, out: 
 
   let rangeStart = first;
   let rangeEnd = first;
+  const RANGE$ = RANGE;
   if (calculateRange(text, options.flavor, start0, end0)) {
-    rangeStart = RANGE[0] | 0;
-    rangeEnd = RANGE[1] | 0;
+    rangeStart = RANGE$.s0 | 0;
+    rangeEnd = RANGE$.s1 | 0;
   }
   // Everything is put together with `\n`, which is replaced at the end.
   const lineEnding = resolveLineEnding(options.lineEnding, text.subarray(first));
   const formatted$ = formatted;
   formatted$.reset();
-  const cursor = OFFSETS[2] | 0;
+  const cursor = OFFSETS$.s2 | 0;
   // Where the cursor is in `formatted`, if it is in the range.
   let cursorInFormatted = -1;
   if (trimJsWhitespaceStart(text, rangeStart, rangeEnd) < rangeEnd) {
@@ -215,15 +219,16 @@ function allImportsOrExports(): boolean {
 }
 
 /** The result of `offsets`: `rangeStart`, `rangeEnd` and `cursorOffset` as byte offsets in the text (the last: -1 for none). */
-const OFFSETS = new Int32Array(3);
+const OFFSETS = new Slots3();
 /** The range that `calculateRange` found: `[start, end)` (tests). */
-export const RANGE = new Int32Array(2);
+export const RANGE = new Slots2();
 
 /** `rangeStart`, `rangeEnd` and `cursorOffset`, which count UTF-16 code units, as offsets in the text. Prettier's `normalizeInputAndOptions`. */
 function offsets(text: Uint8Array, first: number, options: FormatOptions): void {
-  OFFSETS[0] = offsetOf(text, first, options.rangeStart, first);
-  OFFSETS[1] = offsetOf(text, first, options.rangeEnd, text.length);
-  OFFSETS[2] = offsetOf(text, first, options.cursorOffset, -1);
+  const OFFSETS$ = OFFSETS;
+  OFFSETS$.s0 = (offsetOf(text, first, options.rangeStart, first)) | 0;
+  OFFSETS$.s1 = (offsetOf(text, first, options.rangeEnd, text.length)) | 0;
+  OFFSETS$.s2 = (offsetOf(text, first, options.cursorOffset, -1)) | 0;
 }
 
 /** An offset before the byte order mark or behind the end is as good as none. */
@@ -307,6 +312,7 @@ function edgeIsIn(edge: number, offset: number, start: number, end: number): boo
 /** Prettier's `locStart`: with the decorators before it. */
 function locStart(node: number): number {
   let cls = -1;
+  const SP$ = SP;
   switch (anTag(node)) {
     // Babel's `Program` starts where the text does, that of typescript-estree at the first token.
     case AN_PROGRAM: {
@@ -314,7 +320,7 @@ function locStart(node: number): number {
       if (fileIsJavascript()) return first;
       if (fileBodyLen() > 0) return locStart(nodeAsAstNodes(nodeOfStmt(listAt(fileBodyStart(), 0))));
       anSpan(node);
-      return SP[1] | 0;
+      return SP$.s1 | 0;
     }
     case AN_CLASS:
       cls = anId(node);
@@ -327,7 +333,7 @@ function locStart(node: number): number {
       break;
   }
   anSpan(node);
-  const start = SP[0] | 0;
+  const start = SP$.s0 | 0;
   if (cls >= 0) {
     const s = classModifiersStart(cls);
     const n = classModifiersLen(cls);
@@ -335,7 +341,7 @@ function locStart(node: number): number {
       const d = modifierDecorator(listAt(s, i));
       if (d >= 0) {
         anSpan(mkAn(AN_DECORATOR, d));
-        return start < (SP[0] | 0) ? start : SP[0] | 0;
+        return start < (SP$.s0 | 0) ? start : SP$.s0 | 0;
       }
     }
   }
@@ -352,14 +358,15 @@ function isClassStmt(stmt: number): boolean {
 
 function fullSpanEnd(node: number): number {
   anSpan(node);
-  return SP[1] | 0;
+  return SP.s1 | 0;
 }
 
 /** Prettier's `locEnd`: a statement ends before its `;`. */
 function locEnd(node: number, cm: Comments): number {
   anSpan(node);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   let endsBeforeSemi = false;
   const id = anId(node);
   switch (anTag(node)) {
@@ -498,6 +505,7 @@ function findNodeAtOffset(offset: number, edge: number, path: I32Vec): boolean {
   // Siblings do not overlap, so there is one way down.
   let innermost = NODE_FILE;
   const kids$ = kids;
+  const SP$ = SP;
   while (true) {
     const base = kids$.len;
     nodeChildren(innermost, -1, kids$);
@@ -505,8 +513,8 @@ function findNodeAtOffset(offset: number, edge: number, path: I32Vec): boolean {
     for (let i = base; i < kids$.len; i++) {
       const child = kids$.data[i] | 0;
       nodeSpan(child);
-      let s = SP[0] | 0;
-      let e = SP[1] | 0;
+      let s = SP$.s0 | 0;
+      let e = SP$.s1 | 0;
       const an = nodeAsAstNodes(child);
       const fs = locStart(an);
       const fe = fullSpanEnd(an);
@@ -561,9 +569,10 @@ function findSiblingAncestors(startP: I32Vec, endP: I32Vec, cm: Comments): boole
   let startNode = startP.data[0] | 0;
   let endNode = endP.data[0] | 0;
   const root = mkAn(AN_PROGRAM, 0);
+  const RANGE$ = RANGE;
   if (startNode === endNode) {
-    RANGE[0] = locStart(startNode);
-    RANGE[1] = locStart(endNode);
+    RANGE$.s0 = (locStart(startNode)) | 0;
+    RANGE$.s1 = (locStart(endNode)) | 0;
     return finishRange(startNode, endNode);
   }
   // Prettier's `dropRootParents` only leaves out the file if there is anything else.
@@ -601,11 +610,13 @@ function finishRange(startNode: number, endNode: number): boolean {
   const ls = locStart(startNode);
   const le = locStart(endNode);
   anSpan(startNode);
-  const se = SP[1] | 0;
+  const SP$ = SP;
+  const se = SP$.s1 | 0;
   anSpan(endNode);
-  const ee = SP[1] | 0;
-  RANGE[0] = ls < le ? ls : le;
-  RANGE[1] = se > ee ? se : ee;
+  const ee = SP$.s1 | 0;
+  const RANGE$ = RANGE;
+  RANGE$.s0 = (ls < le ? ls : le) | 0;
+  RANGE$.s1 = (se > ee ? se : ee) | 0;
   return true;
 }
 

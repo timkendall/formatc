@@ -50,8 +50,9 @@ export function writeTsMappedType(ty: number, mapped: number, f: Formatter): voi
   const key = typeParamName(param);
   const keyPos = typeParamNamePos(param);
   typeSpan(ty);
-  const tyStart = SP[0] | 0;
-  const tyEnd = SP[1] | 0;
+  const SP$ = SP;
+  const tyStart = SP$.s0 | 0;
+  const tyEnd = SP$.s1 | 0;
   if (cm.isSuppressed(keyPos)) {
     writeSuppressedNode(tyStart, tyEnd, f);
     return;
@@ -87,7 +88,7 @@ export function writeTsMappedType(ty: number, mapped: number, f: Formatter): voi
   let commentBringsItsBlank = false;
   if (oneBlankBeforeLineCommentBehindIn(f) && !cx.isQuiet && constraint >= 0 && typeTag(constraint) === TYPE_UNION) {
     typeSpan(constraint);
-    cm.commentsBefore(SP[0] | 0);
+    cm.commentsBefore(SP$.s0 | 0);
     for (let i = cm.from; i < cm.to; i++) {
       if (cm.followedByNewline(i)) {
         commentBringsItsBlank = true;

@@ -807,3 +807,23 @@ tools/codemod/hoist-globals.mjs (TypeChecker-based, idempotent, position edits, 
 Rewrote 7724 references in 1083 functions (122 files); hand fixes: none. Phase 2 (`--accessors`, inline trivial `hir` column accessors, 1615 calls) is opt-in: 0 instruction gain (153.8G both), so not applied.
 Instructions 157.8G -> 153.6G (-2.7%, one thread). Gate: 0 vscode byte mismatches, no GATE FAILED, conformance ok; 8 threads 1.46s (machine busy, noisy).
 Changes are uncommitted in /tmp/wt-tls (diff of src/**; re-run the codemod after merging lexer/parser/names/ir changes).
+
+### perf R5 bytes
+- Lexer records the `\` of every escape in a name (`Lexer.idEscapes`, from `nameSlowly`/`endOfIdentifierParts`); `fileBegin` uses it as `F.unicodeEscapes` (sorted if a re-scan made it unsorted) and `buildUnicodeEscapes` no longer scans the text. Same results: only a name can have an escape inside the span `fileEndOfIdentifier` looks at.
+- `markOddBlocks` kept as is: the comment/line scans skip non-ASCII, backslash and control bytes without a per-byte check, so a lexer flag would need a table lookup per comment byte (the same cost as the pass it replaces).
+- 150.2G -> 148.0G (fast gate), 147.4G (full gate) instructions; 0 byte mismatches, conformance ok, 8 threads 1.27s (noisy).
+- Files: src/sema/parser/lexer.ts, src/lint/ast/mod.ts.
+### perf R5 rc
+Printer (src/format/ir/printer.ts): dropped typed-array local aliases in putWord, outSource, outRepeat, outTrimTrailingWhitespace (index via this.out/this.source).
+Instructions 150.2G -> 149.6G (small, near noise; repeated builds 149.6-149.7). Gate: 0 mismatches, conformance ok, 8 threads 1.24s (noisy).
+Tried and reverted: hir.listFrom (this.ids), identEndOf/keyFrom (hir$.text instead of local alias): no gain (149.6-149.7G).
+Files: src/format/ir/printer.ts only.
+### perf R5 tables
+`node tools/codemod/hoist-globals.mjs src --tables [--strings] [--dry]` (separate phase, off by default): aliases module-level const typed arrays (own/imported, TypeChecker) mentioned in loops as `const T$ = T;` before the outermost loop; idempotent, position-based.
+Applied: 235 aliases / 384 mentions / 76 files (mostly SP, DEC, BT_*, NAME_BYTE). Instructions 150.29G (same-tree baseline) -> 150.22G (-0.04%, noise): does not pay (retain/release offsets the saved TLV calls). Gate: 0 mismatches.
+src reverted (not applied); patch in /tmp/tables-src.patch. Not tried: strings, outside-loop >=3 mentions. File: tools/codemod/hoist-globals.mjs
+
+### perf R5 outslots
+tools/codemod/outslots.mjs (idempotent; run then hoist-globals.mjs): module-level `new Int32Array/Float64Array(n<=8)` used only as `X[const]` (also via local `const sp = SP` aliases) become `SlotsN` objects (src/base/slots.ts); reads -> X.sk, stores -> `X.sk = (e) | 0`, compound/++ likewise; arrays in import cycles are skipped by default (scriptc SC1016 with HAS_DASH; `--cycles`, `--skip=A,B` available).
+Converted 13 arrays (SP DEC KEY FLOW LINE FOUND OPTIONAL_TYPE SAVED LEFT_SIDE OFFSETS RANGE TRIM NODE_CONTENT), 1535 mentions, 99 files. Skipped: used as values/non-const index (NAMES, argFrom, ESC_CP...) or in cycles.
+Instructions 150.2G -> 149.2G. Full gate: 0 byte mismatches, 8 threads 1.06s, conformance ok.

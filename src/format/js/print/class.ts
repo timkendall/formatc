@@ -261,11 +261,12 @@ function writeClassBody(cls: number, f: Formatter): void {
 
   f.token(LBRACE);
   f.startBlockIndent();
+  const SP$ = SP;
   for (let i = 0; i < mn; i++) {
     const element = listAt(ms, i);
     memberSpan(element);
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     // `a = 1 ⏎ ⏎ ;[b] = 2`: the `;` is the end of the member before, which this one follows on the same line.
     const followsSemicolon = start !== 0 && cx.src.byteAt(start - 1) === 59;
     if (i > 0) {
@@ -333,10 +334,11 @@ function writeMethodDefinition(member: number, f: Formatter): void {
     fmtFunctionBody(value, f);
     return;
   }
+  const SP$ = SP;
   if (!cx.isQuiet && !allCommentsBeforeSemicolonGoBehindIt(f)) {
     const cm = cx.comments;
     memberSpan(member);
-    const limit = cm.startOfCommentsBeforeSemicolon(-1, SP[0] | 0, SP[1] | 0);
+    const limit = cm.startOfCommentsBeforeSemicolon(-1, SP$.s0 | 0, SP$.s1 | 0);
     cm.commentsBefore(limit);
     formatTrailingCommentsRange(cm.from, cm.to, f);
   }
@@ -405,8 +407,9 @@ function writeConstructorName(what: number, start: number, end: number, f: Forma
 function writeConstructorKeyword(atom: number, pos: number, node: number, f: Formatter): void {
   const cx = cxOf(f);
   identSpan(atom, pos);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const text = f.source;
   const first = text[start] | 0;
   if (first === 34 || first === 39) {
@@ -466,9 +469,10 @@ function writeStaticBlock(member: number, f: Formatter): void {
       f.endBlockIndent();
     }
   }
+  const SP$ = SP;
   if (!hasBody) {
     memberSpan(member);
-    formatDanglingComments(SP[0] | 0, SP[1] | 0, DANGLING_BLOCK, f);
+    formatDanglingComments(SP$.s0 | 0, SP$.s1 | 0, DANGLING_BLOCK, f);
   }
   f.token(RBRACE);
 }
@@ -523,8 +527,9 @@ function writeIndexSignatureName(param: number, f: Formatter): void {
   const cx = cxOf(f);
   const node = paramAsAstNodes(param);
   anSpan(node);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   if (cx.isQuiet) {
     writeIndexSignatureNameBody(param, f);
     return;
@@ -547,7 +552,8 @@ function writeIndexSignatureName(param: number, f: Formatter): void {
 function writeIndexSignatureNameBody(param: number, f: Formatter): void {
   if (paramIsRest(param)) f.token(ELLIPSIS);
   patSpan(paramPat(param));
-  f.sourceText(SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  f.sourceText(SP$.s0 | 0, SP$.s1 | 0);
   if (paramIsOptional(param)) f.token(QUESTION);
   const ty = paramTy(param);
   if (ty >= 0) fmtTypeAnnotation(ty, f);
@@ -634,16 +640,17 @@ function headGap(cls: number, which: number): boolean {
   const hasTypeParameters = typeParamListAngleBrackets(funcTypeParamsStartOfClass(cls), classTypeParamsLenOf(cls));
   let tpStart = 0;
   let tpEnd = 0;
+  const SP$ = SP;
   if (hasTypeParameters) {
-    tpStart = SP[0] | 0;
-    tpEnd = SP[1] | 0;
+    tpStart = SP$.s0 | 0;
+    tpEnd = SP$.s1 | 0;
   }
   const hasTypeArguments = typeListAngleBracketsOfClass(cls);
   let taStart = 0;
   let taEnd = 0;
   if (hasTypeArguments) {
-    taStart = SP[0] | 0;
-    taEnd = SP[1] | 0;
+    taStart = SP$.s0 | 0;
+    taEnd = SP$.s1 | 0;
   }
   let nextStart = -1;
   let nextKind = 0;
@@ -653,7 +660,7 @@ function headGap(cls: number, which: number): boolean {
   let implementsStart = -1;
   if (implementsLen > 0) {
     typeSpan(listAt(classImplementsStart(cls), 0));
-    implementsStart = SP[0] | 0;
+    implementsStart = SP$.s0 | 0;
   }
   let extendsStart = -1;
   if (extendsExpr >= 0) {
@@ -847,8 +854,9 @@ function writeClassName(atom: number, pos: number, node: number, f: Formatter): 
     return;
   }
   identSpan(atom, pos);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const cm = cx.comments;
   if (cm.hasTrailingSuppressionComment(end)) {
     formatLeadingComments(start, end, f);
@@ -863,9 +871,10 @@ function writeClassName(atom: number, pos: number, node: number, f: Formatter): 
 /** `type_arguments` of the super class, with the comments around them. */
 function writeSuperTypeArguments(cls: number, f: Formatter): void {
   writeCommentsTrailingInHead(cls, AFTER_SUPER_CLASS, f);
+  const SP$ = SP;
   if (typeListAngleBracketsOfClass(cls)) {
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     formatLeadingComments(start, end, f);
     typeArgumentsWithoutComments(classExtendsArgsStart(cls), classExtendsArgsLen(cls), nodeOfClass(cls), f);
     writeCommentsTrailingInHead(cls, AFTER_SUPER_TYPE_ARGUMENTS, f);
@@ -882,7 +891,8 @@ function writeClassBody0(cls: number, f: Formatter): void {
   const implementsStart = classImplementsStart(cls);
   const implementsLen = classImplementsLen(cls);
   classBodySpan(cls);
-  const bodyStart = SP[0] | 0;
+  const SP$ = SP;
+  const bodyStart = SP$.s0 | 0;
   const membersLen = classMembersLen(cls);
 
   // Those of an exported class are written with the `export`, which they can be before.
@@ -948,13 +958,13 @@ function writeClassBody0(cls: number, f: Formatter): void {
   if (membersLen === 0) {
     f.token(LBRACE);
     classSpan(cls);
-    formatDanglingComments(SP[0] | 0, SP[1] | 0, DANGLING_BLOCK, f);
+    formatDanglingComments(SP$.s0 | 0, SP$.s1 | 0, DANGLING_BLOCK, f);
     f.token(RBRACE);
   } else {
     // format_node_without_comments(body_span, || node, f, |f| write_class_body(class, f))
     classBodySpan(cls);
-    const bs = SP[0] | 0;
-    const be = SP[1] | 0;
+    const bs = SP$.s0 | 0;
+    const be = SP$.s1 | 0;
     if (cx.isQuiet || !cx.comments.isSuppressed(bs)) {
       writeClassBody(cls, f);
     } else {
@@ -977,9 +987,10 @@ function writeHead(cls: number, node: number, f: Formatter): void {
     writeCommentsTrailingInHead(cls, AFTER_NAME, f);
     f.endIndent();
   }
+  const SP$ = SP;
   if (typeParamListAngleBrackets(funcTypeParamsStartOfClass(cls), classTypeParamsLenOf(cls))) {
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     const groupId = f.groupId();
     formatLeadingComments(start, end, f);
     typeParametersWithoutComments(funcTypeParamsStartOfClass(cls), classTypeParamsLenOf(cls), nodeOfClass(cls), groupId, false, f);
@@ -995,6 +1006,7 @@ function writeHeritageClauses(cls: number, parent: number, groupMode: boolean, f
   const superClass = classExtends(cls);
   const implementsStart = classImplementsStart(cls);
   const implementsLen = classImplementsLen(cls);
+  const SP$ = SP;
   if (superClass >= 0) {
     if (groupMode) {
       f.softLineBreakOrSpace();
@@ -1006,7 +1018,7 @@ function writeHeritageClauses(cls: number, parent: number, groupMode: boolean, f
     f.space();
     // format_super
     exprSpan(superClass);
-    formatLeadingComments(SP[0] | 0, SP[1] | 0, f);
+    formatLeadingComments(SP$.s0 | 0, SP$.s1 | 0, f);
     const argumentsInParentheses = typeArgumentsOfSuperClassAreInItsParentheses(f);
     // Prettier's `printSuperClass`.
     if (anTag(parent) === AN_ASSIGNMENT_EXPRESSION) {
@@ -1038,7 +1050,7 @@ function writeHeritageClauses(cls: number, parent: number, groupMode: boolean, f
     // Those on a line with code, after the `implements`, lead the first type.
     const cm = cx.comments;
     typeSpan(listAt(implementsStart, 0));
-    cm.commentsBefore(SP[0] | 0);
+    cm.commentsBefore(SP$.s0 | 0);
     const from = cm.from;
     const to = cm.to;
     let count = 0;
@@ -1138,8 +1150,9 @@ function needsSemicolon(element: number, next: number): boolean {
 function writeIgnoredWithoutTerminator(element: number, next: number, f: Formatter): boolean {
   const cm = cxOf(f).comments;
   memberSpan(element);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const kind = memberKind(element);
   let hasTerminator: boolean;
   if (kind === MEMBER_PROPERTY || kind === MEMBER_INDEX_SIGNATURE) hasTerminator = true;
@@ -1166,8 +1179,9 @@ function writeClassElementWithSemicolon(element: number, next: number, f: Format
   const cx = cxOf(f);
   const cm = cx.comments;
   memberSpan(element);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   if (!cx.isQuiet && terminatorOfWhatIsIgnoredFollowsSemi(f) && writeIgnoredWithoutTerminator(element, next, f)) return;
   const isSuppressed = cm.isSuppressed(start) || cm.hasTrailingSuppressionComment(end);
   const needsSemi =

@@ -457,11 +457,10 @@ export class Printer {
   }
 
   putWord(p: number, w: number): void {
-    const out = this.out;
-    out[p] = w & 255;
-    out[(p + 1) | 0] = (w >>> 8) & 255;
-    out[(p + 2) | 0] = (w >>> 16) & 255;
-    out[(p + 3) | 0] = (w >>> 24) & 255;
+    this.out[p] = w & 255;
+    this.out[(p + 1) | 0] = (w >>> 8) & 255;
+    this.out[(p + 2) | 0] = (w >>> 16) & 255;
+    this.out[(p + 3) | 0] = (w >>> 24) & 255;
   }
 
   /** A token with inline bytes (kind `TOK_BASE + len`): `a`, `b`, `c` of the element at `idx` are its bytes. */
@@ -504,9 +503,7 @@ export class Printer {
     if (this.outLen + len + 32 > this.out.length) this.growOut(len + 32);
     const p = this.outLen | 0;
     if (len <= 64) {
-      const out = this.out;
-      const src = this.source;
-      for (let k = 0; k < len; k++) out[(p + k) | 0] = src[(start + k) | 0] | 0;
+      for (let k = 0; k < len; k++) this.out[(p + k) | 0] = this.source[(start + k) | 0] | 0;
     } else {
       this.out.set(this.source.subarray(start, start + len), p);
     }
@@ -517,8 +514,7 @@ export class Printer {
     if (count <= 32) {
       const p = this.outLen;
       if (p + count > this.out.length) this.growOut(count);
-      const o = this.out;
-      for (let i = 0; i < count; i++) o[p + i] = byte | 0;
+      for (let i = 0; i < count; i++) this.out[p + i] = byte | 0;
       this.outLen = p + count;
       return;
     }
@@ -533,10 +529,9 @@ export class Printer {
   }
 
   outTrimTrailingWhitespace(): void {
-    const o = this.out;
     let n = this.outLen;
     while (n > this.outStart) {
-      const ch = o[n - 1] | 0;
+      const ch = this.out[n - 1] | 0;
       if (ch !== 32 && ch !== 9) break;
       n = n - 1;
     }

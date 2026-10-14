@@ -204,8 +204,9 @@ export function shouldPreserveQuote(owner: number, f: Formatter): boolean {
 function requiresQuotes(owner: number, parent: number, f: Formatter): boolean {
   if (keyLoad(owner) !== KEY_STRING) return false;
   if (!keySpan(owner)) return false;
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   if (!unquoted(start, end, parent, f)) return true;
   // With `quoteProps: "consistent"`, `{ "1": a, b: c }` is `{ 1: a, b: c }` for Prettier and `{ "1": a, "b": c }` for oxfmt.
   return f.options.flavor === FLAVOR_OXFMT && !isNameWithoutQuotes(f.source, UQ[0] | 0, UQ[1] | 0, f.options.flavor);
@@ -388,10 +389,11 @@ function printedWidth(f: Formatter): number {
 function writeKey(owner: number, parent: number, f: Formatter): number {
   const kind = keyLoad(owner);
   if (kind < 0) return 0;
-  const name = KEY[KEY_NAME] | 0;
+  const name = KEY.s1 | 0;
   if (!keyInnerSpan(owner)) return 0;
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const cx = cxOf(f);
   const isName = kind === KEY_IDENT || kind === KEY_PRIVATE;
   if (isName && cx.isQuiet && f.options.quoteProperties !== QUOTE_PROPS_CONSISTENT) {
@@ -423,7 +425,7 @@ function writeKey(owner: number, parent: number, f: Formatter): number {
 export function fmtKey(owner: number, parent: number, f: Formatter): void {
   const kind = keyLoad(owner);
   if (kind === KEY_COMPUTED) {
-    fmtExpr(KEY[KEY_EXPR] | 0, f);
+    fmtExpr(KEY.s2 | 0, f);
     return;
   }
   if (kind < 0) return;

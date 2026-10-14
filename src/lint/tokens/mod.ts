@@ -45,8 +45,9 @@ export function tokenLen(text: Uint8Array, len: number, at: number): number {
 /** `next_token(text, at)`: the token after `at`, past whitespace and comments: `SP = (start, end)`, empty at the end of the text. */
 export function nextToken(text: Uint8Array, len: number, at: number): void {
   const start = skipTriviaText(text, len, at);
-  SP[0] = start | 0;
-  SP[1] = tokenEnd(text, len, start, false) | 0;
+  const SP$ = SP;
+  SP$.s0 = start | 0;
+  SP$.s1 = tokenEnd(text, len, start, false) | 0;
 }
 
 /** The end of the identifier that starts at `at` (`scanIdentifierParts`). */
@@ -141,12 +142,13 @@ export function commentValueSpan(i: number): void {
   const k = commentKindAt(i);
   const s = commentStartAt(i);
   const e = commentEndAt(i);
+  const SP$ = SP;
   if (k === TK_BLOCK) {
-    SP[0] = (s + 2) | 0;
-    SP[1] = e > 2 ? (e - 2) | 0 : 0;
+    SP$.s0 = (s + 2) | 0;
+    SP$.s1 = (e > 2 ? (e - 2) | 0 : 0) | 0;
   } else {
-    SP[0] = (s + 2) | 0;
-    SP[1] = e;
+    SP$.s0 = (s + 2) | 0;
+    SP$.s1 = (e) | 0;
   }
 }
 

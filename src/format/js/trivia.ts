@@ -330,6 +330,7 @@ export function writeComment(i: number, f: Formatter): void {
     return;
   }
   if (writeJsdocComment(i, f)) return;
+  const LINE$ = LINE;
   if (cm.isIndentableBlock(i)) {
     // In Markdown, two spaces at the end of a line are a line break.
     const isJsdoc =
@@ -340,14 +341,14 @@ export function writeComment(i: number, f: Formatter): void {
       (!(start + 3 < end && (text[start + 3] | 0) === 42) || f.options.flavor === FLAVOR_OXFMT) &&
       !isPrintedByPrettierForOxfmt(f);
     lineEndAt(text, start, end);
-    let lineEnd = LINE[0] | 0;
-    let brk = LINE[1] | 0;
+    let lineEnd = LINE$.s0 | 0;
+    let brk = LINE$.s1 | 0;
     f.textSource(start, trimJsWhitespaceEnd(text, start, lineEnd));
     let pos = lineEnd + brk;
     while (brk !== 0) {
       lineEndAt(text, pos, end);
-      lineEnd = LINE[0] | 0;
-      const nextBrk = LINE[1] | 0;
+      lineEnd = LINE$.s0 | 0;
+      const nextBrk = LINE$.s1 | 0;
       const trimmedStart = trimJsWhitespaceStart(text, pos, lineEnd);
       const trimmedEnd = trimJsWhitespaceEnd(text, trimmedStart, lineEnd);
       f.hardLineBreak();
@@ -380,8 +381,8 @@ export function writeComment(i: number, f: Formatter): void {
   let index = 0;
   while (true) {
     lineEndAt(text, pos, end);
-    const lineEnd = LINE[0] | 0;
-    const brk = LINE[1] | 0;
+    const lineEnd = LINE$.s0 | 0;
+    const brk = LINE$.s1 | 0;
     if (index > 0) buf.push(10);
     buf.append(text, pos, lineEnd);
     if (brk === 0) break;

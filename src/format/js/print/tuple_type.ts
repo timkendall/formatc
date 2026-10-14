@@ -28,9 +28,10 @@ export function writeTsTupleType(ty: number, elementsStart: number, elementsLen:
   const needsParentheses = isFlow && flowNeedsParentheses(ty);
   if (needsParentheses) f.token(LPAREN);
   f.token(LBRACKET);
+  const SP$ = SP;
   if (elementsLen === 0) {
     typeSpan(ty);
-    formatDanglingComments(SP[0] | 0, SP[1] | 0, DANGLING_SOFT, f);
+    formatDanglingComments(SP$.s0 | 0, SP$.s1 | 0, DANGLING_SOFT, f);
   } else {
     const separator = isFlow && isInexactTuple(elementsStart, elementsLen) ? TRAILING_SEPARATOR_DISALLOWED : trailingSeparator(FTC_ES5, f.options);
     const isQuiet = cxOf(f).isQuiet;
@@ -40,7 +41,7 @@ export function writeTsTupleType(ty: number, elementsStart: number, elementsLen:
       const element = listAt(elementsStart, i);
       if (i > 0) {
         tupleElemSpan(element);
-        joinNodesSeparator(f, JOIN_SOFT_LINE, SP[0] | 0, SP[1] | 0);
+        joinNodesSeparator(f, JOIN_SOFT_LINE, SP$.s0 | 0, SP$.s1 | 0);
       }
       // An element and the comments around it are a group, as in Prettier's `printArrayElements`: a comment that ends its line in the
       // source stays before the element if they fit on a line.

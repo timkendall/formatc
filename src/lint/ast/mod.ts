@@ -24,6 +24,7 @@ import { commentsBegin } from "../tokens/mod.ts";
 import { skipTrivia } from "../../sema/check/spans.ts";
 import { decodeUtf8Back, utf8Len } from "../../base/utf8.ts";
 import { SP } from "../span.ts";
+import { lx } from "../../sema/parser/parser/mod.ts";
 
 /**
  * Starts the handles for the file that was just parsed (the HIR is finished). `names`: the parser's atom table. `parserIsTypeScript`:
@@ -37,9 +38,6 @@ export function fileBegin(names: Names, parserIsTypeScript: boolean, isModule: b
   F$.isModuleSource = isModule;
   F$.parentsComplete = fillParents();
   buildParenthesized();
-  F$.unicodeEscapes.reset();
-  F$.unicodeFirst = 0;
-  F$.unicodeLast = 0x7fffffff;
   buildUnicodeEscapes();
   F$.jsxDotTags.reset();
   F$.jsxDotTagsBuilt = false;
@@ -70,19 +68,28 @@ function buildParenthesized(): void {
   }
 }
 
+/** The escapes in names that the lexer saw, sorted: only a name can have one that matters to `fileEndOfIdentifier`. */
 function buildUnicodeEscapes(): void {
-  const hir$ = hir;
-  const text = hir$.text;
-  const n = hir$.sourceLen | 0;
+  const lx$ = lx;
   const F$ = F;
-  const v = F$.unicodeEscapes;
-  const last = (n - 1) | 0;
-  for (let i = 0; i < last; i++) {
-    if ((text[i] | 0) === 92 && (text[i + 1] | 0) === 117) v.push(i);
+  const v = lx$.idEscapes;
+  F$.unicodeEscapes = v;
+  const n = v.len | 0;
+  if (lx$.idEscapesUnsorted) {
+    const d = v.data;
+    for (let i = 1; i < n; i++) {
+      const x = d[i] | 0;
+      let j = (i - 1) | 0;
+      while (j >= 0 && (d[j] | 0) > x) {
+        d[j + 1] = d[j] | 0;
+        j = (j - 1) | 0;
+      }
+      d[j + 1] = x;
+    }
   }
-  if (v.len > 0) {
+  if (n > 0) {
     F$.unicodeFirst = v.data[0] | 0;
-    F$.unicodeLast = v.data[v.len - 1] | 0;
+    F$.unicodeLast = v.data[n - 1] | 0;
   } else {
     F$.unicodeFirst = 0x7fffffff;
     F$.unicodeLast = 0;
@@ -92,14 +99,16 @@ function buildUnicodeEscapes(): void {
 /** `File::program_span` into `SP`: from the first token, after a `#!` line and comments, to the end of the text. */
 export function fileProgramSpan(): void {
   const hir$ = hir;
-  SP[0] = skipTrivia(hir$.text, hir$.sourceLen | 0, 0);
-  SP[1] = hir$.sourceLen | 0;
+  const SP$ = SP;
+  SP$.s0 = (skipTrivia(hir$.text, hir$.sourceLen | 0, 0)) | 0;
+  SP$.s1 = hir$.sourceLen | 0;
 }
 
 /** `File::span` into `SP`: the whole text. */
 export function fileSpan(): void {
-  SP[0] = 0;
-  SP[1] = hir.sourceLen | 0;
+  const SP$ = SP;
+  SP$.s0 = 0;
+  SP$.s1 = hir.sourceLen | 0;
 }
 
 /** `.js`, `.jsx`, `.mjs`, `.cjs` */

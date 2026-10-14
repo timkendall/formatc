@@ -119,6 +119,7 @@ export function isUnchanged(model: Model, from: number, newText: Uint8Array, new
   let end = from;
   let newEnd = newFrom;
   let isFirst = from === model.textStart();
+  const SP$ = SP;
   for (let p = 0; p < pieces.length; p++) {
     const piece = pieces[p] as Piece;
     const nextComment = commentAt < model.comments.length ? (model.comments[commentAt]?.start ?? -1) : -1;
@@ -160,13 +161,13 @@ export function isUnchanged(model: Model, from: number, newText: Uint8Array, new
       const row = importAttributes(declaration.import);
       if (row >= 0) {
         importAttributesBracesSpan(row);
-        const braceStart = SP[0] | 0;
-        const braceEnd = SP[1] | 0;
+        const braceStart = SP$.s0 | 0;
+        const braceEnd = SP$.s1 | 0;
         const n = importAttributesEntriesLen(row);
         let first = braceEnd;
         if (n > 0) {
           propSpan(listAt(importAttributesEntriesStart(row), 0));
-          first = SP[0] | 0;
+          first = SP$.s0 | 0;
         }
         isBroken = hasLineBreakIn(text, braceStart, first);
       }

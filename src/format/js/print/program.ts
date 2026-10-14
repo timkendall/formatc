@@ -124,12 +124,13 @@ export function writeProgram(f: Formatter): void {
   }
   // Behind the comments, if that is all there is in the file.
   let endsWithEmptyLine = false;
+  const SP$ = SP;
   if (len > 0) {
     const last = listAt(start, len - 1);
     if (isDirectiveBeforeEmptyLine(last, f)) {
       stmtSpan(last);
       let hasBehind = false;
-      for (let i = SP[1] | 0; i < source.length; i++) {
+      for (let i = SP$.s1 | 0; i < source.length; i++) {
         const b = source[i] | 0;
         if (b !== 32 && b !== 9 && b !== 10 && b !== 12 && b !== 13) {
           hasBehind = true;
@@ -231,8 +232,9 @@ function isNextLineEmptyAfter(statement: number, f: Formatter): boolean {
   const cx = cxOf(f);
   const source = cx.src;
   stmtSpan(statement);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   if (isNextLineEmpty(source, end)) return true;
   // `a // comment\n\n;`
   if (end - start < 2 || source.byteAt(end - 1) !== 59) return false;
@@ -260,6 +262,7 @@ export function fmtStatements(start: number, len: number, f: Formatter): void {
   const lastIndex = len > 0 ? len - 1 : 0;
   importRunBegin(f);
   const PLACEMENTS$ = PLACEMENTS;
+  const SP$ = SP;
   for (let index = 0; index < len; index++) {
     const statement = listAt(start, index);
     if (stmtTag(statement) === STMT_EMPTY) continue;
@@ -277,7 +280,7 @@ export function fmtStatements(start: number, len: number, f: Formatter): void {
     let to = 0;
     if (!cx.isQuiet) {
       stmtSpan(statement);
-      cm.commentsBefore(SP[0] | 0);
+      cm.commentsBefore(SP$.s0 | 0);
       from = cm.from;
       to = cm.to;
     }
@@ -332,7 +335,7 @@ export function fmtStatements(start: number, len: number, f: Formatter): void {
 
 function stmtEndOf(s: number): number {
   stmtSpan(s);
-  return SP[1] | 0;
+  return SP.s1 | 0;
 }
 
 /** `a()⏎⏎; [b].c()`: oxfmt looks for an empty line before a statement, and over a `;` only if that is right before it. */
@@ -340,7 +343,7 @@ function isBehindSemicolonAndBlanks(statement: number, f: Formatter): boolean {
   if (f.options.flavor !== FLAVOR_OXFMT) return false;
   const text = cxOf(f).src.text;
   stmtSpan(statement);
-  const before = SP[0] | 0;
+  const before = SP.s0 | 0;
   let code = before;
   while (code > 0) {
     const b = text[code - 1] | 0;
@@ -368,7 +371,7 @@ function isBehindEmptyStatementsThatStartLine(previous: number, comment: number,
   if (f.options.flavor !== FLAVOR_OXFMT) return false;
   const cm = cxOf(f).comments;
   stmtSpan(previous);
-  const previousEnd = SP[1] | 0;
+  const previousEnd = SP.s1 | 0;
   const commentStart = cm.spanStart[comment] | 0;
   if (!(previousEnd <= commentStart)) return false;
   const text = cxOf(f).src.text;
@@ -398,11 +401,12 @@ function writeMoreTrailingComments(previous: number, from: number, to: number, n
   const cx = cxOf(f);
   const cm = cx.comments;
   stmtSpan(next);
-  commentPlacements(from, to, SP[0] | 0, f);
+  const SP$ = SP;
+  commentPlacements(from, to, SP$.s0 | 0, f);
   const n = to - from;
   stmtSpan(previous);
-  const previousStart = SP[0] | 0;
-  const end = SP[1] | 0;
+  const previousStart = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   // Prettier's `printTrailingComment`
   let isAfterLineComment = false;
   const lastPrinted = cm.lastPrinted();
@@ -479,7 +483,7 @@ function writeSemicolonBeforeTypeCastCommentOf(statement: number, f: Formatter):
   const expression = stmtExprExpr(statement);
   const cm = cxOf(f).comments;
   stmtSpan(statement);
-  const start = SP[0] | 0;
+  const start = SP.s0 | 0;
   const n = cm.commentsBefore(start);
   const from = cm.from;
   if (

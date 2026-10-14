@@ -799,7 +799,7 @@ function nameBytesOf(atom: number): Uint8Array {
 
 function attributeStartOf(attribute: number): number {
   propSpan(attribute);
-  return SP[0] | 0;
+  return SP.s0 | 0;
 }
 
 /** `adjustMultilineComment`: takes up to `offset` characters of whitespace off the start of every line of `comment` but the first, and puts `indentSize` spaces there. */

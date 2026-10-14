@@ -221,8 +221,9 @@ export function exprNumberValue(e: number): number {
 export function exprJsxTextValue(e: number, out: Bytes): boolean {
   if (!exprIsJsxText(e)) return false;
   exprSpan(e);
-  const s = SP[0] | 0;
-  const en = SP[1] | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  const en = SP$.s1 | 0;
   const text = hir.text;
   let hasCrlf = false;
   const F$ = F;
@@ -332,8 +333,8 @@ export function exprSpan(e: number): void {
   const h = hir;
   const sp = SP;
   if (!(e >= 0 && e < h.nExprs)) {
-    sp[0] = 0;
-    sp[1] = 0;
+    sp.s0 = 0;
+    sp.s1 = 0;
     return;
   }
   const t = h.exprTag[e] | 0;
@@ -345,8 +346,8 @@ export function exprSpan(e: number): void {
   else if (t === EXPR_SPREAD || t === EXPR_STRING) plain = h.nJsx === 0;
   else plain = t !== EXPR_CLASS && t !== EXPR_FN;
   if (plain) {
-    sp[0] = pos;
-    sp[1] = end;
+    sp.s0 = (pos) | 0;
+    sp.s1 = (end) | 0;
     return;
   }
   spanThatTheHirMayNotHave(e, t, pos, end);
@@ -355,31 +356,32 @@ export function exprSpan(e: number): void {
 function spanThatTheHirMayNotHave(e: number, t: number, pos: number, end: number): void {
   const hir$ = hir;
   const text = hir$.text;
+  const SP$ = SP;
   if (t === EXPR_SPREAD && (text[pos] | 0) !== 46) {
     // The HIR does not position the `...e` of the child `{...e}` of a JSX element.
     let start = pos;
-    if (exprJsxContainerSpan(e)) start = skipTrivia(text, hir$.sourceLen | 0, (SP[0] | 0) + 1);
-    SP[0] = start;
-    SP[1] = end;
+    if (exprJsxContainerSpan(e)) start = skipTrivia(text, hir$.sourceLen | 0, (SP$.s0 | 0) + 1);
+    SP$.s0 = (start) | 0;
+    SP$.s1 = (end) | 0;
   } else if (t === EXPR_IDENT) {
-    SP[0] = pos;
-    SP[1] = fileEndOfIdentifier(pos, end);
+    SP$.s0 = (pos) | 0;
+    SP$.s1 = (fileEndOfIdentifier(pos, end)) | 0;
   } else if (t === EXPR_DOT) {
-    SP[0] = pos;
-    SP[1] = fileEndOfIdentifier(hir$.exprC[e] | 0, end);
+    SP$.s0 = (pos) | 0;
+    SP$.s1 = (fileEndOfIdentifier(hir$.exprC[e] | 0, end)) | 0;
   } else if (t === EXPR_CLASS) {
     // Its decorators are part of it.
-    SP[0] = classStartPos(hir$.exprA[e] | 0);
-    SP[1] = end;
+    SP$.s0 = (classStartPos(hir$.exprA[e] | 0)) | 0;
+    SP$.s1 = (end) | 0;
   } else if (t === EXPR_FN) {
     // The function of a method starts with its type parameters. The HIR has it start at the `(`.
     const f = hir$.exprA[e] | 0;
     if (f >= 0 && (hir$.fnTypeParamsLen[f] | 0) !== 0 && (hir$.fnAnchor[f] | 0) === pos) {
-      SP[0] = funcStartOfParams(f);
-      SP[1] = end;
+      SP$.s0 = (funcStartOfParams(f)) | 0;
+      SP$.s1 = (end) | 0;
     } else {
-      SP[0] = pos;
-      SP[1] = end;
+      SP$.s0 = (pos) | 0;
+      SP$.s1 = (end) | 0;
     }
   } else if (t === EXPR_STRING && hir$.nJsx !== 0 && (text[pos] | 0) !== 34 && (text[pos] | 0) !== 39 && exprIsJsxAttributeString(e)) {
     // The HIR takes the `\"` at the end of the value of a JSX attribute for an escape.
@@ -392,11 +394,11 @@ function spanThatTheHirMayNotHave(e: number, t: number, pos: number, end: number
         break;
       }
     }
-    SP[0] = start;
-    SP[1] = end;
+    SP$.s0 = (start) | 0;
+    SP$.s1 = (end) | 0;
   } else {
-    SP[0] = pos;
-    SP[1] = end;
+    SP$.s0 = (pos) | 0;
+    SP$.s1 = (end) | 0;
   }
 }
 
@@ -407,7 +409,7 @@ export function exprStart(e: number): number {
   // The start is the position of the HIR except for these (see `spanThatTheHirMayNotHave`).
   if (t === EXPR_CLASS || t === EXPR_FN || (t === EXPR_SPREAD && h.nJsx !== 0) || (t === EXPR_STRING && h.nJsx !== 0)) {
     exprSpan(e);
-    return SP[0] | 0;
+    return SP.s0 | 0;
   }
   return h.exprPos[e] | 0;
 }
@@ -420,7 +422,7 @@ export function exprEnd(e: number): number {
     const f = F;
     if (end <= f.unicodeFirst || f.unicodeLast < (h.exprPos[e] | 0)) return end;
     exprSpan(e);
-    return SP[1] | 0;
+    return SP.s1 | 0;
   }
   return end;
 }
@@ -451,23 +453,24 @@ export function exprParenCount(e: number): number {
 /** `Expr::outer_span` into `SP`: with all the parentheses around it. */
 export function exprOuterSpan(e: number): void {
   const hir$ = hir;
+  const SP$ = SP;
   if (fileIsParenthesized(e)) {
     const first = parenFirst(e);
     let last = first;
     while (last + 1 < hir$.nParens && (hir$.parenExpr[(last + 1) | 0] | 0) === e) last = (last + 1) | 0;
-    SP[0] = hir$.parenStart[last] | 0;
-    SP[1] = hir$.parenEnd[last] | 0;
+    SP$.s0 = hir$.parenStart[last] | 0;
+    SP$.s1 = hir$.parenEnd[last] | 0;
     return;
   }
   exprSpan(e);
 }
 export function exprOuterStart(e: number): number {
   exprOuterSpan(e);
-  return SP[0] | 0;
+  return SP.s0 | 0;
 }
 export function exprOuterEnd(e: number): number {
   exprOuterSpan(e);
-  return SP[1] | 0;
+  return SP.s1 | 0;
 }
 
 // ───────────────────────────── accessors ─────────────────────────────
@@ -621,30 +624,31 @@ export function exprOperatorSpan(e: number): boolean {
   const hir$ = hir;
   const text = hir$.text;
   const len = hir$.sourceLen | 0;
+  const SP$ = SP;
   if (t === EXPR_UNARY) {
     const op = hir$.exprAux[e] | 0;
     if (op === UN_POST_INC || op === UN_POST_DEC) {
       const start = skipTrivia(text, len, exprOuterEnd(hir$.exprA[e] | 0));
-      SP[0] = start;
-      SP[1] = (start + 2) | 0;
+      SP$.s0 = (start) | 0;
+      SP$.s1 = (start + 2) | 0;
     } else {
       const start = exprStart(e);
-      SP[0] = start;
-      SP[1] = (start + unOpTextLen(op)) | 0;
+      SP$.s0 = (start) | 0;
+      SP$.s1 = (start + unOpTextLen(op)) | 0;
     }
     return true;
   }
   if (t === EXPR_BINARY) {
     const start = skipTrivia(text, len, exprOuterEnd(hir$.exprA[e] | 0));
-    SP[0] = start;
-    SP[1] = (start + binOpTextLen(hir$.exprAux[e] | 0)) | 0;
+    SP$.s0 = (start) | 0;
+    SP$.s1 = (start + binOpTextLen(hir$.exprAux[e] | 0)) | 0;
     return true;
   }
   if (t === EXPR_ASSIGN) {
     const start = skipTrivia(text, len, exprOuterEnd(hir$.exprA[e] | 0));
     const op = hir$.exprAux[e] | 0;
-    SP[0] = start;
-    SP[1] = (start + (op === 0 ? 0 : binOpTextLen(op - 1)) + 1) | 0;
+    SP$.s0 = (start) | 0;
+    SP$.s1 = (start + (op === 0 ? 0 : binOpTextLen(op - 1)) + 1) | 0;
     return true;
   }
   return false;
@@ -655,8 +659,9 @@ export function exprJsxContainerSpan(e: number): boolean {
   const row = jsxExpressionAround(e);
   if (row < 0) return false;
   const hir$ = hir;
-  SP[0] = hir$.jsxExpressionStart[row] | 0;
-  SP[1] = hir$.jsxExpressionEnd[row] | 0;
+  const SP$ = SP;
+  SP$.s0 = hir$.jsxExpressionStart[row] | 0;
+  SP$.s1 = hir$.jsxExpressionEnd[row] | 0;
   return true;
 }
 
@@ -773,15 +778,16 @@ export function exprConstKeywordSpan(e: number): boolean {
   const hir$ = hir;
   if (!inRange(e) || (hir$.exprTag[e] | 0) !== EXPR_AS_CONST) return false;
   exprSpan(e);
-  const whole0 = SP[0] | 0;
-  const whole1 = SP[1] | 0;
+  const SP$ = SP;
+  const whole0 = SP$.s0 | 0;
+  const whole1 = SP$.s1 | 0;
   if (exprIsAngleBracketAssertion(e)) {
     const start = skipTrivia(hir$.text, hir$.sourceLen | 0, whole0 + 1);
-    SP[0] = start;
-    SP[1] = (start + 5) | 0;
+    SP$.s0 = (start) | 0;
+    SP$.s1 = (start + 5) | 0;
   } else {
-    SP[0] = whole1 > 5 ? (whole1 - 5) | 0 : 0;
-    SP[1] = whole1;
+    SP$.s0 = (whole1 > 5 ? (whole1 - 5) | 0 : 0) | 0;
+    SP$.s1 = (whole1) | 0;
   }
   return true;
 }
@@ -794,15 +800,16 @@ export function exprMetaPropertySpans(e: number): boolean {
   else if (t === EXPR_NEW_TARGET) keyword = 3;
   else return false;
   exprSpan(e);
-  const ws = SP[0] | 0;
-  const we = SP[1] | 0;
+  const SP$ = SP;
+  const ws = SP$.s0 | 0;
+  const we = SP$.s1 | 0;
   const metaEnd = (ws + keyword) | 0;
   const hir$ = hir;
   const dot = skipTrivia(hir$.text, hir$.sourceLen | 0, metaEnd);
-  SP[0] = ws;
-  SP[1] = metaEnd;
-  SP[2] = skipTrivia(hir$.text, hir$.sourceLen | 0, dot + 1);
-  SP[3] = we;
+  SP$.s0 = (ws) | 0;
+  SP$.s1 = (metaEnd) | 0;
+  SP$.s2 = (skipTrivia(hir$.text, hir$.sourceLen | 0, dot + 1)) | 0;
+  SP$.s3 = (we) | 0;
   return true;
 }
 
@@ -907,8 +914,9 @@ export function assignOpText(op: number): string {
 
 function regexLastSlash(e: number): number {
   exprSpan(e);
-  const s = SP[0] | 0;
-  const en = SP[1] | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  const en = SP$.s1 | 0;
   const hir$ = hir;
   for (let i = en - 1; i >= s; i = ((i | 0) - 1) | 0) if ((hir$.text[i] | 0) === 47) return i;
   return s;
@@ -918,18 +926,20 @@ function regexLastSlash(e: number): number {
 export function exprRegexPatternSpan(e: number): void {
   const slash = regexLastSlash(e);
   exprSpan(e);
-  const s = SP[0] | 0;
-  SP[0] = (s + 1) | 0;
-  SP[1] = slash > s + 1 ? slash : (s + 1) | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  SP$.s0 = (s + 1) | 0;
+  SP$.s1 = (slash > s + 1 ? slash : (s + 1) | 0) | 0;
 }
 
 /** `Regex::flags` into `SP`. */
 export function exprRegexFlagsSpan(e: number): void {
   const slash = regexLastSlash(e);
   exprSpan(e);
-  const en = SP[1] | 0;
-  SP[0] = (slash + 1) | 0;
-  SP[1] = en;
+  const SP$ = SP;
+  const en = SP$.s1 | 0;
+  SP$.s0 = (slash + 1) | 0;
+  SP$.s1 = (en) | 0;
 }
 
 // ───────────────────────────── templates ─────────────────────────────
@@ -965,7 +975,8 @@ export function exprTemplateCooked(e: number, i: number): number {
   const a = exprTemplateTextOfScanner(e, i);
   if (a < 0) return -1;
   exprTemplateRawSpan(e, i);
-  return hasInvalidEscape(SP[0] | 0, SP[1] | 0) ? -1 : a;
+  const SP$ = SP;
+  return hasInvalidEscape(SP$.s0 | 0, SP$.s1 | 0) ? -1 : a;
 }
 
 /** From `at`, which is inside the text of a template: the position after the next `${`. */
@@ -993,8 +1004,9 @@ export function templateTextEnd(text: Uint8Array, len: number, at0: number): num
 /** `Template::quasi_span(i)` into `SP`: the piece of text at `i` with its delimiters: `` `a${ ``, `}b${`, `` }c` ``. */
 export function exprTemplateQuasiSpan(e: number, i: number): void {
   exprSpan(e);
-  const whole0 = SP[0] | 0;
-  const whole1 = SP[1] | 0;
+  const SP$ = SP;
+  const whole0 = SP$.s0 | 0;
+  const whole1 = SP$.s1 | 0;
   const hir$ = hir;
   const text = hir$.text;
   const len = hir$.sourceLen | 0;
@@ -1005,19 +1017,20 @@ export function exprTemplateQuasiSpan(e: number, i: number): void {
     start = skipTrivia(text, len, exprOuterEnd(before));
   }
   const end = i < n ? templateTextEnd(text, len, start + 1) : whole1;
-  SP[0] = start;
-  SP[1] = end;
+  SP$.s0 = (start) | 0;
+  SP$.s1 = (end) | 0;
 }
 
 /** `Template::raw(i)` into `SP`: the piece of text at `i` as it is written, without its delimiters. */
 export function exprTemplateRawSpan(e: number, i: number): void {
   const isLast = i + 1 === exprTemplateQuasiCount(e);
   exprTemplateQuasiSpan(e, i);
-  const s = SP[0] | 0;
-  const en = SP[1] | 0;
-  SP[0] = (s + 1) | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  const en = SP$.s1 | 0;
+  SP$.s0 = (s + 1) | 0;
   const cut = isLast ? 1 : 2;
-  SP[1] = en > cut ? (en - cut) | 0 : 0;
+  SP$.s1 = (en > cut ? (en - cut) | 0 : 0) | 0;
 }
 
 /** `Template::as_static`: the value, if there are no substitutions: an atom, else -1. */
@@ -1197,8 +1210,9 @@ export function jsxTypeArgsLen(e: number): number {
 export function jsxOpeningSpan(e: number): void {
   const j = jsxOf(e);
   const end = j >= 0 ? hir.jsxOpeningEnd[j] | 0 : 0;
-  SP[0] = exprStart(e);
-  SP[1] = end;
+  const SP$ = SP;
+  SP$.s0 = (exprStart(e)) | 0;
+  SP$.s1 = (end) | 0;
 }
 /** `Jsx::closing_span` into `SP`: `</tag>`, `</>`. False for a self-closing element. */
 export function jsxClosingSpan(e: number): boolean {
@@ -1207,8 +1221,9 @@ export function jsxClosingSpan(e: number): boolean {
   const hir$ = hir;
   const p = hir$.jsxClosePos[j] | 0;
   if (p < 0) return false;
-  SP[0] = p;
-  SP[1] = hir$.jsxEnd[j] | 0;
+  const SP$ = SP;
+  SP$.s0 = (p) | 0;
+  SP$.s1 = hir$.jsxEnd[j] | 0;
   return true;
 }
 
@@ -1222,9 +1237,10 @@ export const JC_WHITESPACE: number = 2;
  */
 export function jsxChildrenWithWhitespace(e: number, out: I32Vec): void {
   jsxOpeningSpan(e);
-  let at = SP[1] | 0;
+  const SP$ = SP;
+  let at = SP$.s1 | 0;
   let end = at;
-  if (jsxClosingSpan(e)) end = SP[0] | 0;
+  if (jsxClosingSpan(e)) end = SP$.s0 | 0;
   const s = jsxChildrenStart(e);
   const n = jsxChildrenLen(e);
   const hir$ = hir;
@@ -1233,12 +1249,12 @@ export function jsxChildrenWithWhitespace(e: number, out: I32Vec): void {
     let cs = 0;
     let ce = 0;
     if (exprJsxContainerSpan(child)) {
-      cs = SP[0] | 0;
-      ce = SP[1] | 0;
+      cs = SP$.s0 | 0;
+      ce = SP$.s1 | 0;
     } else {
       exprSpan(child);
-      cs = SP[0] | 0;
-      ce = SP[1] | 0;
+      cs = SP$.s0 | 0;
+      ce = SP$.s1 | 0;
     }
     if (cs > at) out.push3(JC_WHITESPACE, at, cs);
     at = ce;

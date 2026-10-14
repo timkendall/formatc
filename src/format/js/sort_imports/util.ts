@@ -153,7 +153,8 @@ export class Span {
 
 /** The span that the last call that writes `SP` has written. */
 export function spanOfSP(): Span {
-  return new Span(SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  return new Span(SP$.s0 | 0, SP$.s1 | 0);
 }
 
 /** The comments of the file (`file.comments()`) that are entirely inside `[start, end]`: the indices `[commentRange.from, commentRange.to)`. */

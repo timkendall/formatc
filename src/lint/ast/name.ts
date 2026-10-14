@@ -87,8 +87,9 @@ export function identEndOf(atom: number, start: number): number {
 
 /** `Ident::span` into `SP`. */
 export function identSpan(atom: number, start: number): void {
-  SP[0] = start | 0;
-  SP[1] = identEndOf(atom, start);
+  const SP$ = SP;
+  SP$.s0 = start | 0;
+  SP$.s1 = (identEndOf(atom, start)) | 0;
 }
 
 // ───────────────────────────── EntityName ─────────────────────────────
@@ -107,16 +108,17 @@ export function entityPos(start: number, i: number): number {
 }
 /** `EntityName::span` into `SP` (an empty entity gives `(0, 0)`). */
 export function entitySpan(start: number, len: number): void {
+  const SP$ = SP;
   if (len <= 0) {
-    SP[0] = 0;
-    SP[1] = 0;
+    SP$.s0 = 0;
+    SP$.s1 = 0;
     return;
   }
-  SP[0] = entityPos(start, 0);
+  SP$.s0 = (entityPos(start, 0)) | 0;
   identSpan(entityAtom(start, len - 1), entityPos(start, len - 1));
-  const end = SP[1] | 0;
-  SP[0] = entityPos(start, 0);
-  SP[1] = end;
+  const end = SP$.s1 | 0;
+  SP$.s0 = (entityPos(start, 0)) | 0;
+  SP$.s1 = (end) | 0;
 }
 /** `EntityName::is(name)`: it is the single name `lit`. */
 export function entityIs(start: number, len: number, lit: string): boolean {

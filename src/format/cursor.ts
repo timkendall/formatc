@@ -626,12 +626,14 @@ function itemOf(start: number, end: number, kind: number, a: number, b: number, 
 }
 /** The leaf at `SP`. */
 function leafSp(): Item {
-  return leaf(SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  return leaf(SP$.s0 | 0, SP$.s1 | 0);
 }
 /** The leaf of the Ident `(atom, pos)`. */
 function leafIdent(atom: number, pos: number): Item {
   identSpan(atom, pos);
-  return leaf(SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  return leaf(SP$.s0 | 0, SP$.s1 | 0);
 }
 
 /** What the walk needs to know besides the tree: whether Prettier reads the file with Babel (else with typescript-estree). */
@@ -654,13 +656,14 @@ function contentEnd(end: number): number {
 /** Prettier's `locEnd` of a statement. `isExport`: of the `export` around it. */
 function statementEnd(statement0: number, isExport: boolean): number {
   let statement = statement0;
+  const SP$ = SP;
   if (isExport) {
     stmtSpan(statement);
-    return contentEnd(SP[1] | 0);
+    return contentEnd(SP$.s1 | 0);
   }
   while (true) {
     stmtSpan(statement);
-    const spanEnd = SP[1] | 0;
+    const spanEnd = SP$.s1 | 0;
     switch (stmtTag(statement)) {
       case STMT_IF: {
         const no = stmtIfNo(statement);
@@ -702,7 +705,7 @@ function statementEnd(statement0: number, isExport: boolean): number {
         const n = stmtVarDeclsLen(statement);
         if (n === 0) return spanEnd;
         varDeclSpan(listAt(stmtVarDeclsStart(statement), n - 1));
-        return SP[1] | 0;
+        return SP$.s1 | 0;
       }
       default:
         return spanEnd;
@@ -713,7 +716,7 @@ function statementEnd(statement0: number, isExport: boolean): number {
 function statement(s: number): Item {
   const isExport = stmtIsExported(s);
   stmtSpan(s);
-  const start = SP[0] | 0;
+  const start = SP.s0 | 0;
   return itemOf(start, statementEnd(s, isExport), K_STMT, s, -1, -1);
 }
 
@@ -727,7 +730,8 @@ function expr(e: number): Item {
   const kept = keptParentheses(e);
   if (kept.length > 0) return itemOf(kept[0], kept[1], K_PARENTHESIZED, e, 1, -1);
   exprSpan(e);
-  return itemOf(SP[0] | 0, SP[1] | 0, K_EXPR, e, -1, -1);
+  const SP$ = SP;
+  return itemOf(SP$.s0 | 0, SP$.s1 | 0, K_EXPR, e, -1, -1);
 }
 
 /**
@@ -740,10 +744,11 @@ function keptParentheses(e: number): number[] {
   const text = hir.text;
   const len = textLen();
   exprOuterSpan(e);
-  const outerStart = SP[0] | 0;
+  const SP$ = SP;
+  const outerStart = SP$.s0 | 0;
   exprSpan(e);
-  let innerStart = SP[0] | 0;
-  let innerEnd = SP[1] | 0;
+  let innerStart = SP$.s0 | 0;
+  let innerEnd = SP$.s1 | 0;
   while (innerStart > outerStart) {
     const back = skipTriviaBack(text, len, innerStart);
     const open = back > 0 ? back - 1 : 0;
@@ -855,31 +860,36 @@ function leftOperand(op: number, left: number): Item {
 function ty(t0: number): Item {
   const t = withoutLoneOperator(t0);
   typeSpan(t);
-  return itemOf(SP[0] | 0, SP[1] | 0, K_TYPE, t, -1, -1);
+  const SP$ = SP;
+  return itemOf(SP$.s0 | 0, SP$.s1 | 0, K_TYPE, t, -1, -1);
 }
 
 function typeAnnotation(t: number): Item {
   typeAnnotationSpan(t);
-  return itemOf(SP[0] | 0, SP[1] | 0, K_TYPE_ANNOTATION, t, -1, -1);
+  const SP$ = SP;
+  return itemOf(SP$.s0 | 0, SP$.s1 | 0, K_TYPE_ANNOTATION, t, -1, -1);
 }
 
 function typeParams(start: number, len: number, out: Item[]): void {
-  if (typeParamListAngleBrackets(start, len)) out.push(itemOf(SP[0] | 0, SP[1] | 0, K_TYPE_PARAMS, start, len, -1));
+  const SP$ = SP;
+  if (typeParamListAngleBrackets(start, len)) out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_TYPE_PARAMS, start, len, -1));
 }
 
 function typeArgs(start: number, len: number, out: Item[]): void {
-  if (typeListAngleBrackets(start, len)) out.push(itemOf(SP[0] | 0, SP[1] | 0, K_TYPE_ARGS, start, len, -1));
+  const SP$ = SP;
+  if (typeListAngleBrackets(start, len)) out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_TYPE_ARGS, start, len, -1));
 }
 
 /** The first `count` names of the entity name `(start, len)`, or null. */
 function entityName(start: number, len: number, count: number): Item | null {
   if (len <= 0 || count < 1 || count > len) return null;
   identSpan(entityAtom(start, 0), entityPos(start, 0));
-  const firstStart = SP[0] | 0;
-  const firstEnd = SP[1] | 0;
+  const SP$ = SP;
+  const firstStart = SP$.s0 | 0;
+  const firstEnd = SP$.s1 | 0;
   if (count === 1) return leaf(firstStart, firstEnd);
   identSpan(entityAtom(start, count - 1), entityPos(start, count - 1));
-  return itemOf(firstStart, SP[1] | 0, K_ENTITY_NAME, start, len, count);
+  return itemOf(firstStart, SP$.s1 | 0, K_ENTITY_NAME, start, len, count);
 }
 
 function pushEntityName(start: number, len: number, count: number, out: Item[]): void {
@@ -902,11 +912,12 @@ function moduleName(module: number, count: number): Item | null {
   const last = nestedModule(module, count - 1);
   if (last < 0) return null;
   moduleNameSpan(module);
-  const s = SP[0] | 0;
-  const e = SP[1] | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  const e = SP$.s1 | 0;
   if (count === 1) return leaf(s, e);
   moduleNameSpan(last);
-  return itemOf(s, SP[1] | 0, K_MODULE_NAME, module, count, -1);
+  return itemOf(s, SP$.s1 | 0, K_MODULE_NAME, module, count, -1);
 }
 
 /** The name of a property or a member (its owner `owner`, a Node). */
@@ -916,9 +927,10 @@ function key(owner: number): Item {
   const isJsx = keyIsJsx(owner);
   let s = 0;
   let e = 0;
+  const SP$ = SP;
   if (keyInnerSpan(owner)) {
-    s = SP[0] | 0;
-    e = SP[1] | 0;
+    s = SP$.s0 | 0;
+    e = SP$.s1 | 0;
   }
   if (kind === KEY_COMPUTED) return expr(expr0);
   if (kind === KEY_PRIVATE) return privateName(s, e);
@@ -934,28 +946,31 @@ function privateName(s: number, e: number): Item {
 
 /** `a`, `a-b`, or `a:b`, which is a `JSXNamespacedName`. */
 function jsxName(s: number, e: number): Item {
-  if (jsxNamespaceAndName(s)) return new Item(s, e, K_LEAVES, SP[0] | 0, SP[1] | 0, SP[2] | 0, SP[3] | 0);
+  const SP$ = SP;
+  if (jsxNamespaceAndName(s)) return new Item(s, e, K_LEAVES, SP$.s0 | 0, SP$.s1 | 0, SP$.s2 | 0, SP$.s3 | 0);
   return leaf(s, e);
 }
 
 function decorators(modsStart: number, modsLen: number, out: Item[]): void {
+  const SP$ = SP;
   for (let i = 0; i < modsLen; i++) {
     const m = listAt(modsStart, i);
     const d = modifierDecorator(m);
     if (d >= 0) {
       modifierSpan(m);
-      out.push(itemOf(SP[0] | 0, SP[1] | 0, K_DECORATOR, d, -1, -1));
+      out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_DECORATOR, d, -1, -1));
     }
   }
 }
 
 /** Prettier's `locStart`: a node starts with its first decorator. `start`: where it starts without. */
 function startWithDecorators(start: number, modsStart: number, modsLen: number): number {
+  const SP$ = SP;
   for (let i = 0; i < modsLen; i++) {
     const m = listAt(modsStart, i);
     if (modifierDecorator(m) >= 0) {
       modifierSpan(m);
-      const s = SP[0] | 0;
+      const s = SP$.s0 | 0;
       return s < start ? s : start;
     }
   }
@@ -968,7 +983,8 @@ function binding(pat: number, t: number, s: number, e: number): Item {
 
 function pattern(pat: number): Item {
   patSpan(pat);
-  return binding(pat, -1, SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  return binding(pat, -1, SP$.s0 | 0, SP$.s1 | 0);
 }
 
 function param(p: number): Item {
@@ -976,9 +992,10 @@ function param(p: number): Item {
   const ms = paramModifiersStart(p);
   let hasKeyword = false;
   for (let i = 0; i < n; i++) if (modifierDecorator(listAt(ms, i)) < 0) hasKeyword = true;
+  const SP$ = SP;
   if (hasKeyword) {
     paramSpan(p);
-    return itemOf(startWithDecorators(SP[0] | 0, ms, n), SP[1] | 0, K_PARAMETER_PROPERTY, p, -1, -1);
+    return itemOf(startWithDecorators(SP$.s0 | 0, ms, n), SP$.s1 | 0, K_PARAMETER_PROPERTY, p, -1, -1);
   }
   const inner = paramWithoutModifiers(p);
   const start = startWithDecorators(inner.start, ms, n);
@@ -987,12 +1004,13 @@ function param(p: number): Item {
 }
 
 function paramWithoutModifiers(p: number): Item {
+  const SP$ = SP;
   if (paramIsRest(p) || paramDefault(p) >= 0) {
     paramSpanWithoutModifiers(p);
-    return itemOf(SP[0] | 0, SP[1] | 0, K_PARAMETER_PATTERN, p, -1, -1);
+    return itemOf(SP$.s0 | 0, SP$.s1 | 0, K_PARAMETER_PATTERN, p, -1, -1);
   }
   paramBindingSpan(p);
-  return binding(paramPat(p), paramTy(p), SP[0] | 0, SP[1] | 0);
+  return binding(paramPat(p), paramTy(p), SP$.s0 | 0, SP$.s1 | 0);
 }
 
 function functionParts(func: number, hasName: boolean, out: Item[]): void {
@@ -1009,18 +1027,20 @@ function functionParts(func: number, hasName: boolean, out: Item[]): void {
   const ret = funcReturnType(func);
   if (ret >= 0) out.push(typeAnnotation(ret));
   const bk = funcBodyKind(func);
+  const SP$ = SP;
   if (bk === BODY_EXPR) out.push(expr(funcBodyExpr(func)));
   else if (bk === BODY_BLOCK) {
-    if (funcBodySpan(func)) out.push(itemOf(SP[0] | 0, SP[1] | 0, K_STATEMENTS, funcBodyStmtsStart(func), funcBodyStmtsLen(func), -1));
+    if (funcBodySpan(func)) out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_STATEMENTS, funcBodyStmtsStart(func), funcBodyStmtsLen(func), -1));
   }
 }
 
 /** The function of a method. In Babel's tree its parts are in the method itself. */
 function methodValue(func: number, out: Item[]): void {
+  const SP$ = SP;
   if (ws.isBabel) functionParts(func, false, out);
   else {
     funcSpanFromParams(func);
-    out.push(itemOf(SP[0] | 0, SP[1] | 0, K_FUNC, func, 0, -1));
+    out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_FUNC, func, 0, -1));
   }
 }
 
@@ -1036,12 +1056,14 @@ function classParts(cls: number, out: Item[]): void {
   const n = classImplementsLen(cls);
   for (let i = 0; i < n; i++) out.push(ty(listAt(is, i)));
   classBodySpan(cls);
-  out.push(itemOf(SP[0] | 0, SP[1] | 0, K_CLASS_BODY, cls, -1, -1));
+  const SP$ = SP;
+  out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_CLASS_BODY, cls, -1, -1));
 }
 
 function member(m: number): Item {
   memberSpan(m);
-  return itemOf(startWithDecorators(SP[0] | 0, memberModifiersStart(m), memberModifiersLen(m)), SP[1] | 0, K_MEMBER, m, -1, -1);
+  const SP$ = SP;
+  return itemOf(startWithDecorators(SP$.s0 | 0, memberModifiersStart(m), memberModifiersLen(m)), SP$.s1 | 0, K_MEMBER, m, -1, -1);
 }
 
 function memberParts(m: number, out: Item[]): void {
@@ -1104,9 +1126,10 @@ function propParts(p: number, out: Item[]): void {
 
 /** A child of a JSX element, or the value of an attribute: in braces it is in a `JSXExpressionContainer`. */
 function jsxChild(e: number): Item {
+  const SP$ = SP;
   if (exprJsxContainerSpan(e)) {
-    const s = SP[0] | 0;
-    const en = SP[1] | 0;
+    const s = SP$.s0 | 0;
+    const en = SP$.s1 | 0;
     const tag = exprTag(e);
     if (tag === EXPR_SPREAD) return itemOf(s, en, K_EXPR, e, -1, -1);
     // `{}` has a `JSXEmptyExpression` in it.
@@ -1118,24 +1141,26 @@ function jsxChild(e: number): Item {
 
 function importSpec(spec: number): Item {
   importSpecSpan(spec);
-  const s = SP[0] | 0;
-  const e = SP[1] | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  const e = SP$.s1 | 0;
   identSpan(importSpecImported(spec), importSpecImportedPos(spec));
-  const a = SP[0] | 0;
-  const b = SP[1] | 0;
+  const a = SP$.s0 | 0;
+  const b = SP$.s1 | 0;
   identSpan(importSpecLocal(spec), importSpecLocalPos(spec));
-  return new Item(s, e, K_LEAVES, a, b, SP[0] | 0, SP[1] | 0);
+  return new Item(s, e, K_LEAVES, a, b, SP$.s0 | 0, SP$.s1 | 0);
 }
 
 function exportSpec(spec: number): Item {
   exportSpecSpan(spec);
-  const s = SP[0] | 0;
-  const e = SP[1] | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  const e = SP$.s1 | 0;
   identSpan(exportSpecLocal(spec), exportSpecLocalPos(spec));
-  const a = SP[0] | 0;
-  const b = SP[1] | 0;
+  const a = SP$.s0 | 0;
+  const b = SP$.s1 | 0;
   identSpan(exportSpecExported(spec), exportSpecExportedPos(spec));
-  return new Item(s, e, K_LEAVES, a, b, SP[0] | 0, SP[1] | 0);
+  return new Item(s, e, K_LEAVES, a, b, SP$.s0 | 0, SP$.s1 | 0);
 }
 
 function importAttributesOf(s: number, out: Item[]): void {
@@ -1143,10 +1168,11 @@ function importAttributesOf(s: number, out: Item[]): void {
   if (row < 0) return;
   const es = importAttributesEntriesStart(row);
   const n = importAttributesEntriesLen(row);
+  const SP$ = SP;
   for (let i = 0; i < n; i++) {
     const p = listAt(es, i);
     propSpan(p);
-    out.push(itemOf(SP[0] | 0, SP[1] | 0, K_IMPORT_ATTRIBUTE, p, -1, -1));
+    out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_IMPORT_ATTRIBUTE, p, -1, -1));
   }
 }
 
@@ -1162,6 +1188,7 @@ function templateElement(s: number, e: number, isLast: boolean): Item {
 }
 
 function expressionParts(e: number, out: Item[]): void {
+  const SP$ = SP;
   switch (exprTag(e)) {
     case EXPR_MISSING:
     case EXPR_IDENT:
@@ -1177,22 +1204,22 @@ function expressionParts(e: number, out: Item[]): void {
       return;
     case EXPR_PRIVATE_IDENTIFIER: {
       exprSpan(e);
-      const it = privateName(SP[0] | 0, SP[1] | 0);
+      const it = privateName(SP$.s0 | 0, SP$.s1 | 0);
       if (it.kind === K_LEAF_IN) out.push(leaf(it.a, it.b));
       return;
     }
     case EXPR_IMPORT_META:
     case EXPR_NEW_TARGET:
       if (exprMetaPropertySpans(e)) {
-        out.push(leaf(SP[0] | 0, SP[1] | 0));
-        out.push(leaf(SP[2] | 0, SP[3] | 0));
+        out.push(leaf(SP$.s0 | 0, SP$.s1 | 0));
+        out.push(leaf(SP$.s2 | 0, SP$.s3 | 0));
       }
       return;
     case EXPR_TEMPLATE: {
       const count = exprTemplateQuasiCount(e);
       for (let i = 0; i < count; i++) {
         exprTemplateQuasiSpan(e, i);
-        out.push(templateElement(SP[0] | 0, SP[1] | 0, i + 1 === count));
+        out.push(templateElement(SP$.s0 | 0, SP$.s1 | 0, i + 1 === count));
       }
       const s = exprTemplateExprsStart(e);
       const n = exprTemplateExprsLen(e);
@@ -1222,7 +1249,7 @@ function expressionParts(e: number, out: Item[]): void {
       for (let i = 0; i < n; i++) {
         const p = listAt(s, i);
         propSpan(p);
-        out.push(itemOf(SP[0] | 0, SP[1] | 0, K_PROP, p, -1, -1));
+        out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_PROP, p, -1, -1));
       }
       return;
     }
@@ -1237,8 +1264,8 @@ function expressionParts(e: number, out: Item[]): void {
       const name = exprDotName(e);
       const pos = exprDotNamePos(e);
       identSpan(name, pos);
-      const s = SP[0] | 0;
-      const en = SP[1] | 0;
+      const s = SP$.s0 | 0;
+      const en = SP$.s1 | 0;
       const buf = nameBuf(name);
       if ((buf[nameStart(name)] | 0) === 35) out.push(privateName(s, en));
       else out.push(leaf(s, en));
@@ -1270,7 +1297,7 @@ function expressionParts(e: number, out: Item[]): void {
     // `const` is a `TSTypeReference` with an `Identifier` in it.
     case EXPR_AS_CONST:
       out.push(expr(exprAsConstExpr(e)));
-      if (exprConstKeywordSpan(e)) out.push(new Item(SP[0] | 0, SP[1] | 0, K_LEAF_IN, SP[0] | 0, SP[1] | 0, -1, -1));
+      if (exprConstKeywordSpan(e)) out.push(new Item(SP$.s0 | 0, SP$.s1 | 0, K_LEAF_IN, SP$.s0 | 0, SP$.s1 | 0, -1, -1));
       return;
     case EXPR_NON_NULL:
       nonNullParts(e, exprInnerNonNullCount(e), out);
@@ -1334,8 +1361,9 @@ function expressionParts(e: number, out: Item[]): void {
 function jsxParts(e: number, out: Item[]): void {
   const isFragment = jsxIsFragment(e);
   jsxOpeningSpan(e);
-  if (isFragment) out.push(leaf(SP[0] | 0, SP[1] | 0));
-  else out.push(itemOf(SP[0] | 0, SP[1] | 0, K_JSX_OPENING, e, -1, -1));
+  const SP$ = SP;
+  if (isFragment) out.push(leaf(SP$.s0 | 0, SP$.s1 | 0));
+  else out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_JSX_OPENING, e, -1, -1));
   const elementStart = exprStart(e);
   const rows = new I32Vec(24);
   jsxChildrenWithWhitespace(e, rows);
@@ -1346,13 +1374,13 @@ function jsxParts(e: number, out: Item[]): void {
     if (kind === JC_EXPR) {
       if (exprIsJsxText(x)) {
         exprSpan(x);
-        out.push(itemOf(SP[0] | 0, SP[1] | 0, K_JSX_TEXT, elementStart, -1, -1));
+        out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_JSX_TEXT, elementStart, -1, -1));
       } else out.push(jsxChild(x));
     } else out.push(itemOf(x, y, K_JSX_TEXT, elementStart, -1, -1));
   }
   if (jsxClosingSpan(e)) {
-    if (isFragment) out.push(leaf(SP[0] | 0, SP[1] | 0));
-    else out.push(itemOf(SP[0] | 0, SP[1] | 0, K_JSX_CLOSING, e, -1, -1));
+    if (isFragment) out.push(leaf(SP$.s0 | 0, SP$.s1 | 0));
+    else out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_JSX_CLOSING, e, -1, -1));
   }
 }
 
@@ -1367,14 +1395,16 @@ function nonNullParts(e: number, inner: number, out: Item[]): void {
 
 function jsxTagItem(tag: number, out: Item[]): void {
   if (tag < 0) return;
+  const SP$ = SP;
   if (exprTag(tag) === EXPR_DOT) out.push(expr(tag));
   else {
     exprSpan(tag);
-    out.push(jsxName(SP[0] | 0, SP[1] | 0));
+    out.push(jsxName(SP$.s0 | 0, SP$.s1 | 0));
   }
 }
 
 function declarationParts(s: number, out: Item[]): void {
+  const SP$ = SP;
   switch (stmtTag(s)) {
     case STMT_EMPTY:
     case STMT_DEBUGGER:
@@ -1407,7 +1437,7 @@ function declarationParts(s: number, out: Item[]): void {
       for (let i = 0; i < n; i++) {
         const d = listAt(ds, i);
         varDeclSpan(d);
-        out.push(itemOf(SP[0] | 0, SP[1] | 0, K_VAR_DECL, d, -1, -1));
+        out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_VAR_DECL, d, -1, -1));
       }
       return;
     }
@@ -1425,7 +1455,7 @@ function declarationParts(s: number, out: Item[]): void {
       const n = interfaceExtendsLen(i);
       for (let k = 0; k < n; k++) out.push(ty(listAt(es, k)));
       interfaceBodySpan(i);
-      out.push(itemOf(SP[0] | 0, SP[1] | 0, K_INTERFACE_BODY, i, -1, -1));
+      out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_INTERFACE_BODY, i, -1, -1));
       return;
     }
     case STMT_TYPE_ALIAS: {
@@ -1439,7 +1469,7 @@ function declarationParts(s: number, out: Item[]): void {
       const en = stmtEnumEnum(s);
       out.push(leafIdent(enumName(en), enumNamePos(en)));
       enumBodySpan(en);
-      out.push(itemOf(SP[0] | 0, SP[1] | 0, K_ENUM_BODY, en, -1, -1));
+      out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_ENUM_BODY, en, -1, -1));
       return;
     }
     case STMT_MODULE: {
@@ -1453,7 +1483,7 @@ function declarationParts(s: number, out: Item[]): void {
       const name = moduleName(module, count);
       if (name !== null) out.push(name);
       if (moduleBodySpan(innermost)) {
-        out.push(itemOf(SP[0] | 0, SP[1] | 0, K_STATEMENTS, moduleBodyStart(innermost), moduleBodyLen(innermost), -1));
+        out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_STATEMENTS, moduleBodyStart(innermost), moduleBodyLen(innermost), -1));
       }
       return;
     }
@@ -1511,13 +1541,13 @@ function declarationParts(s: number, out: Item[]): void {
       for (let i = 0; i < n; i++) {
         const c = listAt(cs, i);
         caseSpan(c);
-        out.push(itemOf(SP[0] | 0, SP[1] | 0, K_CASE, c, -1, -1));
+        out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_CASE, c, -1, -1));
       }
       return;
     }
     case STMT_TRY: {
       out.push(statement(stmtTryBlock(s)));
-      if (stmtCatchClauseSpan(s)) out.push(itemOf(SP[0] | 0, SP[1] | 0, K_CATCH_CLAUSE, s, -1, -1));
+      if (stmtCatchClauseSpan(s)) out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_CATCH_CLAUSE, s, -1, -1));
       const fin = stmtTryFinalizer(s);
       if (fin >= 0) out.push(statement(fin));
       return;
@@ -1531,13 +1561,13 @@ function declarationParts(s: number, out: Item[]): void {
       const d = importDefault(imp);
       if (d >= 0) {
         identSpan(d, importDefaultPos(imp));
-        out.push(new Item(SP[0] | 0, SP[1] | 0, K_LEAF_IN, SP[0] | 0, SP[1] | 0, -1, -1));
+        out.push(new Item(SP$.s0 | 0, SP$.s1 | 0, K_LEAF_IN, SP$.s0 | 0, SP$.s1 | 0, -1, -1));
       }
       if (importNamespaceSpan(imp) && importNamespace(imp) >= 0) {
-        const ns = SP[0] | 0;
-        const ne = SP[1] | 0;
+        const ns = SP$.s0 | 0;
+        const ne = SP$.s1 | 0;
         identSpan(importNamespace(imp), importNamespacePos(imp));
-        out.push(new Item(ns, ne, K_LEAF_IN, SP[0] | 0, SP[1] | 0, -1, -1));
+        out.push(new Item(ns, ne, K_LEAF_IN, SP$.s0 | 0, SP$.s1 | 0, -1, -1));
       }
       const ns2 = importNamedStart(imp);
       const nn = importNamedLen(imp);
@@ -1560,10 +1590,10 @@ function declarationParts(s: number, out: Item[]): void {
       if (alias >= 0 && ws.isBabel) {
         // In Babel's tree, `* as a` is an `ExportNamespaceSpecifier`.
         stmtSpan(s);
-        const star = skipTrivia(hir.text, textLen(), (SP[0] | 0) + 6);
+        const star = skipTrivia(hir.text, textLen(), (SP$.s0 | 0) + 6);
         identSpan(alias, stmtExportStarAliasPos(s));
-        const aliasStart = SP[0] | 0;
-        const aliasEnd = SP[1] | 0;
+        const aliasStart = SP$.s0 | 0;
+        const aliasEnd = SP$.s1 | 0;
         out.push(new Item(star, aliasEnd, K_LEAF_IN, aliasStart, aliasEnd, -1, -1));
         if (stmtModuleSpecifierSpan(s)) out.push(leafSp());
         importAttributesOf(s, out);
@@ -1580,9 +1610,9 @@ function declarationParts(s: number, out: Item[]): void {
       if (importEqualsTargetKind(imp) === IET_ENTITY) {
         pushEntityName(importEqualsEntityStart(imp), importEqualsEntityLen(imp), importEqualsEntityLen(imp), out);
       } else if (importEqualsRequireSpan(imp)) {
-        const rs = SP[0] | 0;
-        const re = SP[1] | 0;
-        if (stmtModuleSpecifierSpan(s)) out.push(new Item(rs, re, K_LEAF_IN, SP[0] | 0, SP[1] | 0, -1, -1));
+        const rs = SP$.s0 | 0;
+        const re = SP$.s1 | 0;
+        if (stmtModuleSpecifierSpan(s)) out.push(new Item(rs, re, K_LEAF_IN, SP$.s0 | 0, SP$.s1 | 0, -1, -1));
       }
       return;
     }
@@ -1602,8 +1632,9 @@ function typeText(t: number): number {
 
 function typeParts(t: number, out: Item[]): void {
   typeSpan(t);
-  const s = SP[0] | 0;
-  const e = SP[1] | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  const e = SP$.s1 | 0;
   switch (typeTag(t)) {
     case TYPE_ERROR:
     case TYPE_JSDOC:
@@ -1637,14 +1668,14 @@ function typeParts(t: number, out: Item[]): void {
       return;
     case TYPE_IMPORT:
       if ((typeImportFlags(t) & 1) !== 0) {
-        if (typeImportSpan(t)) out.push(itemOf(SP[0] | 0, SP[1] | 0, K_IMPORT_TYPE, t, -1, -1));
+        if (typeImportSpan(t)) out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_IMPORT_TYPE, t, -1, -1));
       } else importTypeParts(t, out);
       return;
     case TYPE_TEMPLATE: {
       const count = typeTemplateQuasiCount(t);
       for (let i = 0; i < count; i++) {
         typeTemplateQuasiSpan(t, i);
-        out.push(templateElement(SP[0] | 0, SP[1] | 0, i + 1 === count));
+        out.push(templateElement(SP$.s0 | 0, SP$.s1 | 0, i + 1 === count));
       }
       const ts = typeTemplateTypesStart(t);
       const n = typeTemplateTypesLen(t);
@@ -1702,7 +1733,7 @@ function typeParts(t: number, out: Item[]): void {
     case TYPE_INFER: {
       const p = typeInferParam(t);
       typeParamSpan(p);
-      out.push(itemOf(SP[0] | 0, SP[1] | 0, K_TYPE_PARAM, p, -1, -1));
+      out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_TYPE_PARAM, p, -1, -1));
       return;
     }
     case TYPE_MAPPED: {
@@ -1728,7 +1759,7 @@ function typeParts(t: number, out: Item[]): void {
       const asserted = typePredicateTy(t);
       if (asserted >= 0) {
         typeOuterSpan(asserted);
-        out.push(itemOf(SP[0] | 0, SP[1] | 0, K_TYPE_ANNOTATION, asserted, -1, -1));
+        out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_TYPE_ANNOTATION, asserted, -1, -1));
       }
       return;
     }
@@ -1750,15 +1781,17 @@ function importTypeParts(t: number, out: Item[]): void {
 }
 
 function tupleElement(el: number): Item {
+  const SP$ = SP;
   if (tupleElemName(el) >= 0 || tupleElemIsRest(el) || tupleElemIsOptional(el)) {
     tupleElemSpan(el);
-    return itemOf(SP[0] | 0, SP[1] | 0, K_TUPLE_ELEM, el, -1, -1);
+    return itemOf(SP$.s0 | 0, SP$.s1 | 0, K_TUPLE_ELEM, el, -1, -1);
   }
   return ty(tupleElemTy(el));
 }
 
 /** Appends the children of `item` to `out`, in the order of Prettier's visitor keys. */
 function children(item: Item, out: Item[]): void {
+  const SP$ = SP;
   switch (item.kind) {
     case K_LEAF:
     case K_UNMARKED_LEAF:
@@ -1797,7 +1830,7 @@ function children(item: Item, out: Item[]): void {
       if (item.b * 2 + 1 < kept.length) out.push(itemOf(kept[item.b * 2], kept[item.b * 2 + 1], K_PARENTHESIZED, item.a, item.b + 1, -1));
       else {
         exprSpan(item.a);
-        out.push(itemOf(SP[0] | 0, SP[1] | 0, K_EXPR, item.a, -1, -1));
+        out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_EXPR, item.a, -1, -1));
       }
       return;
     }
@@ -1810,7 +1843,7 @@ function children(item: Item, out: Item[]): void {
     case K_STMT:
       if (stmtIsExported(item.a)) {
         stmtSpanWithoutExport(item.a);
-        const s = SP[0] | 0;
+        const s = SP$.s0 | 0;
         let start = s;
         if (stmtTag(item.a) === STMT_CLASS) {
           const cls = stmtClassClass(item.a);
@@ -1832,7 +1865,7 @@ function children(item: Item, out: Item[]): void {
         const p = stmtTryParam(s);
         if (p >= 0) {
           varDeclBindingSpan(p);
-          out.push(binding(varDeclPat(p), varDeclTy(p), SP[0] | 0, SP[1] | 0));
+          out.push(binding(varDeclPat(p), varDeclTy(p), SP$.s0 | 0, SP$.s1 | 0));
         }
         const h = stmtTryHandler(s);
         if (h >= 0) out.push(statement(h));
@@ -1851,7 +1884,7 @@ function children(item: Item, out: Item[]): void {
     case K_VAR_DECL: {
       const d = item.a;
       varDeclBindingSpan(d);
-      out.push(binding(varDeclPat(d), varDeclTy(d), SP[0] | 0, SP[1] | 0));
+      out.push(binding(varDeclPat(d), varDeclTy(d), SP$.s0 | 0, SP$.s1 | 0));
       const init = varDeclInit(d);
       if (init >= 0) out.push(expr(init));
       return;
@@ -1891,7 +1924,7 @@ function children(item: Item, out: Item[]): void {
       const dflt = paramDefault(p);
       if (dflt >= 0) {
         paramBindingSpan(p);
-        out.push(binding(paramPat(p), paramTy(p), SP[0] | 0, SP[1] | 0));
+        out.push(binding(paramPat(p), paramTy(p), SP$.s0 | 0, SP$.s1 | 0));
         out.push(expr(dflt));
       } else {
         out.push(pattern(paramPat(p)));
@@ -1923,7 +1956,7 @@ function children(item: Item, out: Item[]): void {
         for (let i = 0; i < n; i++) {
           const pp = listAt(ps, i);
           patPropSpan(pp);
-          out.push(itemOf(SP[0] | 0, SP[1] | 0, K_PAT_PROP, pp, -1, -1));
+          out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_PAT_PROP, pp, -1, -1));
         }
       } else if (pk === PAT_ARRAY) {
         const es = patArrayElemsStart(pat);
@@ -1956,9 +1989,9 @@ function children(item: Item, out: Item[]): void {
       const dflt = patPropDefault(pp);
       if (dflt >= 0) {
         patSpan(value);
-        const vs = SP[0] | 0;
+        const vs = SP$.s0 | 0;
         patPropSpan(pp);
-        out.push(itemOf(vs, SP[1] | 0, K_PATTERN_WITH_DEFAULT, value, dflt, -1));
+        out.push(itemOf(vs, SP$.s1 | 0, K_PATTERN_WITH_DEFAULT, value, dflt, -1));
       } else out.push(pattern(value));
       return;
     }
@@ -1972,7 +2005,7 @@ function children(item: Item, out: Item[]): void {
       for (let i = 0; i < item.b; i++) {
         const p = listAt(item.a, i);
         typeParamSpan(p);
-        out.push(itemOf(SP[0] | 0, SP[1] | 0, K_TYPE_PARAM, p, -1, -1));
+        out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_TYPE_PARAM, p, -1, -1));
       }
       return;
     case K_TYPE_ARGS:
@@ -1995,7 +2028,7 @@ function children(item: Item, out: Item[]): void {
       // `...a: T` is a `TSNamedTupleMember` in a `TSRestType`.
       if (tupleElemIsRest(el) && tupleElemName(el) >= 0) {
         identSpan(tupleElemName(el), tupleElemNamePos(el));
-        out.push(itemOf(SP[0] | 0, item.end, K_NAMED_TUPLE_MEMBER, el, -1, -1));
+        out.push(itemOf(SP$.s0 | 0, item.end, K_NAMED_TUPLE_MEMBER, el, -1, -1));
         return;
       }
       tupleMemberParts(el, out);
@@ -2031,7 +2064,7 @@ function children(item: Item, out: Item[]): void {
       for (let i = 0; i < n; i++) {
         const m = listAt(ms, i);
         enumMemberSpan(m);
-        out.push(itemOf(SP[0] | 0, SP[1] | 0, K_ENUM_MEMBER, m, -1, -1));
+        out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_ENUM_MEMBER, m, -1, -1));
       }
       return;
     }
@@ -2051,7 +2084,7 @@ function children(item: Item, out: Item[]): void {
       for (let i = 0; i < n; i++) {
         const p = listAt(as, i);
         propSpan(p);
-        out.push(itemOf(SP[0] | 0, SP[1] | 0, K_PROP, p, -1, -1));
+        out.push(itemOf(SP$.s0 | 0, SP$.s1 | 0, K_PROP, p, -1, -1));
       }
       return;
     }
@@ -2076,8 +2109,9 @@ function patternElement(el: number): Item | null {
   const pat = patElemPat(el);
   if (pat < 0) return null;
   patElemSpan(el);
-  const s = SP[0] | 0;
-  const e = SP[1] | 0;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  const e = SP$.s1 | 0;
   if (patElemIsRest(el)) return itemOf(s, e, K_REST_PATTERN, pat, -1, -1);
   const dflt = patElemDefault(el);
   if (dflt >= 0) return itemOf(s, e, K_PATTERN_WITH_DEFAULT, pat, dflt, -1);
@@ -2209,7 +2243,7 @@ function markedExtent(item: Item | null): Extent {
   let endWithSemicolon = item.end;
   if (k === K_STMT || k === K_DECLARATION) {
     stmtSpan(item.a);
-    endWithSemicolon = SP[1] | 0;
+    endWithSemicolon = SP.s1 | 0;
   }
   return new Extent(item.start, item.end, endWithSemicolon);
 }

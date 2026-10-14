@@ -210,7 +210,7 @@ export function formatTypeNameCommentTag(fm: JsdocFormatter, normalizedKind: str
     const rawInner = raw.substring(1, raw.length > 0 ? raw.length - 1 : 0);
     const rawWasMultiline = rawInner.indexOf("\n") >= 0;
     const typeToNormalize = stripOptionalTypeSuffix(tagTypeParsed(tag));
-    isTypeOptional = OPTIONAL_TYPE[0] !== 0;
+    isTypeOptional = OPTIONAL_TYPE.s0 !== 0;
     normalizedType = preserveQuotes ? normalizeTypePreserveQuotes(typeToNormalize, fm.stack) : normalizeType(typeToNormalize, fm.quoteStyle(), fm.stack);
     if (!preserveQuotes) {
       const isMultiline = typeToNormalize.indexOf("\n") >= 0;

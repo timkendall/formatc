@@ -376,7 +376,7 @@ function writeFormatBody(
   } else {
     // See `commentsStayBetweenHeadAndBody`.
     if (!cx.isQuiet && commentsStayBetweenHeadAndBody(f) && funcBodyKind(tail) === BODY_BLOCK && funcArrowSpan(tail)) {
-      const tokenEnd = SP[1] | 0;
+      const tokenEnd = SP.s1 | 0;
       const cm = cx.comments;
       cm.endOfLineCommentsAfter(tokenEnd);
       formatTrailingCommentsRange(cm.from, cm.to, f);
@@ -415,15 +415,16 @@ function hasLeadingComment(e: number, isCallee: boolean, f: Formatter): boolean 
 function hasDanglingComments(arrow: number, cacheMode: number, f: Formatter): boolean {
   if (cxOf(f).isQuiet && cacheMode === FUNCTION_CACHE_MODE_NO_CACHE) return false;
   if (!funcArrowSpan(arrow)) return false;
-  const tokenStart = SP[0] | 0;
+  const SP$ = SP;
+  const tokenStart = SP$.s0 | 0;
   anSpan(mkAn(AN_FORMAL_PARAMETERS, arrow));
-  const paramsStart = SP[0] | 0;
-  const paramsEnd = SP[1] | 0;
+  const paramsStart = SP$.s0 | 0;
+  const paramsEnd = SP$.s1 | 0;
   let signatureEnd = paramsEnd;
   const rt = funcReturnType(arrow);
   if (rt >= 0) {
     typeSpan(rt);
-    signatureEnd = SP[1] | 0;
+    signatureEnd = SP$.s1 | 0;
   }
   if (hasCommentsBetween(signatureEnd, tokenStart, f)) return true;
   return funcParamsLen(arrow) === 0 && funcThisParam(arrow) < 0 && hasCommentsBetween(paramsStart, paramsEnd, f);
@@ -434,19 +435,20 @@ function hasLeadingOwnLineComment(arrow: number, cacheMode: number, f: Formatter
   const cx = cxOf(f);
   if (cx.isQuiet && cacheMode === FUNCTION_CACHE_MODE_NO_CACHE) return false;
   if (!funcArrowSpan(arrow)) return false;
-  const tokenStart = SP[0] | 0;
-  const tokenEnd = SP[1] | 0;
+  const SP$ = SP;
+  const tokenStart = SP$.s0 | 0;
+  const tokenEnd = SP$.s1 | 0;
   const hasPrecedingNode = funcParamsLen(arrow) > 0 || funcThisParam(arrow) >= 0 || funcTypeParamsLen(arrow) > 0 || funcReturnType(arrow) >= 0;
   // If nothing else is between them and the body, the comments before the `(` lead it as well.
   let start = tokenEnd;
   if (!hasPrecedingNode) {
     funcSpan(arrow);
-    start = SP[0] | 0;
+    start = SP$.s0 | 0;
   }
   anSpan(mkAn(AN_FORMAL_PARAMETERS, arrow));
-  const paramsStart = SP[0] | 0;
+  const paramsStart = SP$.s0 | 0;
   anSpan(mkAn(AN_FUNCTION_BODY, arrow));
-  const bodyStart = SP[0] | 0;
+  const bodyStart = SP$.s0 | 0;
   commentsBetween(start, bodyStart, f);
   const from = CB[0] | 0;
   const to = CB[1] | 0;
@@ -513,9 +515,10 @@ function isMultilineAndStartsOnSameLine(expression: number, f: Formatter): boole
   const src = cxOf(f).src;
   const n = exprTemplateQuasiCount(template);
   let hasNewline = false;
+  const SP$ = SP;
   for (let i = 0; i < n; i++) {
     exprTemplateQuasiSpan(template, i);
-    if (src.containsNewline(SP[0] | 0, SP[1] | 0)) {
+    if (src.containsNewline(SP$.s0 | 0, SP$.s1 | 0)) {
       hasNewline = true;
       break;
     }
@@ -537,8 +540,9 @@ function shouldAddParensIfNotBreak(arrow: number): boolean {
 function writeCommentsBeforeArrow(arrow: number, cacheMode: number, f: Formatter): void {
   if (cxOf(f).isQuiet && cacheMode === FUNCTION_CACHE_MODE_NO_CACHE) return;
   anSpan(funcAsAstNodes(arrow));
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const slot = cacheBegin(start, start, cacheMode, f);
   if (slot !== CACHE_HIT) formatLeadingComments(start, end, f);
   cacheEnd(slot, start, start, f);
@@ -548,8 +552,9 @@ function writeCommentsBeforeArrow(arrow: number, cacheMode: number, f: Formatter
 function writeSignature(arrow: number, cacheMode: number, shouldRemoveSoftLines: boolean, f: Formatter): void {
   const cx = cxOf(f);
   anSpan(mkAn(AN_FORMAL_PARAMETERS, arrow));
-  const paramsStart = SP[0] | 0;
-  const paramsEnd = SP[1] | 0;
+  const SP$ = SP;
+  const paramsStart = SP$.s0 | 0;
+  const paramsEnd = SP$.s1 | 0;
   const tpStart = funcTypeParamsStart(arrow);
   const tpLen = funcTypeParamsLen(arrow);
   const returnType = funcReturnType(arrow);
@@ -574,8 +579,8 @@ function writeSignature(arrow: number, cacheMode: number, shouldRemoveSoftLines:
     if (hasParameters && returnType >= 0) {
       // The arguments ask whether the return type breaks.
       typeSpan(returnType);
-      const rtStart = SP[0] | 0;
-      const rtEnd = SP[1] | 0;
+      const rtStart = SP$.s0 | 0;
+      const rtEnd = SP$.s1 | 0;
       typeParameters(tpStart, tpLen, nodeOfFunc(arrow), 0, false, f);
       fmtFormalParameters(arrow, f);
       const rs = cacheBegin(rtStart, rtEnd, cacheMode, f);
@@ -597,7 +602,7 @@ function writeSignature(arrow: number, cacheMode: number, shouldRemoveSoftLines:
 
   if (cx.isQuiet && cacheMode === FUNCTION_CACHE_MODE_NO_CACHE) return;
   if (!funcArrowSpan(arrow)) return;
-  const tokenStart = SP[0] | 0;
+  const tokenStart = SP$.s0 | 0;
   // If the first is from before the `(`, it leads the body, and takes the others along.
   const cm = cx.comments;
   const n = cm.commentsBefore(tokenStart);
@@ -605,8 +610,8 @@ function writeSignature(arrow: number, cacheMode: number, shouldRemoveSoftLines:
   let to = cm.to;
   if (n > 0 && (cm.cs[from] | 0) < paramsEnd) to = from;
   anSpan(funcAsAstNodes(arrow));
-  const ks = SP[0] | 0;
-  const ke = SP[1] | 0;
+  const ks = SP$.s0 | 0;
+  const ke = SP$.s1 | 0;
   const slot = cacheBegin(ks, ke, cacheMode, f);
   if (slot !== CACHE_HIT) formatTrailingCommentsRange(from, to, f);
   cacheEnd(slot, ks, ke, f);
@@ -629,8 +634,9 @@ function writeArrowBody(arrow: number, al: number, cal: number, cacheMode: numbe
     }
   }
   anSpan(mkAn(AN_FUNCTION_BODY, arrow));
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const slot = cacheBegin(start, end, cacheMode, f);
   if (slot !== CACHE_HIT) {
     if (body >= 0) {
@@ -655,15 +661,16 @@ function writeExpressionBody(body: number, isOnItsOwnLine: boolean, f: Formatter
     return;
   }
   const cm = cx.comments;
+  const SP$ = SP;
   if (isSeq) {
     // The comments are outside of the parentheses.
     exprSpan(body);
-    const start = SP[0] | 0;
-    const end = SP[1] | 0;
+    const start = SP$.s0 | 0;
+    const end = SP$.s1 | 0;
     const isSuppressed = cm.isSuppressed(start);
     spanThatCommentsLead(body, f);
-    const leadingStart = SP[0] | 0;
-    const leadingEnd = SP[1] | 0;
+    const leadingStart = SP$.s0 | 0;
+    const leadingEnd = SP$.s1 | 0;
     const own = !isOnItsOwnLine && sequenceBehindCommentsIsOnItsOwnLine(f) && cm.hasCommentBefore(leadingStart);
     if (own) {
       f.startGroup();

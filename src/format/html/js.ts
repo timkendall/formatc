@@ -514,10 +514,11 @@ function expressionOfFile(): number {
   if (stmtTag(stmt) !== STMT_EXPR) return -1;
   const e = stmtExprExpr(stmt);
   exprSpan(e);
-  const start = SP[0] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
   exprOuterSpan(e);
-  const outerStart = SP[0] | 0;
-  const outerEnd = SP[1] | 0;
+  const outerStart = SP$.s0 | 0;
+  const outerEnd = SP$.s1 | 0;
   return start > 0 && outerStart === 0 && outerEnd === (hir.sourceLen | 0) ? e : -1;
 }
 

@@ -136,8 +136,9 @@ export function typeParameters(paramsStart: number, paramsLen: number, owner: nu
   // format_node(node.span(), || node.parent(), f, |f| self.write_without_comments(f))
   const node = mkTypeParametersAn(owner);
   anSpan(node);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const cm = cx.comments;
   const isSuppressed = cm.isSuppressed(start) || cm.hasTrailingSuppressionComment(end);
   formatLeadingComments(start, end, f);
@@ -160,12 +161,13 @@ export function typeParametersWithoutComments(paramsStart: number, paramsLen: nu
   f.startGroupWith(groupId, false);
   f.token(LANGLE);
   const grandParent = anParent(anParent(node));
+  const SP$ = SP;
   if (anTag(grandParent) === AN_CALL_EXPRESSION && isTestCallExpressionInFlavor(anId(grandParent), f)) {
     for (let i = 0; i < paramsLen; i++) {
       const param = listAt(paramsStart, i);
       if (i > 0) {
         typeParamSpan(param);
-        joinNodesSeparator(f, JOIN_SPACE, SP[0] | 0, SP[1] | 0);
+        joinNodesSeparator(f, JOIN_SPACE, SP$.s0 | 0, SP$.s1 | 0);
       }
       fmtTypeParam(param, f);
       writeSeparatorAfter(f, COMMA, i === paramsLen - 1, TRAILING_SEPARATOR_OMIT, 0);
@@ -184,7 +186,7 @@ export function typeParametersWithoutComments(paramsStart: number, paramsLen: nu
   }
   if (!cxOf(f).isQuiet) {
     anSpan(node);
-    formatDanglingComments(SP[0] | 0, SP[1] | 0, DANGLING_SOFT, f);
+    formatDanglingComments(SP$.s0 | 0, SP$.s1 | 0, DANGLING_SOFT, f);
   }
   f.token(RANGLE);
   f.endGroup();
@@ -217,8 +219,9 @@ export function typeArguments(paramsStart: number, paramsLen: number, owner: num
   }
   const node = mkTypeArgumentsAn(owner);
   anSpan(node);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const cm = cx.comments;
   const isSuppressed = cm.isSuppressed(start) || cm.hasTrailingSuppressionComment(end);
   formatLeadingComments(start, end, f);
@@ -270,11 +273,12 @@ function hasCommentOnOwnLine(owner: number, only: number, f: Formatter): boolean
   if (cx.isQuiet) return false;
   const cm = cx.comments;
   anSpan(mkTypeArgumentsAn(owner));
-  const outerStart = SP[0] | 0;
-  const outerEnd = SP[1] | 0;
+  const SP$ = SP;
+  const outerStart = SP$.s0 | 0;
+  const outerEnd = SP$.s1 | 0;
   typeSpan(only);
-  const innerStart = SP[0] | 0;
-  const innerEnd = SP[1] | 0;
+  const innerStart = SP$.s0 | 0;
+  const innerEnd = SP$.s1 | 0;
   cm.commentsIn(outerStart, innerStart);
   const beforeFrom = cm.from;
   const beforeTo = cm.to;

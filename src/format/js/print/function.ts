@@ -153,8 +153,9 @@ export function writeFunction(func: number, cacheMode: number, f: Formatter): vo
   }
 
   anSpan(node);
-  const nodeStart = SP[0] | 0;
-  const nodeEnd = SP[1] | 0;
+  const SP$ = SP;
+  const nodeStart = SP$.s0 | 0;
+  const nodeEnd = SP$.s1 | 0;
   let slot = cacheBegin(nodeStart, nodeEnd, cacheMode, f);
   if (slot !== CACHE_HIT) {
     if (isDeclared) f.token(T_DECLARE);
@@ -174,15 +175,15 @@ export function writeFunction(func: number, cacheMode: number, f: Formatter): vo
 
   // the parameters and the return type
   anSpan(mkAn(AN_FORMAL_PARAMETERS, func));
-  const paramsStart = SP[0] | 0;
-  const paramsEnd = SP[1] | 0;
+  const paramsStart = SP$.s0 | 0;
+  const paramsEnd = SP$.s1 | 0;
   const returnType = funcReturnType(func);
   let rtStart = 0;
   let rtEnd = 0;
   if (returnType >= 0) {
     typeAnnotationSpan(returnType);
-    rtStart = SP[0] | 0;
-    rtEnd = SP[1] | 0;
+    rtStart = SP$.s0 | 0;
+    rtEnd = SP$.s1 | 0;
   }
   const hasBody = funcHasBody(func);
 
@@ -211,8 +212,8 @@ export function writeFunction(func: number, cacheMode: number, f: Formatter): vo
   if (hasBody) {
     f.space();
     anSpan(mkAn(AN_FUNCTION_BODY, func));
-    const bs = SP[0] | 0;
-    const be = SP[1] | 0;
+    const bs = SP$.s0 | 0;
+    const be = SP$.s1 | 0;
     slot = cacheBegin(bs, be, cacheMode, f);
     if (slot !== CACHE_HIT) fmtFunctionBody(func, f);
     cacheEnd(slot, bs, be, f);
@@ -224,7 +225,7 @@ export function writeFunction(func: number, cacheMode: number, f: Formatter): vo
 /** The return type, with the space before it if a comment is before it. */
 function writeReturnType(returnType: number, hasBody: boolean, f: Formatter): void {
   typeAnnotationSpan(returnType);
-  const needsSpace = cxOf(f).comments.hasCommentBefore(SP[0] | 0);
+  const needsSpace = cxOf(f).comments.hasCommentBefore(SP.s0 | 0);
   f.maybeSpace(needsSpace);
   // The comments before the `{` are written with the body.
   if (hasBody) fmtNodeWithoutTrailingComments(WK_TYPE_ANNOTATION, returnType, f);
@@ -264,7 +265,7 @@ export function fmtCommentsBehindParenthesis(func: number, f: Formatter): void {
   if (!followsNameOrTypeParameters(func)) return;
   const cm = cx.comments;
   paramSpan(first);
-  cm.commentsBefore(SP[0] | 0);
+  cm.commentsBefore(SP.s0 | 0);
   const from = cm.from;
   const to = endOfLineComments(f, from, cm.to);
   formatTrailingCommentsRange(from, to, f);
@@ -317,8 +318,9 @@ export function writeCalledFunctionWithComments(e: number, options: number, f: F
   if (exprAsFn(e) < 0 || !isIifeCalleeOrTaggedTemplateTag(e) || commentsOfCalledFunctionAreOutsideOfItsParentheses(f)) return false;
   const cm = cxOf(f).comments;
   exprSpan(e);
-  const start = SP[0] | 0;
-  const spanEnd = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const spanEnd = SP$.s1 | 0;
   const end = exprOuterEnd(e);
   // Whoever writes the callee may have hidden the comments after it.
   const viewLimit = cm.limitCommentsUpTo(0);
@@ -370,8 +372,9 @@ export function fmtFunctionBody(func: number, f: Formatter): void {
     return;
   }
   anSpan(mkAn(AN_FUNCTION_BODY, func));
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   // format_node_without_comments(span, || func.as_ast_nodes(), f, write)
   if (cx.comments.isSuppressed(start)) {
     formatLeadingComments(start, end, f);
@@ -414,7 +417,7 @@ function writeCommentsBeforeBody(func: number, bodyStart: number, f: Formatter):
   const to = cm.to;
   // Those from before the `(` lead the block, whatever they are.
   anSpan(mkAn(AN_FORMAL_PARAMETERS, func));
-  const parametersStart = SP[0] | 0;
+  const parametersStart = SP.s0 | 0;
   // After a `=>`, a comment at the end of the line is moved into the block as well: `handleArrowExpressionComments`.
   const isArrow = funcIsArrow(func);
   let count = 0;

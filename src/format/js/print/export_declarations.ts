@@ -91,8 +91,9 @@ const KW_AS = token("as");
 function formatExportKeywordWithClassDecorators(node: number, keyword: number, cls: number, f: Formatter): void {
   const cm = cxOf(f).comments;
   anSpan(node);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
 
   let firstDecorator = -1;
   let modsStart = 0;
@@ -111,8 +112,8 @@ function formatExportKeywordWithClassDecorators(node: number, keyword: number, c
 
   if (firstDecorator >= 0) {
     anSpan(mkAn(AN_DECORATOR, firstDecorator));
-    const decoratorStart = SP[0] | 0;
-    const decoratorEnd = SP[1] | 0;
+    const decoratorStart = SP$.s0 | 0;
+    const decoratorEnd = SP$.s1 | 0;
     if (decoratorEnd < start) {
       enterNode(start, end, f);
       fmtDecorators(modsStart, modsLen, node, f);
@@ -186,7 +187,8 @@ export function writeExportedDeclaration(statement: number, f: Formatter): void 
   fmtDeclaration(statement, f);
   if (tag === STMT_VAR) optionalSemicolon(f);
   anSpan(node);
-  extendNode(SP[0] | 0, SP[1] | 0, f);
+  const SP$ = SP;
+  extendNode(SP$.s0 | 0, SP$.s1 | 0, f);
   writeTrailingCommentsOf(node, f);
 }
 
@@ -203,6 +205,7 @@ export function writeExportDefaultExpression(statement: number, expression: numb
   const cm = cx.comments;
   const node = mkAn(AN_EXPORT_DEFAULT_DECLARATION, statement);
   formatExportKeywordWithClassDecorators(node, KW_EXPORT_DEFAULT, -1, f);
+  const SP$ = SP;
   if (commentsBeforeSemicolonOfDefaultExportGoBehindIt(f) && !cx.isQuiet) {
     let hiddenFrom = startOfCommentsInDroppedParentheses(expression, 0, f);
     if (hiddenFrom < 0) hiddenFrom = exprOuterEnd(expression);
@@ -212,7 +215,7 @@ export function writeExportDefaultExpression(statement: number, expression: numb
     cm.restoreHiddenComments(previous);
     // One on a line of its own leads the next statement.
     stmtSpan(statement);
-    cm.commentsBefore(SP[1] | 0);
+    cm.commentsBefore(SP$.s1 | 0);
     const from = cm.from;
     const to = cm.to;
     let count = 0;
@@ -223,7 +226,7 @@ export function writeExportDefaultExpression(statement: number, expression: numb
     optionalSemicolon(f);
   }
   anSpan(node);
-  extendNode(SP[0] | 0, SP[1] | 0, f);
+  extendNode(SP$.s0 | 0, SP$.s1 | 0, f);
   writeTrailingCommentsOf(node, f);
 }
 
@@ -259,6 +262,7 @@ export function writeExportAllDeclaration(statement: number, f: Formatter): void
   }
   const aliasPos = stmtExportStarAliasPos(statement);
   const parent = mkAn(AN_EXPORT_ALL_DECLARATION, statement);
+  const SP$ = SP;
   if (cx.isQuiet) {
     f.token(STAR);
     f.space();
@@ -268,8 +272,8 @@ export function writeExportAllDeclaration(statement: number, f: Formatter): void
     f.space();
   } else {
     stmtSpan(statement);
-    const statementStart = SP[0] | 0;
-    const statementEnd = SP[1] | 0;
+    const statementStart = SP$.s0 | 0;
+    const statementEnd = SP$.s1 | 0;
     // To Babel `* as a` is a specifier, which the comments before it lead. To TypeScript there is only the name.
     if (fileIsJavascript()) {
       cm.commentsBeforeCharacter(statementStart, 42 /* * */);
@@ -284,7 +288,7 @@ export function writeExportAllDeclaration(statement: number, f: Formatter): void
     const previousLimit = cm.limitCommentsUpTo(nameEnd);
     moduleExportName(alias, aliasPos, parent, f);
     cm.restoreViewLimit(previousLimit);
-    const sourceStart = stmtModuleSpecifierSpan(statement) ? SP[0] | 0 : 0;
+    const sourceStart = stmtModuleSpecifierSpan(statement) ? SP$.s0 | 0 : 0;
     formatTrailingComments(statementStart, statementEnd, nameStart, nameEnd, sourceStart, f);
     f.space();
   }
@@ -298,8 +302,9 @@ export function writeExportAllDeclaration(statement: number, f: Formatter): void
 export function writeExportNamedDeclaration(statement: number, exp: number, f: Formatter): void {
   const cx = cxOf(f);
   stmtSpan(statement);
-  const start = SP[0] | 0;
-  const end = SP[1] | 0;
+  const SP$ = SP;
+  const start = SP$.s0 | 0;
+  const end = SP$.s1 | 0;
   const itemsStart = exportItemsStart(exp);
   const itemsLen = exportItemsLen(exp);
   const typeOnly = exportIsTypeOnly(exp);
@@ -332,7 +337,7 @@ export function writeExportNamedDeclaration(statement: number, exp: number, f: F
   let single = false;
   if (itemsLen === 1) {
     exportSpecSpan(first);
-    single = !onlySpecifierHasComments(statement, SP[0] | 0, SP[1] | 0, f);
+    single = !onlySpecifierHasComments(statement, SP$.s0 | 0, SP$.s1 | 0, f);
   }
   if (typeOnly) f.token(KW_TYPE_SPACE);
   if (single) {
@@ -365,7 +370,7 @@ function writeExportSource(statement: number, exp: number, f: Formatter): void {
 export function writeExportSpecifier(specifier: number, f: Formatter): void {
   const node = mkAn(AN_EXPORT_SPECIFIER, specifier);
   exportSpecSpan(specifier);
-  fmtCommentsInSpecifier(SP[1] | 0, f);
+  fmtCommentsInSpecifier(SP.s1 | 0, f);
   if (exportSpecIsTypeOnly(specifier)) f.token(KW_TYPE_SPACE);
   if (exportSpecIsRenamed(specifier)) {
     moduleExportName(exportSpecLocal(specifier), exportSpecLocalPos(specifier), node, f);

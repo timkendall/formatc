@@ -10,6 +10,7 @@ import {
   jsWhitespaceLen,
   jsWhitespaceLenBack,
 } from "../text.ts";
+import { Slots2 } from "../../base/slots.ts";
 
 /** A table of bytes for `SourceText.allBytes`: `byteTable(" \t", false)`. `ascii`: also the ASCII whitespace of Rust (`is_ascii_whitespace`). */
 export function byteTable(chars: string, asciiWhitespace: boolean): Uint8Array {
@@ -304,7 +305,7 @@ export class SourceText {
  * `split_crlf_lines`: the end of the line that starts at `pos` in text[.., end) and the length of the line break that ends it (0 at
  * the end of the text). `\r\n`, `\n` and `\r` end a line. Writes the line end to `LINE[0]` and the break length to `LINE[1]`.
  */
-export const LINE = new Int32Array(2);
+export const LINE = new Slots2();
 export function lineEndAt(text: Uint8Array, pos: number, end: number): void {
   let e = pos;
   while (e < end) {
@@ -312,12 +313,13 @@ export function lineEndAt(text: Uint8Array, pos: number, end: number): void {
     if (b === 10 || b === 13) break;
     e = e + 1;
   }
-  LINE[0] = e;
+  const LINE$ = LINE;
+  LINE$.s0 = (e) | 0;
   if (e >= end) {
-    LINE[1] = 0;
+    LINE$.s1 = 0;
   } else if ((text[e] | 0) === 13 && e + 1 < end && (text[e + 1] | 0) === 10) {
-    LINE[1] = 2;
+    LINE$.s1 = 2;
   } else {
-    LINE[1] = 1;
+    LINE$.s1 = 1;
   }
 }

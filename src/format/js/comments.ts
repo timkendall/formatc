@@ -201,14 +201,15 @@ function isIndentableText(text: Uint8Array, start: number, end: number): boolean
   // lines = split_crlf_lines(content).skip(1).peekable()
   lineEndAt(text, start, end);
   let pos = start;
-  let lineEnd = LINE[0] | 0;
-  let brk = LINE[1] | 0;
+  const LINE$ = LINE;
+  let lineEnd = LINE$.s0 | 0;
+  let brk = LINE$.s1 | 0;
   if (brk === 0) return false;
   pos = lineEnd + brk;
   while (true) {
     lineEndAt(text, pos, end);
-    lineEnd = LINE[0] | 0;
-    brk = LINE[1] | 0;
+    lineEnd = LINE$.s0 | 0;
+    brk = LINE$.s1 | 0;
     const isLast = brk === 0;
     const first = trimJsWhitespaceStart(text, pos, lineEnd);
     // The last line goes on with the `*` of `*/`.
@@ -399,12 +400,13 @@ export class Comments {
   contentSpan(i: number): void {
     const s = this.spanStart[i] | 0;
     const e = this.spanEnd[i] | 0;
+    const SP$ = SP;
     if ((this.kind[i] | 0) === CK_LINE) {
-      SP[0] = (s + 2) | 0;
-      SP[1] = e;
+      SP$.s0 = (s + 2) | 0;
+      SP$.s1 = (e) | 0;
     } else {
-      SP[0] = (s + 2) | 0;
-      SP[1] = e >= 2 ? (e - 2) | 0 : 0;
+      SP$.s0 = (s + 2) | 0;
+      SP$.s1 = (e >= 2 ? (e - 2) | 0 : 0) | 0;
     }
   }
 
@@ -447,8 +449,9 @@ export class Comments {
   firstUnprintedSpan(): boolean {
     const p = this.printedCount;
     if (p >= this.limit()) return false;
-    SP[0] = this.spanStart[p] | 0;
-    SP[1] = this.spanEnd[p] | 0;
+    const SP$ = SP;
+    SP$.s0 = this.spanStart[p] | 0;
+    SP$.s1 = this.spanEnd[p] | 0;
     return true;
   }
 
@@ -1078,10 +1081,11 @@ class NodeFinder {
     const base = out.len;
     nodeChildren(node, offset, out);
     let found = -1;
+    const SP$ = SP;
     for (let i = base; i < out.len; i++) {
       const child = out.data[i] | 0;
       nodeSpan(child);
-      if (found < 0 && (SP[0] | 0) <= offset && offset < (SP[1] | 0)) found = child;
+      if (found < 0 && (SP$.s0 | 0) <= offset && offset < (SP$.s1 | 0)) found = child;
     }
     out.len = base;
     return found;
@@ -1090,9 +1094,10 @@ class NodeFinder {
   /** The innermost node that `offset` is in. */
   innermostNodeAt(offset: number): number {
     const path = this.path;
+    const SP$ = SP;
     while (path.len > 0) {
       nodeSpan(path.last());
-      if ((SP[0] | 0) <= offset && offset < (SP[1] | 0)) break;
+      if ((SP$.s0 | 0) <= offset && offset < (SP$.s1 | 0)) break;
       path.pop();
     }
     let node = path.len > 0 ? path.last() : NODE_FILE;
@@ -1261,11 +1266,12 @@ function attachInLink(nodes: NodeFinder, cm: Comments, index: number): number {
   const linkTag = exprTag(link);
   const isMember = linkTag === EXPR_DOT || linkTag === EXPR_INDEX;
   exprSpan(inner);
-  const innerStart = SP[0] | 0;
-  const innerEnd = SP[1] | 0;
+  const SP$ = SP;
+  const innerStart = SP$.s0 | 0;
+  const innerEnd = SP$.s1 | 0;
   exprSpan(link);
-  const linkStart = SP[0] | 0;
-  const linkEnd = SP[1] | 0;
+  const linkStart = SP$.s0 | 0;
+  const linkEnd = SP$.s1 | 0;
 
   // What follows the comments, if anything does: where it starts, and whether it is a name. If nothing does, the token that they are before.
   const hasPreceding = innerEnd <= firstStart;
@@ -1297,7 +1303,7 @@ function attachInLink(nodes: NodeFinder, cm: Comments, index: number): number {
     opener = 40;
     if (typeListAngleBrackets(callTypeArgsStart(call), callTypeArgsLen(call))) {
       hasFollowing = true;
-      followingStart = SP[0] | 0;
+      followingStart = SP$.s0 | 0;
     } else if (callArgsLen(call) > 0) {
       hasFollowing = true;
       followingStart = nodes.startWithCastParentheses(listAt(callArgsStart(call), 0));
@@ -1432,10 +1438,10 @@ function attachBetweenSidesOfAssignment(nodes: NodeFinder, cm: Comments, index0:
       const ty = varDeclTy(id);
       if (ty >= 0) {
         typeSpan(ty);
-        leftEnd = SP[1] | 0;
+        leftEnd = SP.s1 | 0;
       } else {
         patSpan(varDeclPat(id));
-        leftEnd = SP[1] | 0;
+        leftEnd = SP.s1 | 0;
       }
       right = init;
       isAssignment = true;
@@ -1534,13 +1540,14 @@ function movedOutOfAssignmentPattern(nodes: NodeFinder, commentStart: number, co
   let leftStart = 0;
   let leftEnd = 0;
   let defaultE = -1;
+  const SP$ = SP;
   switch (nodeKind(node)) {
     case N_PAT_PROP: {
       defaultE = patPropDefault(id);
       if (defaultE < 0) return -1;
       patSpan(patPropValue(id));
-      leftStart = SP[0] | 0;
-      leftEnd = SP[1] | 0;
+      leftStart = SP$.s0 | 0;
+      leftEnd = SP$.s1 | 0;
       break;
     }
     case N_PAT_ELEM: {
@@ -1548,23 +1555,23 @@ function movedOutOfAssignmentPattern(nodes: NodeFinder, commentStart: number, co
       const pat = patElemPat(id);
       if (defaultE < 0 || pat < 0) return -1;
       patSpan(pat);
-      leftStart = SP[0] | 0;
-      leftEnd = SP[1] | 0;
+      leftStart = SP$.s0 | 0;
+      leftEnd = SP$.s1 | 0;
       break;
     }
     case N_PARAM: {
       defaultE = paramDefault(id);
       if (defaultE < 0) return -1;
       patSpan(paramPat(id));
-      leftStart = SP[0] | 0;
-      leftEnd = SP[1] | 0;
+      leftStart = SP$.s0 | 0;
+      leftEnd = SP$.s1 | 0;
       break;
     }
     case N_EXPR: {
       if (exprTag(id) !== EXPR_ASSIGN || !exprIsAssignmentTarget(id)) return -1;
       exprSpan(exprAssignTarget(id));
-      leftStart = SP[0] | 0;
-      leftEnd = SP[1] | 0;
+      leftStart = SP$.s0 | 0;
+      leftEnd = SP$.s1 | 0;
       defaultE = exprAssignValue(id);
       break;
     }
@@ -1590,7 +1597,7 @@ function movedOutOfProperty(nodes: NodeFinder, commentStart: number, commentEnd:
   const valueEnd = exprEnd(value);
   if (isInObject && propKind(property) === PROP_INIT && valueEnd <= commentStart && !nodes.isInCastParenthesesOf(value, commentEnd)) {
     propSpan(property);
-    return SP[0] | 0;
+    return SP.s0 | 0;
   }
   return -1;
 }
@@ -1923,14 +1930,15 @@ export function collectComments(cm: Comments, text: Uint8Array, flavor: number, 
   let n = 0;
   // A BOM is not part of the first line.
   const bomLen = text.length >= 3 && (text[0] | 0) === 0xef && (text[1] | 0) === 0xbb && (text[2] | 0) === 0xbf ? 3 : 0;
+  const SP$ = SP;
   for (let c = 0; c < total; c++) {
     const tk = commentKindAt(c);
     if (tk !== TK_LINE && tk !== TK_BLOCK) continue;
     const start = commentStartAt(c);
     const end = commentEndAt(c);
     commentValueSpan(c);
-    const contentStart = SP[0] | 0;
-    const contentEnd = SP[1] | 0;
+    const contentStart = SP$.s0 | 0;
+    const contentEnd = SP$.s1 | 0;
     let kind = CK_LINE;
     if (tk === TK_BLOCK) kind = source.containsNewline(start, end) ? CK_MULTI_LINE_BLOCK : CK_SINGLE_LINE_BLOCK;
     let flags = 0;

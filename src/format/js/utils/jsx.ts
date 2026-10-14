@@ -35,7 +35,8 @@ export function isWhitespaceJsxExpression(child: number, f: Formatter): boolean 
   if (value < 0 || nameLen(value) !== 1 || (nameBuf(value)[nameStart(value)] | 0) !== 32) return false;
   if (exprIsJsxText(child)) return false;
   if (!exprJsxContainerSpan(child)) return false;
-  return !cxOf(f).comments.hasCommentInRange(SP[0] | 0, SP[1] | 0);
+  const SP$ = SP;
+  return !cxOf(f).comments.hasCommentInRange(SP$.s0 | 0, SP$.s1 | 0);
 }
 
 /** A space between children. At the end of a line it has to be written as `{" "}`. */

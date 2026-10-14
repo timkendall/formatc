@@ -173,8 +173,9 @@ function canBeInAnotherLanguage(e: number, f: Formatter): boolean {
 /** The text of `e` is `lit` (ASCII). */
 function exprTextIs(e: number, lit: string): boolean {
   exprSpan(e);
-  const s = SP[0] | 0;
-  if ((SP[1] | 0) - s !== lit.length) return false;
+  const SP$ = SP;
+  const s = SP$.s0 | 0;
+  if ((SP$.s1 | 0) - s !== lit.length) return false;
   const t = hir.text;
   for (let k = 0; k < lit.length; k++) if ((t[s + k] | 0) !== lit.charCodeAt(k)) return false;
   return true;
@@ -208,7 +209,8 @@ export function writeTaggedTemplateExpression(e: number, call: number, f: Format
   const typeArgsStart = callTypeArgsStart(call);
   const typeArgsLen = callTypeArgsLen(call);
   let tagEnd: number;
-  if (typeListAngleBrackets(typeArgsStart, typeArgsLen)) tagEnd = SP[1] | 0;
+  const SP$ = SP;
+  if (typeListAngleBrackets(typeArgsStart, typeArgsLen)) tagEnd = SP$.s1 | 0;
   else {
     tagEnd = exprEnd(callCallee(call));
   }
@@ -241,7 +243,7 @@ export function writeTaggedTemplateExpression(e: number, call: number, f: Format
   let isTable = false;
   if (isTestEachPattern(callCallee(call))) {
     exprTemplateRawSpan(quasi, 0);
-    isTable = trimJsWhitespaceStart(f.source, SP[0] | 0, SP[1] | 0) < (SP[1] | 0);
+    isTable = trimJsWhitespaceStart(f.source, SP$.s0 | 0, SP$.s1 | 0) < (SP$.s1 | 0);
   }
   if (isTable) writeEachTemplateTable(quasi, f);
   else writeTemplateLiteral(quasi, f);
@@ -322,10 +324,11 @@ function writeTemplateLike(isType: boolean, h: number, f: Formatter): void {
   const tabWidth = f.options.indentWidth;
   const src = f.source;
   let indention = 0;
+  const SP$ = SP;
   for (let i = 0; i < count; i++) {
     rawSpanOf(isType, h, i);
-    const a = SP[0] | 0;
-    const b = SP[1] | 0;
+    const a = SP$.s0 | 0;
+    const b = SP$.s1 | 0;
     writeRawText(a, b, f);
     // TODO(port): cursor.rs (`around_node_at`)
     indention = indentionAfterLastNewLine(src, a, b, tabWidth, indention);
@@ -344,17 +347,18 @@ function writeTemplateExpression(isType: boolean, h: number, i: number, place: n
   const cm = cx.comments;
   // What is between the `${` and the `}`.
   quasiSpanOf(isType, h, i);
-  const interpolationStart = SP[1] | 0;
+  const SP$ = SP;
+  const interpolationStart = SP$.s1 | 0;
   quasiSpanOf(isType, h, i + 1);
-  const interpolationEnd = SP[0] | 0;
+  const interpolationEnd = SP$.s0 | 0;
   const item = substitutionAt(isType, h, i);
 
   let hasCommentInExpression = false;
   const slot = f.startCapture();
   if (!isType) {
     exprSpan(item);
-    const es = SP[0] | 0;
-    const ee = SP[1] | 0;
+    const es = SP$.s0 | 0;
+    const ee = SP$.s1 | 0;
     hasCommentInExpression = !cx.isQuiet && (cm.hasCommentBefore(es) || cm.hasCommentInRange(ee, interpolationEnd));
     if (exprTag(item) === EXPR_JSX) fmtExpr(item, f);
     else fmtNodeWithoutTrailingComments(WK_EXPR, item, f);
@@ -473,8 +477,9 @@ function writeEachTemplateTable(e: number, f: Formatter): void {
   void flavor;
 
   exprTemplateRawSpan(e, 0);
-  const hs = SP[0] | 0;
-  let he = SP[1] | 0;
+  const SP$ = SP;
+  const hs = SP$.s0 | 0;
+  let he = SP$.s1 | 0;
   if (he > hs && (src[he - 1] | 0) === 124) he = he - 1;
   let colStart = hs;
   for (let i = hs; i <= he; i++) {
@@ -495,8 +500,8 @@ function writeEachTemplateTable(e: number, f: Formatter): void {
   for (let index = 0; index < nSubstitutions; index++) {
     // `TemplateLike::expressions(true)`
     exprTemplateRawSpan(e, index);
-    const a = SP[0] | 0;
-    const b = SP[1] | 0;
+    const a = SP$.s0 | 0;
+    const b = SP$.s1 | 0;
     indention = indentionAfterLastNewLine(src, a, b, tabWidth, indention);
     const shown = indention > tabWidth ? indention : tabWidth;
     const last = b > a ? src[b - 1] | 0 : 0;
@@ -521,7 +526,7 @@ function writeEachTemplateTable(e: number, f: Formatter): void {
     if (index + 1 < count) {
       exprTemplateRawSpan(e, index + 1);
       let hasBreak = false;
-      for (let k = SP[0] | 0; k < (SP[1] | 0); k++) {
+      for (let k = SP$.s0 | 0; k < (SP$.s1 | 0); k++) {
         const c = src[k] | 0;
         if (c === 10 || c === 13) {
           hasBreak = true;
@@ -626,7 +631,7 @@ function isStyledTag(tag: number): boolean {
 
 /** Whether the property `p` is named `name`. */
 function propHasName(p: number, name: string): boolean {
-  return keyLoad(nodeOfProp(p)) === KEY_IDENT && nameIs(KEY[KEY_NAME] | 0, name);
+  return keyLoad(nodeOfProp(p)) === KEY_IDENT && nameIs(KEY.s1 | 0, name);
 }
 
 /** Whether `property` (an `AstNodes`) is the property `name` of the object in `@Component({ .. })`. */
@@ -729,9 +734,10 @@ function isEmbedCss(e: number, f: Formatter): boolean {
 function quasisOf(e: number, f: Formatter): Uint8Array[] {
   const n = exprTemplateQuasiCount(e);
   const out: Uint8Array[] = [];
+  const SP$ = SP;
   for (let i = 0; i < n; i++) {
     exprTemplateRawSpan(e, i);
-    out.push(f.source.subarray(SP[0] | 0, SP[1] | 0));
+    out.push(f.source.subarray(SP$.s0 | 0, SP$.s1 | 0));
   }
   return out;
 }
@@ -745,7 +751,8 @@ function allCooked(e: number): boolean {
 function isBlankTemplate(e: number, f: Formatter): boolean {
   if (exprTemplateQuasiCount(e) !== 1) return false;
   exprTemplateRawSpan(e, 0);
-  return trimJsWhitespaceStart(f.source, SP[0] | 0, SP[1] | 0) >= (SP[1] | 0);
+  const SP$ = SP;
+  return trimJsWhitespaceStart(f.source, SP$.s0 | 0, SP$.s1 | 0) >= (SP$.s1 | 0);
 }
 
 function isCssCandidate(e: number, f: Formatter): boolean {
@@ -784,6 +791,7 @@ function followsLanguageComment(start: number, isStatement: boolean, language: s
   let index = (cm.from + n - 1) | 0;
   let position = start;
   let hasEmptyStatement = false;
+  const SP$ = SP;
   while (index >= 0) {
     const comment = index;
     index = (index - 1) | 0;
@@ -804,8 +812,8 @@ function followsLanguageComment(start: number, isStatement: boolean, language: s
     position = cm.spanStart[comment] | 0;
     if (!cm.isBlock(comment)) continue;
     cm.contentSpan(comment);
-    const cs = SP[0] | 0;
-    const ce = SP[1] | 0;
+    const cs = SP$.s0 | 0;
+    const ce = SP$.s1 | 0;
     let same = ce - cs === language.length;
     for (let k = 0; same && k < language.length; k++) if ((text[cs + k] | 0) !== language.charCodeAt(k)) same = false;
     if (!same) continue;
@@ -909,8 +917,9 @@ function isMarkdownCandidate(e: number, f: Formatter): boolean {
 function writeMarkdownEmbed(e: number, f: Formatter): boolean {
   if (!isMarkdownCandidate(e, f)) return false;
   exprTemplateRawSpan(e, 0);
-  const a = SP[0] | 0;
-  const b = SP[1] | 0;
+  const SP$ = SP;
+  const a = SP$.s0 | 0;
+  const b = SP$.s1 | 0;
   if (trimJsWhitespaceStart(f.source, a, b) >= b) {
     f.token(T_EMPTY_TEMPLATE);
     return true;
