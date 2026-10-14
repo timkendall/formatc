@@ -832,3 +832,26 @@ Instructions 150.2G -> 149.2G. Full gate: 0 byte mismatches, 8 threads 1.06s, co
 - tools/codemod/leaf-consts.mjs (`node tools/codemod/leaf-consts.mjs src [--strings --bools]`, idempotent, position-based): Tarjan SCCs over src imports/re-exports; in cyclic modules moves constant-initialized module-level `const`s (numeric/bitwise/arith over literals and other moved consts; string/bool with the flags) with their doc comments into import-free `<file>.consts.ts`, original gets `import {..}` + `export {..} from` for exported ones.
 - Moved 578 constants out of 45 modules (ast_nodes 169, md/types 66, md/state 38, format.ts 28, lexer 27, parser/lib 26, ...). `_x25_initialized` symbols 698 -> 350 (remaining: `token("..")`/`KW_*`/`T_*` call initializers ~250, `new Int32Array`/array/object buffers; they need imports so cannot live in a leaf).
 - 1 thread: 145.6G -> 134.3G instructions; 8 threads 1.01s; 0 byte mismatches; conformance ok; no SC1016. Not committed.
+
+### perf R7 lex2
+- Lexer.name: no `src` alias (drops scr_bytes_retain/release), bytes 1..7 unrolled as nested ifs (no loop poll/shift counter; the byte after the name is reused for the escape/non-ASCII test), first table probe inlined (hit on name <=12 bytes reads token from the same meta row, skips the atomOfKeys call); Names.sameBytes loop for long-name verification.
+- Instructions 134.2G -> 133.1G (-0.8%); cycles unchanged (~28.7G). Counts (vscode): ~13M names, avg 9 bytes, 21% longer than 12, 28% keyword/non-identifier tokens, 28% miss the inline probe.
+- Gate (full): 0 byte mismatches, conformance ok. Tried and worse: DataView getInt32 for k2/verify (+0.8G).
+- Files: src/sema/parser/lexer.ts, src/sema/parser/names.ts.
+### perf R7 parse
+- Change: parents.ts setList/setProps/setTypes/setDecorators index through `hir$`/`bound$` instead of per-call typed-array aliases (drops 3+ retain/release pairs per call).
+- Instructions 134.2G -> 134.0G (within noise; fill's own per-node loop has no runtime calls, pushExpr/listFrom/buildTypeParents left alone).
+- Gate: 0 byte mismatches, no GATE FAILED, conformance ok. Files: src/sema/bind/parents.ts
+
+### perf R7 toks
+tools/codemod/token-ids.mjs: collects module-level `const X = token("<literal>")`, assigns fixed ids (existing ids in tokens.gen.ts kept, new texts appended, first run sorted by text), generates src/format/ir/tokens.gen.ts (fixedTokenTexts()), element.ts registers them in id order at init (registerFixedTokens, before any other token()), and rewrites declarations to `const X = <id>; // token("<text>")`. Handle values are only used by identity (TOK_BASE/TIB_BASE are element kinds, not handle ranges).
+214 distinct texts fixed (401 declarations rewritten, 47 files); then leaf-consts moved 291 constants into *.consts.ts leaves.
+x25_initialized globals: 350 -> 103. Instructions 134.2G -> 133.9G (1 thread; cycles noisy). Gate: 0 byte mismatches, no GATE FAILED, conformance ok.
+Files: tools/codemod/token-ids.mjs, src/format/ir/tokens.gen.ts, element.ts, 46 rewritten src files + new *.consts.ts.
+
+### perf R7 pbuf
+Tried Buffer.copy (srcBuf.copy(outBuf,...), no subarray alloc) in Printer.outSource, thresholds 4/8/16 for the byte-loop fallback.
+Instructions 134.2G -> 133.5G / 133.9G / 133.6G: all within the +-1G noise, 0 mismatches. Reverted (no measurable win).
+Combined src+out buffer with copyWithin not tried (out is shared across embedded documents, many this.out reads/growth paths).
+No files kept.
+- Orchestrator: token-ids codemod not merged (−0.3G, within noise; not worth a generated token table).

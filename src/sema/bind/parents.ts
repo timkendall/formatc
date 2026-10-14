@@ -265,11 +265,11 @@ function setType(t: number): void {
 // `setTypes`, `setTypeParams`, `setList` and `setProps` inline `setType` / `setExprParent` on hoisted columns (same stores,
 // same `>= 0` guards), so that the `bound` and `hir` lookups are not repeated on every iteration.
 function setTypes(start: number, len: number): void {
-  const ids = hir.ids;
-  const typeReached = bound.typeReached;
+  const hir$ = hir;
+  const bound$ = bound;
   for (let i = 0; i < len; i++) {
-    const t = ids[(start + i) | 0] | 0;
-    if (t >= 0) typeReached[t] = 1;
+    const t = hir$.ids[(start + i) | 0] | 0;
+    if (t >= 0) bound$.typeReached[t] = 1;
   }
 }
 function setTypeParams(start: number, len: number): void {
@@ -293,52 +293,47 @@ function setTypeParams(start: number, len: number): void {
 /** `decorators!`: every decorator among the modifiers `(start, len)` gets the parent `(tag, a)`. */
 function setDecorators(start: number, len: number, tag: number, a: number): void {
   const hir$ = hir;
-  const ids = hir$.ids;
-  const modifierKind = hir$.modifierKind;
-  const modifierValue = hir$.modifierValue;
+  const bound$ = bound;
   for (let i = 0; i < len; i++) {
-    const m = ids[(start + i) | 0] | 0;
-    if ((modifierKind[m] | 0) === MODK_DECORATOR) setExprParent(modifierValue[m] | 0, tag, a);
+    const m = hir$.ids[(start + i) | 0] | 0;
+    if ((hir$.modifierKind[m] | 0) === MODK_DECORATOR) {
+      const e = hir$.modifierValue[m] | 0;
+      if (e >= 0) {
+        bound$.exprParentTag[e] = tag;
+        bound$.exprParentA[e] = a | 0;
+      }
+    }
   }
 }
 function setList(start: number, len: number, tag: number, a: number): void {
-  const ids = hir.ids;
+  const hir$ = hir;
   const bound$ = bound;
-  const exprParentTag = bound$.exprParentTag;
-  const exprParentA = bound$.exprParentA;
   for (let i = 0; i < len; i++) {
-    const e = ids[(start + i) | 0] | 0;
+    const e = hir$.ids[(start + i) | 0] | 0;
     if (e >= 0) {
-      exprParentTag[e] = tag;
-      exprParentA[e] = a | 0;
+      bound$.exprParentTag[e] = tag;
+      bound$.exprParentA[e] = a | 0;
     }
   }
 }
 /** `props!` of an object literal `id` or the attributes of a JSX element. */
 function setProps(start: number, len: number, id: number): void {
   const hir$ = hir;
-  const ids = hir$.ids;
   const bound$ = bound;
-  const propOwner = bound$.propOwner;
-  const exprParentTag = bound$.exprParentTag;
-  const exprParentA = bound$.exprParentA;
-  const propValue = hir$.propValue;
-  const propKeyKind = hir$.propKeyKind;
-  const propKeyVal = hir$.propKeyVal;
   for (let i = 0; i < len; i++) {
-    const p = ids[(start + i) | 0] | 0;
+    const p = hir$.ids[(start + i) | 0] | 0;
     if (p < 0) continue;
-    propOwner[p] = id;
-    const v = propValue[p] | 0;
+    bound$.propOwner[p] = id;
+    const v = hir$.propValue[p] | 0;
     if (v >= 0) {
-      exprParentTag[v] = P_PROP;
-      exprParentA[v] = p | 0;
+      bound$.exprParentTag[v] = P_PROP;
+      bound$.exprParentA[v] = p | 0;
     }
-    if ((propKeyKind[p] | 0) === PK_COMPUTED) {
-      const k = propKeyVal[p] | 0;
+    if ((hir$.propKeyKind[p] | 0) === PK_COMPUTED) {
+      const k = hir$.propKeyVal[p] | 0;
       if (k >= 0) {
-        exprParentTag[k] = P_PROP;
-        exprParentA[k] = p | 0;
+        bound$.exprParentTag[k] = P_PROP;
+        bound$.exprParentA[k] = p | 0;
       }
     }
   }

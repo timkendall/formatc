@@ -165,6 +165,19 @@ export class Names {
     }
   }
 
+  /** The first index in [from, stop) where `src[a + k]` and `src[b + k]` differ, or `stop`. (Its own function: the local alias is worth it only in a loop.) */
+  sameBytes(a: number, b: number, from: number, stop: number): number {
+    const src = this.src;
+    let k = from | 0;
+    for (let i = from | 0; i < stop; i++) {
+      if ((src[(a + i) | 0] | 0) !== (src[(b + i) | 0] | 0)) {
+        k = i;
+        return k;
+      }
+    }
+    return stop;
+  }
+
   /**
    * The atom of the source text `src[start, start+len)` whose key (k0, k1, k2) the caller computed (see the key description above).
    * The probe of `lookup` is inlined here: this is the per-name path of the lexer.
@@ -188,7 +201,7 @@ export class Names {
         let k = 8;
         const stop = (len - 4) | 0;
         if ((s & ELSEWHERE) === 0) {
-          while (k < stop && (this.src[(s + k) | 0] | 0) === (this.src[(start + k) | 0] | 0)) k = (k + 1) | 0;
+          k = this.sameBytes(s, start, k, stop);
         } else {
           // a known atom or a decoded value that has the same bytes
           const off = s & ~ELSEWHERE;

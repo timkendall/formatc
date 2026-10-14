@@ -965,60 +965,102 @@ export class Lexer {
   name(start: number): void {
     this.hasEscape = false;
     const n = this.len | 0;
-    const src = this.src;
-    let p = ((start | 0) + 1) | 0;
-    let k0 = src[start] | 0;
+    const s = start | 0;
+    let k0 = this.src[s] | 0;
     let k1 = 0;
-    // bytes 1..3 (a name byte is a letter, a digit, `_` or `$`: tested with ranges, a table is a thread local read in a worker)
-    let stop = ((start | 0) + 4) | 0;
-    if (stop > n) stop = n;
-    let sh = 8;
-    while (p < stop) {
-      const c = src[p] | 0;
-      const l = c | 32;
-      if (!((l >= 97 && l <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) break;
-      k0 = k0 | (c << sh);
-      sh = (sh + 8) | 0;
-      p = ((p | 0) + 1) | 0;
-    }
-    if (p === (((start | 0) + 4) | 0)) {
-      // bytes 4..7
-      stop = ((start | 0) + 8) | 0;
-      if (stop > n) stop = n;
-      sh = 0;
-      while (p < stop) {
-        const c = src[p] | 0;
-        const l = c | 32;
-        if (!((l >= 97 && l <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) break;
-        k1 = k1 | (c << sh);
-        sh = (sh + 8) | 0;
-        p = ((p | 0) + 1) | 0;
-      }
-      if (p === (((start | 0) + 8) | 0)) {
-        // the rest of a long name
-        while (p < n) {
-          const c = src[p] | 0;
-          const l = c | 32;
-          if (!((l >= 97 && l <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) break;
-          p = ((p | 0) + 1) | 0;
+    let len = 1;
+    let c = 0;
+    let l = 0;
+    // bytes 1..7, unrolled: no loop (no cancellation poll, no shift counter); `c` ends as the byte after the name
+    c = ((s | 0) + 1) < n ? this.src[((s | 0) + 1) | 0] | 0 : 0;
+    l = c | 32;
+    if (((l >= 97 && l <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) {
+      k0 = k0 | (c << 8);
+      len = 2;
+      c = ((s | 0) + 2) < n ? this.src[((s | 0) + 2) | 0] | 0 : 0;
+      l = c | 32;
+      if (((l >= 97 && l <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) {
+        k0 = k0 | (c << 16);
+        len = 3;
+        c = ((s | 0) + 3) < n ? this.src[((s | 0) + 3) | 0] | 0 : 0;
+        l = c | 32;
+        if (((l >= 97 && l <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) {
+          k0 = k0 | (c << 24);
+          len = 4;
+          c = ((s | 0) + 4) < n ? this.src[((s | 0) + 4) | 0] | 0 : 0;
+          l = c | 32;
+          if (((l >= 97 && l <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) {
+            k1 = k1 | (c << 0);
+            len = 5;
+            c = ((s | 0) + 5) < n ? this.src[((s | 0) + 5) | 0] | 0 : 0;
+            l = c | 32;
+            if (((l >= 97 && l <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) {
+              k1 = k1 | (c << 8);
+              len = 6;
+              c = ((s | 0) + 6) < n ? this.src[((s | 0) + 6) | 0] | 0 : 0;
+              l = c | 32;
+              if (((l >= 97 && l <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) {
+                k1 = k1 | (c << 16);
+                len = 7;
+                c = ((s | 0) + 7) < n ? this.src[((s | 0) + 7) | 0] | 0 : 0;
+                l = c | 32;
+                if (((l >= 97 && l <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) {
+                  k1 = k1 | (c << 24);
+                  len = 8;
+                }
+              }
+            }
+          }
         }
       }
     }
-    if (p < n) {
-      const c = this.src[p] | 0;
-      if (c >= 0x80 || c === 92) {
-        this.nameSlowly(start, p);
-        return;
+    if (len === 8) {
+      // the rest of a long name
+      let p = ((s | 0) + 8) | 0;
+      while (p < n) {
+        c = this.src[p] | 0;
+        l = c | 32;
+        if (!((l >= 97 && l <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) break;
+        p = ((p | 0) + 1) | 0;
       }
+      len = (p - s) | 0;
+      c = p < n ? this.src[p] | 0 : 0;
     }
-    const len = (p - start) | 0;
+    const p = ((s | 0) + (len | 0)) | 0;
+    if (c >= 0x80 || c === 92) {
+      this.nameSlowly(start, p);
+      return;
+    }
     let k2 = 0;
     if (len > 8) {
       k2 = (this.src[p - 4] | 0) | ((this.src[p - 3] | 0) << 8) | ((this.src[p - 2] | 0) << 16) | ((this.src[p - 1] | 0) << 24);
     }
-    const atom = this.names.atomOfKeys(start, len, k0, k1, k2);
+    // The first probe of the table, inline (names.ts `atomOfKeys` has the full probe): a hit on a name of up to 12 bytes needs no
+    // more, and the token kind is in the same meta row (`atomToken`).
+    let atom = -1;
+    let token = 0;
+    if (len <= 12) {
+      let h = (Math.imul(k0, -1640531535) + Math.imul(k1, -2048144777) + Math.imul(k2, -1028477379) + Math.imul(len, 668265263)) | 0;
+      h = h ^ (h >>> 15);
+      const e = this.names.table[h & (this.names.mask | 0)] | 0;
+      if (e !== 0) {
+        // meta row: k0, k1, k2, len, start, token
+        const r = ((e - 1) << 3) | 0;
+        if (
+          (this.names.meta[r + 3] | 0) === len && (this.names.meta[r] | 0) === k0 && (this.names.meta[r + 1] | 0) === k1 &&
+          (this.names.meta[r + 2] | 0) === k2
+        ) {
+          atom = (e - 1) | 0;
+          token = this.names.meta[r + 5] | 0;
+        }
+      }
+    }
+    if (atom < 0) {
+      atom = this.names.atomOfKeys(start, len, k0, k1, k2);
+      token = this.names.atomToken(atom);
+    }
     this.atom = atom;
-    this.token = this.names.atomToken(atom);
+    this.token = token;
     this.start = start;
     this.end = p;
   }
