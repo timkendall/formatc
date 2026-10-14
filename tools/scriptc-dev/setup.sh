@@ -1,5 +1,5 @@
 #!/bin/sh
-# Installs scriptc 0.3.0's compiler package and applies our patches to it, always from a pristine copy, in order.
+# Installs scriptc 0.3.2's compiler package and applies our patches to it, always from a pristine copy, in order.
 #   tools/scriptc-dev/setup.sh            then build with: node tools/scriptc-dev/scriptc.mjs build ...
 #   SCRIPTC="node tools/scriptc-dev/scriptc.mjs" tools/perf/gate.sh <name>
 # Fails if any hunk does not apply cleanly (a fuzzy or partial application would leave a different compiler).
@@ -8,10 +8,10 @@ D=$(cd "$(dirname "$0")" && pwd)
 cd "$D"
 [ -d node_modules/@scriptc/compiler ] || npm install --silent
 C=node_modules/@scriptc/compiler
-P=node_modules/.scriptc-compiler-pristine
+P=node_modules/.scriptc-compiler-pristine-0.3.2
 if [ ! -d "$P" ]; then
   T=$(mktemp -d)
-  (cd "$T" && npm pack @scriptc/compiler@0.3.0 --silent > /dev/null && tar -xzf scriptc-compiler-0.3.0.tgz)
+  (cd "$T" && npm pack @scriptc/compiler@0.3.2 --silent > /dev/null && tar -xzf scriptc-compiler-0.3.2.tgz)
   mv "$T/package" "$P"
 fi
 rm -rf "$C/dist" && cp -R "$P/dist" "$C/dist"

@@ -913,3 +913,11 @@ Fix (source only, `| 0`): cursor.ts operandsInRightSide (`stack.pop()`, `operand
 - Kept: identifier fast path in fmtExpr (skips needsParentheses/mayNeedParentheses/exprParent for names that cannot need parens; exact same predicate via identMayNeedParentheses), byte-compare isNameThatMayNeedParentheses, length/first-letter filter before the 10 nameIs in keepsArgumentsOnOneLine. Other candidates (exprParent shortcuts, fmtArguments simple path) measured at <0.1% each by count: not done.
 - Instructions (1 thread, min of 4 alternating runs; run-to-run noise ~0.7G): 88.6G -> 88.4G median-ish gain ~0.3G (0.3%); gate run 89.9G. Full gate: 0 vscode mismatches, no GATE FAILED, conformance ok, 0.75s @8.
 - Files: src/format/js/format.ts, src/format/js/parentheses/expression.ts, src/format/js/print/call_like_expression/mod.ts.
+
+### scriptc 0.3.2
+- tools/scriptc-dev now runs @scriptc/compiler 0.3.2 (setup.sh packs 0.3.2 into node_modules/.scriptc-compiler-pristine-0.3.2). Patches 30 and 60 re-ported by hand (same changes, new context: usesCoroutines, int32Abi params, programMayRequestTermination in lowerer); 40/50/70/85/95 apply unchanged.
+- Patch 90 (int32 locals) dropped: 0.3.1 ships the same analysis as backend/llvm/int32-locals.js (94 lines, same findInt32Locals shape), so there is nothing left to port.
+- Patch 96 cut to its bounds half (const typed-array globals in findBytesBounds, NaN-read ranges for bitwise ops); the i32-signature half is dropped because 0.3.1's findInt32Abis/emitInt32AbiWrapper covers the same params/results (plus scalar-union results).
+- Instructions/cycles, 1 thread, vscode --check, min of 3 interleaved (machine load avg ~65, so cycles are noisy): stock 0.3.0 125.8G/27.2G, stock 0.3.2 122.5G/25.8G, patched 0.3.0 (main) 83.25G/29.1G, patched 0.3.2 (30,40,50,60,70,85,95,96-bounds) 83.21G/28.5G. Net: parity with main; the upstream int32 work replaces two of our patches.
+- Gate: vscode byte mismatches (excl .html): 0, no GATE FAILED, conformance at baseline. 8 threads: 3.4-3.5s vs 3.3-3.6s for main, both inflated by machine load; no difference measurable.
+- make-patch.sh now passes --no-backup-if-mismatch when stacking the base (fuzz left .orig files that leaked into regenerated patches).

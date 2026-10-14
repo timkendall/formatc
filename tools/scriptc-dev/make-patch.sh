@@ -9,11 +9,11 @@ D=$(cd "$(dirname "$0")" && pwd)
 NEW=$(cd "$1" && pwd); OUT=$2; BASE=$3
 if [ -z "$BASE" ]; then
   BASE=$(mktemp -d)/package
-  (cd "$(dirname "$BASE")" && npm pack @scriptc/compiler@0.3.0 --silent > /dev/null && tar -xzf scriptc-compiler-0.3.0.tgz)
+  (cd "$(dirname "$BASE")" && npm pack @scriptc/compiler@0.3.2 --silent > /dev/null && tar -xzf scriptc-compiler-0.3.2.tgz)
   for p in "$D"/patches/*.patch; do
     [ -e "$p" ] || continue
     [ "$D/$OUT" = "$p" ] && continue
-    [ "$(basename "$p")" \< "$(basename "$OUT")" ] && patch -p1 -d "$BASE" -s -f < "$p"
+    [ "$(basename "$p")" \< "$(basename "$OUT")" ] && patch -p1 -d "$BASE" -s -f --no-backup-if-mismatch < "$p"
   done
 fi
 cd "$BASE/.." && rm -rf a b && cp -R "$BASE" a && cp -R "$NEW" b

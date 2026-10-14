@@ -2,6 +2,6 @@
   "name": "scriptc-dev",
   "private": true,
   "type": "module",
-  "description": "scriptc 0.3.0 compiler run from its npm package under Node, with local patches (see README.md)",
-  "dependencies": { "@scriptc/compiler": "0.3.0" }
+  "description": "scriptc 0.3.2 compiler run from its npm package under Node, with local patches (see README.md)",
+  "dependencies": { "@scriptc/compiler": "0.3.2" }
 }
