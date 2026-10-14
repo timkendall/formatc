@@ -1,0 +1,156 @@
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/may-throw.js b/dist/backend/may-throw.js
+--- a/dist/backend/may-throw.js	2026-10-14 11:32:02
++++ b/dist/backend/may-throw.js	2026-10-14 11:32:05
+@@ -76,8 +76,28 @@
+             ...fn.locals.filter((l) => l.tdz && l.mutable).map((l) => l.id),
+         ]);
+         // Traverse typed executable nodes without copying the IR into unknown.
++        const sizeForms = [];
++        const defs = new Map();
++        const addDef = (id, value) => {
++            let list = defs.get(id);
++            if (!list)
++                defs.set(id, (list = []));
++            list.push(value);
++        };
+         const visit = (rec) => {
+             const threw = f.throws;
++            switch (rec.kind) {
++                case "varDecl":
++                    addDef(rec.localId, rec.init ?? OPAQUE);
++                    break;
++                case "assign":
++                case "assignExpr":
++                    addDef(rec.localId, rec.value);
++                    break;
++                case "incDec":
++                    addDef(rec.localId, OPAQUE);
++                    break;
++            }
+             const callees = f.callees.length;
+             if (published !== null && writesPublished(published, rec))
+                 f.throws = true;
+@@ -232,8 +252,14 @@
+                     // The size form (`new Uint8Array(n)`) throws Node's "Invalid
+                     // typed array length" RangeError on a bad length. Checked
+                     // inputs can also throw during element conversion.
++                    // A length proven to lie in [0, 2^53) cannot fail (decided
++                    // after the whole body is seen, see boundedLength).
+                     const source = rec.source;
+-                    if (source && (source.type?.kind === "f64" || source.type?.kind === "dyn"))
++                    if (source && source.type?.kind === "f64") {
++                        if (guarded === 0)
++                            sizeForms.push(rec);
++                    }
++                    else if (source && source.type?.kind === "dyn")
+                         f.throws = true;
+                     break;
+                 }
+@@ -358,6 +384,20 @@
+             return true;
+         };
+         fn.body.every(walkStmt);
++        if (sizeForms.length > 0) {
++            const paramIds = new Set(fn.params.map((pr) => pr.localId));
++            const boxed = new Set(fn.locals.filter((l) => l.boxed).map((l) => l.id));
++            const tdz = new Set(fn.locals.filter((l) => l.tdz).map((l) => l.id));
++            const bounds = new Bounds(defs, paramIds, boxed, tdz);
++            for (const rec of sizeForms) {
++                if (!bounds.lengthOk(rec.source)) {
++                    if (explain && !f.throws)
++                        f.seed = { kind: "seed", what: "typed-array length that may be invalid (RangeError)", loc: rec.loc };
++                    f.throws = true;
++                    break;
++                }
++            }
++        }
+         // A worker can be terminated at any of its polls: the noncatchable
+         // stop unwinds like an exception from every function that polls.
+         if (terminations?.polls.has(fn.name)) {
+@@ -455,6 +495,86 @@
+         ...(terminations ? { workerEntryPolls: entryPolls(mod, terminations.entry, stackPlan) } : {}),
+         ...(stackChecks ? { stackChecks } : {}),
+     };
++}
++const OPAQUE = { kind: "opaque" };
++/** Largest element count any array, string or typed-array length can reach:
++ * nothing addressable holds more than 2^40 elements. */
++const MAX_LENGTH = 2 ** 40;
++const MAX_TYPED_LENGTH = 2 ** 53;
++/** Conservative upper bounds for non-negative numbers, used to prove that a
++ * `new Uint8Array(n)` size cannot hit the invalid-length RangeError
++ * (negative, or above 2^53 - 1; NaN is ToIndex'd to 0, a fraction truncates).
++ * Only exact reasoning: literals, `.length` reads, `+`, `*`, `>>>`, `&`
++ * with a non-negative bounded operand, conditionals, and locals that are
++ * defined exactly once (never a parameter, box, TDZ binding or counter). */
++class Bounds {
++    constructor(defs, params, boxed, tdz) {
++        this.defs = defs;
++        this.params = params;
++        this.boxed = boxed;
++        this.tdz = tdz;
++        this.active = new Set();
++    }
++    lengthOk(expr) {
++        const ub = this.ub(expr, 0);
++        return ub !== null && ub < MAX_TYPED_LENGTH;
++    }
++    /** An upper bound of `e` when it is certainly a non-negative number. */
++    ub(e, depth) {
++        if (depth > 12 || !e)
++            return null;
++        switch (e.kind) {
++            case "numLit":
++                return Number.isFinite(e.value) && e.value >= 0 ? e.value : null;
++            case "bytesIntrinsic":
++            case "strIntrinsic":
++            case "arrIntrinsic":
++                return e.method === "length" ? MAX_LENGTH : null;
++            case "bin": {
++                if (e.op === ">>>")
++                    return 2 ** 32;
++                const l = this.ub(e.left, depth + 1);
++                const r = this.ub(e.right, depth + 1);
++                if (e.op === "&") {
++                    // x & m with a non-negative literal mask m < 2^31 is in [0, m].
++                    const lit = (x) => (x.kind === "numLit" && Number.isInteger(x.value) && x.value >= 0 && x.value < 2 ** 31 ? x.value : null);
++                    return lit(e.left) ?? lit(e.right);
++                }
++                if (l === null || r === null)
++                    return null;
++                switch (e.op) {
++                    case "+":
++                        return l + r;
++                    case "*":
++                        return l * r;
++                    default:
++                        return null;
++                }
++            }
++            case "ternary": {
++                const a = this.ub(e.then, depth + 1);
++                const b = this.ub(e.else_, depth + 1);
++                return a === null || b === null ? null : Math.max(a, b);
++            }
++            case "varRef": {
++                const id = e.localId;
++                if (this.params.has(id) || this.boxed.has(id) || this.tdz.has(id) || this.active.has(id))
++                    return null;
++                const list = this.defs.get(id);
++                if (!list || list.length !== 1)
++                    return null;
++                this.active.add(id);
++                try {
++                    return this.ub(list[0], depth + 1);
++                }
++                finally {
++                    this.active.delete(id);
++                }
++            }
++            default:
++                return null;
++        }
++    }
+ }
+ /** Whether control can reach the end of a statement list. Conservative:
+  * false only when some statement certainly completes abruptly: `return`,
