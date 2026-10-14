@@ -1,0 +1,36 @@
+--- a/dist/backend/llvm/shapes.js	2026-10-14 11:43:45
++++ b/dist/backend/llvm/shapes.js	2026-10-14 11:43:45
+@@ -15,6 +15,11 @@
+  * construction (unions, ref arrays, obj boxes, overflow maps). Records
+  * use their emitted per-shape helpers, whose signatures are already
+  * `_v`-shaped. */
++const ABL_RC = new Set(["scr_str"]);
++function ablNopRelease(host) {
++    host.declare(`define internal void @sc_nop_release(ptr %o) alwaysinline nounwind { ret void }`);
++    return "@sc_nop_release";
++}
+ export function vAdapters(host, t) {
+     const nullable = host.nullableUnions.of(t);
+     if (nullable) {
+@@ -27,9 +32,10 @@
+         // separate `_v` wrappers; every other runtime family is uniform.
+         const suffix = t.kind === "caught" ? "" : "_v";
+         const retain = `@${stem}_retain${suffix}`;
+-        const release = `@${stem}_release${suffix}`;
++        const release = ABL_RC.has(stem) ? ablNopRelease(host) : `@${stem}_release${suffix}`;
+         host.declare(`declare ptr ${retain}(ptr)`);
+-        host.declare(`declare void ${release}(ptr)`);
++        if (!ABL_RC.has(stem))
++            host.declare(`declare void ${release}(ptr)`);
+         return { retain, release };
+     }
+     switch (t.kind) {
+@@ -90,6 +96,8 @@
+     if (nullable)
+         return releaseSym(host, nullable.arm);
+     const stem = runtimeRcStem(t);
++    if (stem !== null && ABL_RC.has(stem))
++        return ablNopRelease(host);
+     if (host.rcHelpers !== null && stem !== null && inlineRcFamily(stem, "release") !== null) {
+         return inlineRcSym(host, stem, "release");
+     }
