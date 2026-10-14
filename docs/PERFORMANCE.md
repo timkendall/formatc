@@ -170,3 +170,60 @@ roughly Bun's per-core speed inside a worker, i.e. the same ~150 instructions pe
 
 A–C alone plausibly reach ~300 instructions per byte, about 2× Bun. The rest most likely needs D: integer locals and
 thread-private arrays in scriptc itself. That is our estimate, not a measurement.
+
+## 6. Closing the rest of the gap (2026-10-13, patched compiler)
+
+Where the work goes now, measured by stopping each JS/TS file after a phase (`FMT_STOP` probe build; 1 thread, whole
+corpus; the 8-thread column is the wall time each phase adds):
+
+| phase | instructions | share | adds at 8 threads |
+| - | - | - | - |
+| driver: walk, ignore rules, read, dispatch (no formatting) | 9.1 G | 10% | 0.24 s (floor) |
+| non-JS languages (JSON, CSS, YAML, Markdown, …) | 3.7 G | 4% | 0.03 s |
+| JS/TS parse: lexer, parser, HIR, parents, refusal checks | 23.9 G | 26% | 0.06 s |
+| setup before formatting (comments, jsdoc) | 0.8 G | 1% | ≈0 |
+| **building the IR: JS formatting logic, tree handles, IR writer** | **42.7 G** | **46%** | **0.30 s** |
+| printing and comparing | 12.8 G | 14% | 0.09 s |
+| total | 93.0 G | | 0.73 s (Bun: 35.9 G, 0.44 s) |
+
+To reach 0.44 s at 8 threads with a 0.24–0.27 s driver floor, parse + IR + print (now 79 G, adding 0.46 s) must cost about
+30 G, i.e. Bun's per-core efficiency. Steps in order of expected value:
+
+1. **IR building (42.7 G for ~12 M nodes, ~3,500 instructions per node).** It alone costs more than Bun's whole run.
+   - First measure cost per node kind: counters per `fmtExpr` / statement kind, and IR elements per node.
+   - Then replace the emulation of oxc's AST API, the `an` handles and `lint/ast` accessors over the HIR, with flat
+     per-file columns (kind, start, end, parent) filled in one pass, so each accessor is one load. The `anSpan`/`anParent`
+     switches, `exprSpan` fallbacks and `SP` out-slots were hot in every round.
+   - Add fast paths for the commonest kinds (identifiers, literals, member/call chains) that skip the generic parentheses
+     and comment machinery when the node is quiet.
+   - Emit fewer, larger IR elements; adjacent tokens and spaces become one text element.
+   - Estimate: −15 to −20 G.
+2. **Compiler, across all phases** (upstream items in `docs/SCRIPTC_UPSTREAM.md`; patches in `tools/scriptc-dev`):
+   - Bounds-check elimination for loops guarded by `i < a.length`.
+   - `i32` parameters and returns, so values don't convert to double at every call.
+   - Retain/release elision for borrowed typed-array aliases (2–3%).
+   - Process-global immutable module data, which removes most of the remaining thread-local calls (3%).
+   - The unreleased scriptc HEAD already has more int32 work; it needs a runtime ABI v15 pack built with LLVM 22 and Zig.
+   - Estimate: −10 to −15%.
+3. **Parse (23.9 G).**
+   - Skip what formatting doesn't need on files without errors: semantic tables, scope and declared-name bookkeeping, and
+     refusal checks, which are ~1.2 G.
+   - Fill parents while the HIR is built instead of in a second pass.
+   - Keep cutting per-identifier work in the lexer (~13 M names: hashing and interning).
+   - Estimate: −5 to −8 G.
+4. **Printing (12.8 G).**
+   - Compare against the original while printing instead of building the output and comparing afterwards. Printing stays
+     complete; no early stop.
+   - Memoize `fits` measurements.
+   - Write runs of source text in bulk.
+   - Estimate: −3 to −5 G.
+5. **Driver floor (0.24 s at 8 threads).** It is mostly kernel `open()`.
+   - Count our syscalls against Bun's with `sudo fs_usage -f filesys` or dtruss.
+   - Open files relative to directory descriptors (`openat`) rather than by full path.
+   - Drop any per-directory config probes Bun doesn't make.
+   - scriptc's `fs` has no `openat`, so this needs a runtime addition or an `--ffi` C helper. That is a design call for this
+     project, whose point is TypeScript compiled by scriptc.
+
+Steps 1–4 together plausibly bring the JS work from 79 G to ~45 G and the 8-thread time to ~0.55 s (~1.25× Bun). Parity
+most likely needs step 5 as well, plus a scriptc whose integer and bounds handling is closer to what Rust gets by default.
+These are estimates, not measurements.
