@@ -29,6 +29,12 @@ define internal double @sc_f_hot_nativeNumber(double %p0) #0 {
 
 `hot` is declared `(n: number)` and is only ever called with numbers. One `xs[i] as number` argument in `cold` gives it a `ptr` parameter; `main`'s calls go through the `_nativeNumber` clone, but any call site the fixpoint can't prove (here `cold`, and in a large program anything downstream of a loop-carried local or a returned value) boxes a double into a heap union per call. Replacing `xs[i] as number` with `xs[i] | 0` removes the union entirely.
 
+## In our program
+
+- Repro file: https://github.com/timkendall/formatc/blob/main/tools/scriptc-dev/repro/union.ts
+- The workaround, `| 0` at the five cold sites that had widened eight hot callees (`exprTag`, `fmtExpr`, `parentOfExpr`, …): https://github.com/timkendall/formatc/commit/1d42d4d (`src/format/cursor.ts`, `src/format/js/print/flow.ts`, `src/format/js/sort_imports/{generator,organize}.ts`); boxing call sites 429 → 121, −3.7 G instructions (−4.2%) on our 238 MB benchmark.
+- Write-up with the other findings: https://github.com/timkendall/formatc/blob/main/docs/SCRIPTC_UPSTREAM.md (item 12).
+
 ## Suggested fixes
 
 - Trust `as number` (or lower it to a cheap NaN/undefined check at the cast) instead of widening.
