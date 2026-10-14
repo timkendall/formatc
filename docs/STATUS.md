@@ -926,3 +926,8 @@ Measurement only (patches in scratch/ablations/bounds-V1.patch, bounds-V2.patch 
 - V1: expr-bytes.js:71 `if (integer)` (drop compare-and-branch for every integer-index typed-array get/set). `^bytes.index.invalid` blocks in IR 12090 -> 5689 (rest are non-integer indices). 83.2 -> 75.9 G (-7.3 G, 8.8%); cycles within noise (~-1 G, 29.0-30.5 vs 28.3-29.5). Output identical (0 mismatches), no crashes.
 - V2: V1 + string-reads.js `sc_str_char_code_at_int` without length compare (the double-index helper keeps its check). 75.9 -> 75.9 G (no further gain, within noise); 0 mismatches.
 - V3 not done.
+### ablation stack
+- V1 (no stack guard; `return` at top of emitStackCheck, dist/backend/llvm/emitter.js:3211; scratch/ablations/stack-V1.patch, applies on top of the patch stack): sites 283 guard_get + 283 overflow -> 0 + 0.
+- vscode --check --threads=1, min of 3 interleaved: 83.25 G -> 80.21 G instructions (-3.7%, 3.0 G); cycles 28.7 G -> 27.9 G (machine loaded, noisy; indicative only). Output mismatches: 0.
+- V2 static counts (IR): 16223 internal sc_f__/sc_bf__ functions (9351 + 6872); 3583 have an int-return ".i" clone beside the double base; 2810 have i32 params, 1279 return i32, 9076 have double params.
+- Call sites to sc_f__/sc_bf__: 48485; 21391 go to ".i" clones; 2024 go to a double base that has an ".i" twin; 23279 pass a double argument.
