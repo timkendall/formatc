@@ -6,7 +6,9 @@
 set -e
 D=$(cd "$(dirname "$0")" && pwd)
 cd "$D"
-[ -d node_modules/@scriptc/compiler ] || npm install --silent
+V=$(node -e 'console.log(require("./package.json").dependencies["@scriptc/compiler"])')
+I=$(node -e 'try{console.log(require("./node_modules/@scriptc/compiler/package.json").version)}catch{console.log("none")}')
+if [ "$I" != "$V" ]; then rm -rf node_modules; npm install --silent; fi   # the runtime/LLVM packs must match the compiler version
 C=node_modules/@scriptc/compiler
 P=node_modules/.scriptc-compiler-pristine-0.3.2
 if [ ! -d "$P" ]; then
