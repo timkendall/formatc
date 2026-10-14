@@ -382,12 +382,28 @@ function spanThatTheHirMayNotHave(e: number, t: number, pos: number, end: number
 }
 
 export function exprStart(e: number): number {
-  exprSpan(e);
-  return SP[0] | 0;
+  const h = hir;
+  if (!(e >= 0 && e < h.nExprs)) return 0;
+  const t = h.exprTag[e] | 0;
+  // The start is the position of the HIR except for these (see `spanThatTheHirMayNotHave`).
+  if (t === EXPR_CLASS || t === EXPR_FN || (t === EXPR_SPREAD && h.nJsx !== 0) || (t === EXPR_STRING && h.nJsx !== 0)) {
+    exprSpan(e);
+    return SP[0] | 0;
+  }
+  return h.exprPos[e] | 0;
 }
 export function exprEnd(e: number): number {
-  exprSpan(e);
-  return SP[1] | 0;
+  const h = hir;
+  if (!(e >= 0 && e < h.nExprs)) return 0;
+  const t = h.exprTag[e] | 0;
+  const end = h.exprEnd[e] | 0;
+  if (t === EXPR_IDENT || t === EXPR_DOT) {
+    const f = F;
+    if (end <= f.unicodeFirst || f.unicodeLast < (h.exprPos[e] | 0)) return end;
+    exprSpan(e);
+    return SP[1] | 0;
+  }
+  return end;
 }
 
 /** `Expr::is_parenthesized` */
@@ -557,8 +573,7 @@ export function exprIsAngleBracketAssertion(e: number): boolean {
   const t = hir.exprTag[e] | 0;
   if (t !== EXPR_AS && t !== EXPR_AS_CONST) return false;
   const operand = hir.exprA[e] | 0;
-  exprSpan(e);
-  const start = SP[0] | 0;
+  const start = exprStart(e);
   return start < exprOuterStart(operand);
 }
 
@@ -761,8 +776,7 @@ export function exprImportCallPhase(e: number): number {
   if (!deferred) return 0;
   const text = hir.text;
   const sl = hir.sourceLen | 0;
-  exprSpan(e);
-  const dot = skipTrivia(text, sl, (SP[0] | 0) + 6);
+  const dot = skipTrivia(text, sl, (exprStart(e)) + 6);
   return phaseAt(skipTrivia(text, sl, dot + 1));
 }
 

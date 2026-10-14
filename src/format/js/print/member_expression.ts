@@ -31,6 +31,7 @@ import {
   exprObject,
   exprCallee,
   exprSpan,
+  exprEnd,
   exprTag,
   nodeId,
   nodeKind,
@@ -130,8 +131,7 @@ export function writeLookupWithoutComments(member: number, f: Formatter): void {
   if (exprTag(member) !== EXPR_DOT) return;
   const nameStart = exprDotNamePos(member);
   // The member access ends with the name.
-  exprSpan(member);
-  const nameEnd = SP[1] | 0;
+  const nameEnd = exprEnd(member);
   const text = f.source;
   const isOptional = exprIsOptional(member);
   let isBeforeName: boolean;

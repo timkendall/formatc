@@ -50,7 +50,7 @@ import {
   STMT_BLOCK,
 } from "../../../lint/ast/index.ts";
 import { isNextLineEmpty as isNextLineEmptyText } from "../../text.ts";
-import { anSpan, stmtAstParent } from "../ast_nodes.ts";
+import { anEnd, stmtAstParent } from "../ast_nodes.ts";
 import { cxOf } from "../context.ts";
 import { fmtStmt, fmtStmtBeforeAnother } from "../format.ts";
 import {
@@ -316,8 +316,7 @@ export function fmtStatements(start: number, len: number, f: Formatter): void {
   if (previous >= 0 && !cx.isQuiet && len > 0) {
     const last = listAt(start, len - 1);
     if (stmtTag(last) === STMT_EMPTY) {
-      anSpan(stmtAstParent(last));
-      cm.commentsBefore(SP[1] | 0);
+      cm.commentsBefore(anEnd(stmtAstParent(last)));
       formatTrailingCommentsRange(cm.from, cm.to, f);
     }
   }

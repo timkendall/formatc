@@ -87,6 +87,8 @@ import {
   exprParenCount,
   exprParenFirst,
   exprSpan,
+  exprEnd,
+  exprStart,
   exprTag,
   fileIsJavascript,
   funcBodyKind,
@@ -364,6 +366,23 @@ export class Comments {
   }
   precededByNewline(i: number): boolean {
     return ((this.flags[i] | 0) & CF_PRECEDED_BY_NEWLINE) !== 0;
+  }
+  /**
+   * Whether the first comment that is not printed is on a line of its own and has not been moved, and a word (a keyword, a name) follows
+   * it. Then it is not a trailing comment of anything before it: a node follows it in the same parent, so it leads that one.
+   */
+  firstLeadsWord(): boolean {
+    const p = this.printedCount;
+    if (((this.flags[p] | 0) & CF_PRECEDED_BY_NEWLINE) === 0 || (this.movedTo[p] | 0) !== NOT_MOVED) return false;
+    const text = this.source.text;
+    const n = text.length;
+    let i = this.ce[p] | 0;
+    while (i < n) {
+      const b = text[i] | 0;
+      if (b === 32 || b === 10 || b === 9 || b === 13) i = (i + 1) | 0;
+      else return (b >= 97 && b <= 122) || (b >= 65 && b <= 90) || b === 95 || b === 36;
+    }
+    return false;
   }
   followedByNewline(i: number): boolean {
     return ((this.flags[i] | 0) & CF_FOLLOWED_BY_NEWLINE) !== 0;
@@ -1120,8 +1139,7 @@ class NodeFinder {
         if (this.hasCastParen(hir.parenStart[row] | 0)) return hir.parenStart[row] | 0;
       }
     }
-    exprSpan(e);
-    return SP[0] | 0;
+    return exprStart(e);
   }
 
   /** Whether `e`, which is in a link, is written in parentheses: a chain starts with it. */
@@ -1329,8 +1347,7 @@ function attachInLink(nodes: NodeFinder, cm: Comments, index: number): number {
   if (!hasPreceding && isInChain && nodes.isLinkOfMemberChain(inner)) {
     const innerInner = innerOfLink(inner);
     if (innerInner >= 0) {
-      exprSpan(innerInner);
-      innerLinkStart = SP[1] | 0;
+      innerLinkStart = exprEnd(innerInner);
     }
   }
 
@@ -1424,13 +1441,11 @@ function attachBetweenSidesOfAssignment(nodes: NodeFinder, cm: Comments, index0:
     case N_EXPR: {
       const t = exprTag(id);
       if (t === EXPR_ASSIGN && !exprIsAssignmentTarget(id)) {
-        exprSpan(exprAssignTarget(id));
-        leftEnd = SP[1] | 0;
+        leftEnd = exprEnd(exprAssignTarget(id));
         right = exprAssignValue(id);
         isAssignment = true;
       } else if (t === EXPR_BINARY && exprBinaryOp(id) !== BIN_COMMA) {
-        exprSpan(exprBinaryLeft(id));
-        leftEnd = SP[1] | 0;
+        leftEnd = exprEnd(exprBinaryLeft(id));
         right = exprBinaryRight(id);
         isAssignment = false;
       } else return -1;
@@ -1447,8 +1462,7 @@ function attachBetweenSidesOfAssignment(nodes: NodeFinder, cm: Comments, index0:
   while (index + count < cm.n && (cm.spanEnd[index + count] | 0) <= rightStart) count = (count + 1) | 0;
   if (index + count > cm.n) return -1;
   for (let i = index; i < index + count; i++) if (cm.isMoved(i)) return -1;
-  exprSpan(right);
-  const rightSpanStart = SP[0] | 0;
+  const rightSpanStart = exprStart(right);
   const rt = exprTag(right);
   const isRightComplex =
     isAssignment && (rt === EXPR_OBJECT || rt === EXPR_ARRAY || rt === EXPR_TEMPLATE || rt === EXPR_TAGGED_TEMPLATE) && rightStart === rightSpanStart;
@@ -1554,8 +1568,7 @@ function movedOutOfAssignmentPattern(nodes: NodeFinder, commentStart: number, co
     default:
       return -1;
   }
-  exprSpan(defaultE);
-  const defaultStart = SP[0] | 0;
+  const defaultStart = exprStart(defaultE);
   return leftEnd <= commentStart && commentEnd <= defaultStart ? leftStart : -1;
 }
 
@@ -1571,8 +1584,7 @@ function movedOutOfProperty(nodes: NodeFinder, commentStart: number, commentEnd:
   const isInObject = nodeKind(owner) === N_EXPR && exprTag(nodeId(owner)) === EXPR_OBJECT;
   const value = propValue(property);
   if (value < 0) return -1;
-  exprSpan(value);
-  const valueEnd = SP[1] | 0;
+  const valueEnd = exprEnd(value);
   if (isInObject && propKind(property) === PROP_INIT && valueEnd <= commentStart && !nodes.isInCastParenthesesOf(value, commentEnd)) {
     propSpan(property);
     return SP[0] | 0;

@@ -295,8 +295,7 @@ function hasLeadingComment(m: number, f: Formatter): boolean {
   if (exprTag(e) === EXPR_DOT && k === CM_STATIC_MEMBER) ch = 46;
   else if (exprTag(e) === EXPR_INDEX && k === CM_COMPUTED_MEMBER && exprTag(exprIndexIndex(e)) === EXPR_IDENT) ch = 91;
   else return false;
-  exprSpan(exprObject(e));
-  cm.commentsBeforeCharacter(SP[1] | 0, ch);
+  cm.commentsBeforeCharacter(exprEnd(exprObject(e)), ch);
   const to = cm.to;
   for (let i = cm.from; i < to; i++) if (cm.precededByNewline(i)) return true;
   return false;
@@ -312,8 +311,7 @@ function hasTrailingComment(m: number, f: Formatter): boolean {
   const cx = cxOf(f);
   const cm = cx.comments;
   const e = cmExpr(m);
-  exprSpan(e);
-  const end = SP[1] | 0;
+  const end = exprEnd(e);
   if (commentsAreAttachedToLinks(f)) {
     // It is attached to what is in a `ChainExpression`, not to that.
     const isChainExpression = cmKind(m) === CM_NODE && exprIsChainRoot(e) && !cx.hasTreeOfBabel;
@@ -345,8 +343,7 @@ function isBeforeCommentThatStartsLine(e: number, f: Formatter): boolean {
   if (f.options.flavor !== FLAVOR_OXFMT) return false;
   const cx = cxOf(f);
   const cm = cx.comments;
-  exprSpan(e);
-  const end = SP[1] | 0;
+  const end = exprEnd(e);
   if (cm.commentsAfter(end) === 0) return false;
   const first = cm.from;
   return cm.precededByNewline(first) && cx.src.allBytes(end, cm.spanStart[first] | 0, BT_WS_ASCII);

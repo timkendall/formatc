@@ -29,6 +29,8 @@ import {
   exprJsxContainerSpan,
   exprOuterEnd,
   exprSpan,
+  exprEnd,
+  exprStart,
   exprSpreadExpr,
   exprTag,
   identSpan,
@@ -160,8 +162,7 @@ function writeJsxIdentifier(start: number, end: number, f: Formatter): void {
 /** `</a>` */
 export function writeJsxClosingElement(e: number, name: number, f: Formatter): void {
   const cm = cxOf(f).comments;
-  exprSpan(name);
-  cm.commentsBefore(SP[0] | 0);
+  cm.commentsBefore(exprStart(name));
   const from = cm.from;
   const to = cm.to;
   const nameHasLeadingComment = to > from;
@@ -324,8 +325,7 @@ function hasOnlyComments(expression: number, f: Formatter): boolean {
   if (tag === EXPR_CALL || tag === EXPR_NEW) {
     const call = tag === EXPR_CALL ? exprCallCall(expression) : exprNewCall(expression);
     if (callArgsLen(call) !== 0) return false;
-    exprSpan(expression);
-    const end = SP[1] | 0;
+    const end = exprEnd(expression);
     return cm.hasCommentInRange(exprOuterEnd(callCallee(call)), end);
   }
   return false;

@@ -27,6 +27,7 @@ import {
   AN_PROPERTY_DEFINITION,
   AN_STATIC_MEMBER_EXPRESSION,
   anSpan,
+  anEnd,
   anTag,
   exprAsAstNodes,
   memberAsAstNodes,
@@ -45,8 +46,7 @@ function shouldExpand(modsStart: number, modsLen: number, f: Formatter): boolean
   for (let i = 0; i < modsLen; i++) {
     const d = modifierDecorator(listAt(modsStart, i));
     if (d < 0) continue;
-    anSpan(mkAn(AN_DECORATOR, d));
-    if (src.hasLineTerminatorAfter(SP[1] | 0)) return true;
+    if (src.hasLineTerminatorAfter(anEnd(mkAn(AN_DECORATOR, d)))) return true;
   }
   return false;
 }

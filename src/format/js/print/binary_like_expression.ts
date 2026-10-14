@@ -49,6 +49,8 @@ import {
   exprParent,
   exprRight,
   exprSpan,
+  exprEnd,
+  exprStart,
   exprTag,
   fileIsFlow,
   fileIsJavascript,
@@ -385,8 +387,7 @@ function writeChain(e: number, f: Formatter): void {
   const cx = cxOf(f);
   if (!cx.isQuiet && jsxElement >= 0) {
     const cm = cx.comments;
-    exprSpan(lastOperand(lastExpr, lastCode, f));
-    cm.commentsBefore(SP[0] | 0);
+    cm.commentsBefore(exprStart(lastOperand(lastExpr, lastCode, f)));
     for (let i = cm.from; i < cm.to; i++) {
       if (cm.isLine(i) && !cm.precededByNewline(i)) {
         shouldExpandChain = true;
@@ -563,10 +564,8 @@ function writePart(parent: number, code: number, f: Formatter): void {
   let shouldBreak = false;
   if (!cx.isQuiet) {
     const cm = cx.comments;
-    exprSpan(left);
-    const leftEnd = SP[1] | 0;
-    exprSpan(right);
-    const rightStart = SP[0] | 0;
+    const leftEnd = exprEnd(left);
+    const rightStart = exprStart(right);
     for (let i = (cm.printedCount - 1) | 0; i >= 0; i--) {
       if (!(leftEnd <= (cm.cs[i] | 0) && rightStart >= (cm.ce[i] | 0))) break;
       if (cm.isLine(i)) {
@@ -613,16 +612,14 @@ function writeOperatorAndRightExpression(binary: number, outermost: number, f: F
   const cm = cx.comments;
   // `a && (b && c /* comment */)`: in the tree that Prettier has rebalanced, the comment is in the expression that `c` is the right side of.
   if (binary !== outermost) {
-    exprSpan(outermost);
-    cm.commentsIn(rightEnd, SP[1] | 0);
+    cm.commentsIn(rightEnd, exprEnd(outermost));
     formatTrailingCommentsRange(cm.from, cm.to, f);
   }
   // See `isLastBinaryOperandComment`.
   const outerParent = exprAstParent(outermost);
   if (anTag(outerParent) === AN_UNARY_EXPRESSION && cm.unprinted() > 0) {
     const comment = cm.from;
-    exprSpan(anId(outerParent));
-    const unaryEnd = SP[1] | 0;
+    const unaryEnd = exprEnd(anId(outerParent));
     if ((cm.cs[comment] | 0) >= rightEnd && (cm.ce[comment] | 0) <= unaryEnd && isLastBinaryOperandComment(outermost, comment, f)) {
       formatTrailingCommentsRange(comment, (comment + 1) | 0, f);
     }
@@ -698,8 +695,7 @@ function writeOperator(operator: number, right: number, isInlined: boolean, f: F
   }
   const cx = cxOf(f);
   if (isBeforeVueFilter(operator, f)) {
-    exprSpan(right);
-    if (!cx.comments.hasLeadingOwnLineComment(SP[0] | 0)) {
+    if (!cx.comments.hasLeadingOwnLineComment(exprStart(right))) {
       f.softLineBreakOrSpace();
       f.token(OPERATOR_TOKEN[operator] | 0);
       f.space();

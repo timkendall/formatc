@@ -117,6 +117,7 @@ import {
   anId,
   anParent,
   anSpan,
+  anEnd,
   anTag,
   exprAsAstNodes,
   exprAsChainElement,
@@ -952,8 +953,7 @@ function isReactHookWithDepsArray(argsStart: number, argsLen: number, parent: nu
   // Not if there is a comment that is not in the callback or the array. For Prettier one in an empty array is a comment of the array.
   const isEmpty = f.options.flavor !== FLAVOR_OXFMT && exprArrayElemsLen(deps) === 0;
   const cm = cxOf(f).comments;
-  anSpan(parent);
-  const parentEnd = SP[1] | 0;
+  const parentEnd = anEnd(parent);
   exprSpan(callback);
   const cbStart = SP[0] | 0;
   const cbEnd = SP[1] | 0;

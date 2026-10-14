@@ -88,8 +88,14 @@ export function stmtSpan(s: number): void {
   sp[1] = h.stmtLocEnd[s] | 0;
 }
 export function stmtStart(s: number): number {
-  stmtSpan(s);
-  return SP[0] | 0;
+  const h = hir;
+  if (!(s >= 0 && s < h.nStmts)) return 0;
+  const start = h.stmtStart[s] | 0;
+  if ((h.stmtTag[s] | 0) === STMT_BLOCK && (h.text[start] | 0) === 102) {
+    stmtSpan(s);
+    return SP[0] | 0;
+  }
+  return start;
 }
 export function stmtEnd(s: number): number {
   return stmtInRange(s) ? hir.stmtLocEnd[s] | 0 : 0;

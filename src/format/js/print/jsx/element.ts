@@ -10,6 +10,7 @@ import {
   exprCallee,
   exprJsxContainerSpan,
   exprSpan,
+  exprEnd,
   exprTag,
   jsxAttrsLen,
   jsxChildrenWithWhitespace,
@@ -37,6 +38,7 @@ import {
   anIsExpressionStatement,
   anParent,
   anSpan,
+  anEnd,
   anTag,
   anWithoutChainExpression,
   exprAsAstNodes,
@@ -89,18 +91,15 @@ function writeTrailingComments(e: number, parent: number, f: Formatter): void {
   const cx = cxOf(f);
   if (cx.isQuiet) return;
   const cm = cx.comments;
-  exprSpan(e);
-  const end = SP[1] | 0;
+  const end = exprEnd(e);
   const tag = anTag(parent);
   if (anIsExpressionStatement(parent) && anIsArrowFunctionBody(parent)) {
     // All up to the end of the arrow function
-    anSpan(anParent(anParent(parent)));
-    cm.commentsBefore(SP[1] | 0);
+    cm.commentsBefore(anEnd(anParent(anParent(parent))));
   } else if (tag === AN_CONDITIONAL_EXPRESSION) {
     const conditional = anId(parent);
     if (exprAlternate(conditional) === e) {
-      exprSpan(conditional);
-      cm.commentsBefore(SP[1] | 0);
+      cm.commentsBefore(exprEnd(conditional));
     } else {
       cm.endOfLineCommentsAfter(end);
     }

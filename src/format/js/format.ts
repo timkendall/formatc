@@ -137,6 +137,7 @@ import {
   exprNonNullExpr,
   exprOperand,
   exprSpan,
+  exprEnd,
   exprTag,
   exprUnaryOpOf,
   exprBinaryOpOf,
@@ -826,7 +827,8 @@ function writeNodeStep5(wk: number, h: number, f: Formatter): void {
 
 /** The comments after the child of `parent` at `(start, end)`. */
 export function writeTrailingCommentsIn(start: number, end: number, pk: number, ph: number, f: Formatter): void {
-  if (cxOf(f).comments.nextStart() !== INF) writeTrailingCommentsOfChild(start, end, parentOfRef(pk, ph), f);
+  const cm = cxOf(f).comments;
+  if (cm.nextStart() !== INF && (cxOf(f).src.byteAt(start) === 64 || !cm.firstLeadsWord())) writeTrailingCommentsOfChild(start, end, parentOfRef(pk, ph), f);
 }
 
 function writeTrailingCommentsOfChild(start: number, end: number, parent: number, f: Formatter): void {
@@ -1024,8 +1026,7 @@ export function fmtInTypeCasts(
     const pt = anTag(parent);
     let trailsParentOperand = false;
     if (pt === AN_LOGICAL_EXPRESSION || pt === AN_BINARY_EXPRESSION) {
-      exprSpan(anId(parent));
-      trailsParentOperand = (SP[1] | 0) === end;
+      trailsParentOperand = (exprEnd(anId(parent))) === end;
     }
     if (!trailsParentOperand) {
       formatLeadingComments(start, end, f);
@@ -1111,8 +1112,7 @@ function commentsStayOutsideOfParenthesesOfChain(f: Formatter): boolean {
 function writeCommentsTrailingChainElement(e: number, f: Formatter): void {
   const cx = cxOf(f);
   if (cx.hasTreeOfBabel) return;
-  exprSpan(e);
-  const end = SP[1] | 0;
+  const end = exprEnd(e);
   const cm = cx.comments;
   // Whoever writes the comments after `e` has hidden them.
   const previousLimit = cm.showCommentsUpTo(end + 1);
@@ -1198,8 +1198,7 @@ export function fmtNonNullMarks(e: number, f: Formatter): void {
   const n = exprInnerNonNullCount(e);
   if (n > 0) {
     const first = exprNonNullEndsFirst(e);
-    exprSpan(e);
-    const wholeEnd = SP[1] | 0;
+    const wholeEnd = exprEnd(e);
     for (let i = 0; i < n; i++) {
       const nextEnd = i + 1 < n ? hir.nonNullEndEnd[(first + i + 1) | 0] | 0 : wholeEnd;
       f.token(BANG);

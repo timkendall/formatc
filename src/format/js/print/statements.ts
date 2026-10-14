@@ -696,8 +696,7 @@ function writeForInOrOfHead(left: number, keyword: number, right: number, f: For
   cm.restoreViewLimit(previousLimit);
 
   // A comment that leads `right` can be before one that trails `left`.
-  exprSpan(right);
-  const rightStart = SP[0] | 0;
+  const rightStart = exprStart(right);
   cm.commentsBefore(rightStart);
   const from = cm.from;
   const to = cm.to;

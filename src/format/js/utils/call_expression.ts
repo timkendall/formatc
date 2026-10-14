@@ -26,7 +26,9 @@ import {
   exprDotObj,
   exprIdentName,
   exprNonNullExpr,
+  exprEnd,
   exprSpan,
+  exprStart,
   exprTag,
   exprIsChainRoot,
   funcBodyKind,
@@ -43,7 +45,7 @@ import {
   AN_STATIC_MEMBER_EXPRESSION,
   anId,
   anParent,
-  anSpan,
+  anEnd,
   anTag,
   exprAsAstNodes,
   exprAsChainElement,
@@ -88,15 +90,12 @@ function commentsTrailingComputedCallee(call: number, f: Formatter): boolean {
   if (typeListAngleBrackets(callTypeArgsStart(call), callTypeArgsLen(call))) {
     followingStart = SP[0] | 0;
   } else if (callArgsLen(call) > 0) {
-    exprSpan(listAt(callArgsStart(call), 0));
-    followingStart = SP[0] | 0;
+    followingStart = exprStart(listAt(callArgsStart(call), 0));
   } else {
     return false;
   }
-  anSpan(parentAn);
-  const parentEnd = SP[1] | 0;
-  exprSpan(callee);
-  const calleeEnd = SP[1] | 0;
+  const parentEnd = anEnd(parentAn);
+  const calleeEnd = exprEnd(callee);
   cxOf(f).comments.getTrailingComments(parentEnd, calleeEnd, followingStart);
   return true;
 }
@@ -136,8 +135,7 @@ export function typeArgumentsTrailingComments(call: number, end: number, f: Form
   const cx = cxOf(f);
   const cm = cx.comments;
   if (callArgsLen(call) > 0) {
-    exprSpan(listAt(callArgsStart(call), 0));
-    cm.commentsIn(end, SP[0] | 0);
+    cm.commentsIn(end, exprStart(listAt(callArgsStart(call), 0)));
     // trailing_prefix
     const from = cm.from;
     const to = cm.to;
@@ -192,8 +190,7 @@ function hasCommentsAroundArguments(e: number, f: Formatter): boolean {
   const call = exprAsCallLike(e);
   if (call < 0) return false;
   const cm = cxOf(f).comments;
-  exprSpan(callCallee(call));
-  let start = SP[1] | 0;
+  let start = exprEnd(callCallee(call));
   const as = callArgsStart(call);
   const n = callArgsLen(call);
   for (let i = 0; i < n; i++) {
@@ -203,8 +200,7 @@ function hasCommentsAroundArguments(e: number, f: Formatter): boolean {
     if (cm.hasAnyCommentIn(start, argStart)) return true;
     start = argEnd;
   }
-  exprSpan(e);
-  return cm.hasAnyCommentIn(start, SP[1] | 0);
+  return cm.hasAnyCommentIn(start, exprEnd(e));
 }
 
 function isTestCall(e: number, callees: number): boolean {

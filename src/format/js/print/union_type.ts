@@ -46,7 +46,7 @@ import {
   anId,
   anIsTypeParameterInstantiation,
   anParent,
-  anSpan,
+  anEnd,
   anTag,
   mkAn,
   typeAstParent,
@@ -611,8 +611,7 @@ function commentsAfterLastMember(ty: number, parent: number, f: Formatter): numb
   typeSpan(ty);
   const start = SP[0] | 0;
   const spanEnd = SP[1] | 0;
-  anSpan(parent);
-  const parentEnd = SP[1] | 0;
+  const parentEnd = anEnd(parent);
   const following = followingSpanStartIn(start, spanEnd, parent, f.options.flavor);
   let end = parentEnd;
   if (following !== 0) end = following < parentEnd ? following : parentEnd;

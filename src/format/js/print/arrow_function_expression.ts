@@ -22,6 +22,7 @@ import {
   exprBinaryOpOf,
   exprOuterEnd,
   exprOuterStart,
+  exprEnd,
   exprSpan,
   exprStart,
   exprTag,
@@ -54,6 +55,7 @@ import {
   anIsCallLikeCallee,
   anParent,
   anSpan,
+  anEnd,
   anTag,
   exprAstParent,
   funcAsAstNodes,
@@ -337,10 +339,8 @@ function writeFormatBody(
   if (!shouldAddSoftLine) {
     const parent = exprAstParent(e);
     if (anTag(parent) === AN_JSX_EXPRESSION_CONTAINER) {
-      exprSpan(e);
-      const end = SP[1] | 0;
-      anSpan(parent);
-      shouldAddSoftLine = !cx.comments.hasCommentInRange(end, SP[1] | 0);
+      const end = exprEnd(e);
+      shouldAddSoftLine = !cx.comments.hasCommentInRange(end, anEnd(parent));
     }
   }
   if (breaksWithChain) {
@@ -399,8 +399,7 @@ function hasComplexSignature(arrow: number): boolean {
 function hasLeadingComment(e: number, isCallee: boolean, f: Formatter): boolean {
   const cx = cxOf(f);
   const cm = cx.comments;
-  exprSpan(e);
-  const start = SP[0] | 0;
+  const start = exprStart(e);
   let last: number;
   const n = cm.commentsBefore(start);
   if (n > 0) last = (cm.to - 1) | 0;
@@ -693,8 +692,7 @@ function writeExpressionBody(body: number, isOnItsOwnLine: boolean, f: Formatter
     return;
   }
   fmtExpr(body, f);
-  exprSpan(body);
-  const spanEnd = SP[1] | 0;
+  const spanEnd = exprEnd(body);
   cm.commentsIn(spanEnd, exprOuterEnd(body));
   const total = (cm.to - cm.from) | 0;
   const from = cm.from;

@@ -213,6 +213,8 @@ import {
   exprOuterSpan,
   exprParent,
   exprSpan,
+  exprStart,
+  exprEnd,
   exprTag,
   exprUnaryOpOf,
   exprInstantiationTypeArgsLen,
@@ -1540,7 +1542,13 @@ export function anIsCallLikeCallee(an: number, e: number): boolean {
 /** Writes the range that the node has in oxc into `SP`. */
 export function anSpan(an: number): void {
   const id = an & 0x7fffff;
-  switch (an >> 23) {
+  const tag = an >> 23;
+  // Every kind from the identifier up to the chain expression has the span of its expression.
+  if (tag >= 1 && tag <= 43) {
+    exprSpan(id);
+    return;
+  }
+  switch (tag) {
     case AN_PROGRAM:
       SP[0] = 0;
       SP[1] = hir.sourceLen | 0;
@@ -1846,10 +1854,14 @@ function nodeSpanOfNode(node: number): void {
 }
 
 export function anStart(an: number): number {
+  const tag = an >> 23;
+  if (tag >= 1 && tag <= 43) return exprStart(an & 0x7fffff);
   anSpan(an);
   return SP[0] | 0;
 }
 export function anEnd(an: number): number {
+  const tag = an >> 23;
+  if (tag >= 1 && tag <= 43) return exprEnd(an & 0x7fffff);
   anSpan(an);
   return SP[1] | 0;
 }

@@ -11,6 +11,7 @@ import {
   exprArrayElemsStart,
   exprObjectPropsLen,
   exprSpan,
+  exprEnd,
   exprTag,
   listAt,
 } from "../../../lint/ast/index.ts";
@@ -62,8 +63,7 @@ export function writeArrayExpression(e: number, elementsStart: number, elementsL
       for (let i = elementsLen - 1; i >= 0; i--) {
         const element = listAt(elementsStart, i);
         if (exprTag(element) !== EXPR_MISSING) {
-          exprSpan(element);
-          holesStart = cm.positionAfterCharacter(SP[1] | 0, 44);
+          holesStart = cm.positionAfterCharacter(exprEnd(element), 44);
           break;
         }
       }

@@ -243,6 +243,7 @@ import {
   exprSatisfiesTy,
   exprSequence,
   exprSpan,
+  exprEnd,
   exprSpreadExpr,
   exprStart,
   exprTag,
@@ -834,10 +835,8 @@ function logicalParts(e: number, operands: number[], count: number, out: Item[])
   const last = operands[count - 1];
   if (count >= 2) {
     const beforeLast = operands[count - 2];
-    exprSpan(left);
-    const s = SP[0] | 0;
-    exprSpan(beforeLast);
-    out.push(itemOf(s, SP[1] | 0, K_LOGICAL, e, count - 1, -1));
+    const s = exprStart(left);
+    out.push(itemOf(s, exprEnd(beforeLast), K_LOGICAL, e, count - 1, -1));
   } else out.push(leftOperand(op, left));
   out.push(expr(last));
 }
@@ -1336,8 +1335,7 @@ function jsxParts(e: number, out: Item[]): void {
   jsxOpeningSpan(e);
   if (isFragment) out.push(leaf(SP[0] | 0, SP[1] | 0));
   else out.push(itemOf(SP[0] | 0, SP[1] | 0, K_JSX_OPENING, e, -1, -1));
-  exprSpan(e);
-  const elementStart = SP[0] | 0;
+  const elementStart = exprStart(e);
   const rows = new I32Vec(24);
   jsxChildrenWithWhitespace(e, rows);
   for (let i = 0; i + 2 < rows.len; i += 3) {

@@ -43,6 +43,7 @@ export function fileBegin(names: Names, parserIsTypeScript: boolean, isModule: b
   F.jsxDotTags.reset();
   F.jsxDotTagsBuilt = false;
   F.bodyOpenBuilt = false;
+  F.paramsFn = -1;
   F.directivesKnown = false;
   F.jsdocBuilt = false;
   TP.built = false;

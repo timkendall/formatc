@@ -657,8 +657,7 @@ function headGap(cls: number, which: number): boolean {
   }
   let extendsStart = -1;
   if (extendsExpr >= 0) {
-    exprSpan(extendsExpr);
-    extendsStart = SP[0] | 0;
+    extendsStart = exprStart(extendsExpr);
   }
   switch (which) {
     case AFTER_NAME: {
@@ -808,8 +807,7 @@ function shouldGroup(cls: number, parent: number, f: Formatter): boolean {
   } else if (headGap(cls, AFTER_NAME)) {
     if ((G[2] | 0) === GAP_EXTENDS) beforeSuperClass = gapCommentsNotTrailing(f);
   } else if (superClass >= 0) {
-    exprSpan(superClass);
-    beforeSuperClass = cm.commentsBefore(SP[0] | 0);
+    beforeSuperClass = cm.commentsBefore(exprStart(superClass));
   }
   if (gapTrailingCount(cls, AFTER_NAME, f) > 0) return true;
   if (gapTrailingCount(cls, AFTER_TYPE_PARAMETERS, f) > 0) return true;

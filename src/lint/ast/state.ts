@@ -36,6 +36,10 @@ export class FileState {
   directivesEnd: number = 0;
   /** `Lazy::jsdoc`: the outline of the JSDoc comments has been read (lint/ast/jsdoc.ts). */
   jsdocBuilt: boolean = false;
+  /** The last `funcParamsSpan` that found a span (a function and the span); -1: none. */
+  paramsFn: number = -1;
+  paramsStart: number = 0;
+  paramsEnd: number = 0;
 }
 
 export const F = new FileState();

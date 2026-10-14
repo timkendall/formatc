@@ -12,6 +12,8 @@ import {
   exprRight,
   exprSequence,
   exprSpan,
+  exprEnd,
+  exprStart,
   exprTag,
   stmtStart,
   varDeclInit,
@@ -131,8 +133,7 @@ export function writeSequenceExpression(e: number, f: Formatter): void {
 }
 
 function exprStartOf(e: number): number {
-  exprSpan(e);
-  return SP[0] | 0;
+  return exprStart(e);
 }
 
 /**
@@ -150,8 +151,7 @@ export function writeCommentsBeforeClosingParenthesis(e: number, f: Formatter): 
   else if (pt === AN_ASSIGNMENT_EXPRESSION) isWholeSide = exprRight(anId(parent)) === e;
   else if (pt === AN_RETURN_STATEMENT) isWholeSide = true;
   if (!isWholeSide) return;
-  exprSpan(e);
-  const end = SP[1] | 0;
+  const end = exprEnd(e);
   const cm = cx.comments;
   const count = cm.commentsIn(end, exprOuterEnd(e));
   const from = cm.from;

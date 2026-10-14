@@ -21,6 +21,7 @@ import {
   exprIsOptional,
   exprParent,
   exprSpan,
+  exprEnd,
   exprStart,
   exprTag,
   nodeId,
@@ -80,8 +81,7 @@ export function cmInnerEnd(m: number): number {
   if (m >>> 26 === CM_NODE) return -1;
   const inner = innerOfLink(m & 0x3ffffff);
   if (inner < 0) return -1;
-  exprSpan(inner);
-  return SP[1] | 0;
+  return exprEnd(inner);
 }
 
 /**
@@ -111,8 +111,7 @@ function commentThatStartsLineLeadsNextLink(f: Formatter): boolean {
 function writeTrailingCommentsOfMember(member: number, f: Formatter): void {
   const call = callOfCallee(member);
   if (call >= 0) {
-    exprSpan(member);
-    writeCalleeTrailingComments(call, SP[1] | 0, f);
+    writeCalleeTrailingComments(call, exprEnd(member), f);
   } else if (commentThatStartsLineLeadsNextLink(f)) {
     // nothing
   } else {
@@ -183,8 +182,7 @@ function writeWithAttachedComments(m: number, f: Formatter): void {
     formatLeadingCommentsRange(cm.from, cm.to, f);
   }
   writeChainMemberWithoutComments(m, f);
-  exprSpan(m & 0x3ffffff);
-  cm.commentsTrailingLink(SP[1] | 0);
+  cm.commentsTrailingLink(exprEnd(m & 0x3ffffff));
   formatTrailingCommentsRange(cm.from, cm.to, f);
 }
 
@@ -196,8 +194,7 @@ function writeWithCommentsAround(m: number, f: Formatter): void {
     let nameStart = -1;
     if (exprTag(e) === EXPR_DOT) nameStart = exprDotNamePos(e);
     if (nameStart < 0) {
-      exprSpan(e);
-      nameStart = SP[1] | 0;
+      nameStart = exprEnd(e);
     }
     const cm = cxOf(f).comments;
     cm.commentsBefore(nameStart);
@@ -216,8 +213,7 @@ function writeWithCommentsAround(m: number, f: Formatter): void {
 /** oxfmt writes `a[0 /* comment *&#47;]` like `a[b /* comment *&#47;]`, with a way to break after the `[`. */
 function breaksAroundANumberWithComments(member: number, f: Formatter): boolean {
   if (f.options.flavor !== FLAVOR_OXFMT) return false;
-  exprSpan(member);
-  return cxOf(f).comments.hasCommentBefore(SP[1] | 0);
+  return cxOf(f).comments.hasCommentBefore(exprEnd(member));
 }
 
 /** The `[b]` or `?.[b]` of `a[b]`. */

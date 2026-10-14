@@ -1,15 +1,14 @@
 // Port of vendor/bun/src/format/js/utils/member_chain/groups.rs.
 import { Formatter } from "../../../ir/formatter.ts";
 import { I32Vec } from "../../../../base/i32vec.ts";
-import { SP, exprSpan, hir, skipTrivia } from "../../../../lint/ast/index.ts";
+import { SP, exprEnd, exprSpan, hir, skipTrivia } from "../../../../lint/ast/index.ts";
 import { cxOf } from "../../context.ts";
 import { isNextLineEmpty } from "../../print/program.ts";
 import { CM_CALL_MIDDLE, cmExpr, cmKind, fmtChainMember } from "./chain_member.ts";
 
 /** Prettier's `shouldInsertEmptyLineAfter`: whether the line after `e`, or after the `)` behind it, is empty. */
 export function shouldInsertEmptyLineAfter(e: number, f: Formatter): boolean {
-  exprSpan(e);
-  const end = SP[1] | 0;
+  const end = exprEnd(e);
   const src = cxOf(f).src;
   const next = skipTrivia(hir.text, hir.sourceLen | 0, end);
   if (next < (hir.sourceLen | 0) && src.byteAt(next) === 41) return isNextLineEmpty(src, next + 1);

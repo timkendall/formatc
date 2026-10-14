@@ -20,6 +20,7 @@ import {
   exprIsPrivateMember,
   exprOuterEnd,
   exprSpan,
+  exprStart,
   exprTag,
   identEndOf,
   stmtSpan,
@@ -114,8 +115,7 @@ function writeAdjacentArgument(argument: number, f: Formatter): void {
   const tag = exprTag(argument);
   const sequence = isSequence(argument);
   // JSX writes parentheses of its own around its comments, unless it is written as it is.
-  exprSpan(argument);
-  const argumentStart = SP[0] | 0;
+  const argumentStart = exprStart(argument);
   const hasOwnParentheses = tag === EXPR_JSX && !(ignoredJsxGetsNoParentheses(f) && cx.comments.isSuppressed(argumentStart));
 
   if (!hasOwnParentheses && !cx.isQuiet && hasArgumentLeadingComments(argument, f)) {
@@ -183,8 +183,7 @@ export function hasArgumentLeadingComments(argument: number, f: Formatter): bool
   const cm = cxOf(f).comments;
 
   // The comments inside the parentheses of a type cast are dealt with there.
-  exprSpan(argument);
-  const argumentStart = SP[0] | 0;
+  const argumentStart = exprStart(argument);
   const typeCastIndex = cm.getTypeCastCommentIndex(argumentStart);
   const typeCastCommentEnd = typeCastIndex >= 0 ? cm.spanEnd[(cm.printedCount + typeCastIndex) | 0] | 0 : -1;
 
@@ -192,8 +191,7 @@ export function hasArgumentLeadingComments(argument: number, f: Formatter): bool
   let e = argument;
   let isAssignmentTarget = false;
   while (true) {
-    exprSpan(e);
-    const leftStart = SP[0] | 0;
+    const leftStart = exprStart(e);
     const n = cm.commentsBefore(leftStart);
     const from = cm.from;
     for (let i = from; i < from + n; i++) {

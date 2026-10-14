@@ -17,6 +17,7 @@ import {
   exprSatisfiesExpr,
   exprSatisfiesTy,
   exprSpan,
+  exprEnd,
   exprTag,
   typeStart,
   typeTag,
@@ -92,8 +93,7 @@ function writeWithCommentsInPlace(
       break;
     }
   }
-  exprSpan(expression);
-  let beforeOperatorCount = cm.commentsBeforeCharacter(SP[1] | 0, operator);
+  let beforeOperatorCount = cm.commentsBeforeCharacter(exprEnd(expression), operator);
   if (beforeOperatorCount > to - from) beforeOperatorCount = (to - from) | 0;
   const split = (from + beforeOperatorCount) | 0;
   // No line break can be before the operator: only block comments on the line of the expression stay there. A line comment is written behind the
@@ -158,8 +158,7 @@ export function writeAsOrSatisfiesExpression(e: number, f: Formatter): void {
   if (ty >= 0) typeStartPos = typeStart(ty);
   else if (exprConstKeywordSpan(e)) typeStartPos = SP[0] | 0;
   else {
-    exprSpan(e);
-    typeStartPos = SP[1] | 0;
+    typeStartPos = exprEnd(e);
   }
 
   const parent = exprAstParent(e);
@@ -179,8 +178,7 @@ export function writeAsOrSatisfiesExpression(e: number, f: Formatter): void {
   let from = 0;
   let to = 0;
   if (!cx.isQuiet) {
-    exprSpan(expression);
-    cm.commentsIn(SP[1] | 0, typeStartPos);
+    cm.commentsIn(exprEnd(expression), typeStartPos);
     from = cm.from;
     to = cm.to;
   }

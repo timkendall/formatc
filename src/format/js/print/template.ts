@@ -52,6 +52,8 @@ import {
   exprOuterStart,
   exprSatisfiesExpr,
   exprSpan,
+  exprEnd,
+  exprStart,
   exprTag,
   exprTaggedTemplateCall,
   exprTemplateCooked,
@@ -208,8 +210,7 @@ export function writeTaggedTemplateExpression(e: number, call: number, f: Format
   let tagEnd: number;
   if (typeListAngleBrackets(typeArgsStart, typeArgsLen)) tagEnd = SP[1] | 0;
   else {
-    exprSpan(callCallee(call));
-    tagEnd = SP[1] | 0;
+    tagEnd = exprEnd(callCallee(call));
   }
   const leadsTemplate = commentsBehindTagLeadTheTemplate(f);
   const limited = leadsTemplate && !cx.isQuiet;
@@ -220,8 +221,7 @@ export function writeTaggedTemplateExpression(e: number, call: number, f: Format
   const quasi = callTemplate(call);
   if (quasi < 0) return;
 
-  exprSpan(quasi);
-  const quasiStart = SP[0] | 0;
+  const quasiStart = exprStart(quasi);
   const n = cm.commentsBefore(quasiStart);
   const from = cm.from;
   if (n > 0) {
@@ -593,8 +593,7 @@ function isStyledExtend(e: number): boolean {
   if (!nameIs(exprDotName(e), "extend")) return false;
   const obj = exprDotObj(e);
   if (exprTag(obj) !== EXPR_IDENT) return false;
-  exprSpan(obj);
-  const c = hir.text[SP[0] | 0] | 0;
+  const c = hir.text[exprStart(obj)] | 0;
   return c >= 65 && c <= 90;
 }
 
@@ -831,16 +830,14 @@ function followsLanguageComment(start: number, isStatement: boolean, language: s
 /** Whether the comment leads `e`. A comment leads the outermost of the nodes that start behind it, and parentheses are not nodes. */
 function isLedByLanguageComment(e: number, parent: number, language: string, f: Formatter): boolean {
   const outerStart = exprOuterStart(e);
-  exprSpan(e);
-  const start = SP[0] | 0;
+  const start = exprStart(e);
   return (exprIsParenthesized(e) && followsLanguageComment(start, false, language, f)) || (anStart(parent) !== outerStart && followsLanguageComment(outerStart, false, language, f));
 }
 
 /** Whether a comment is before `e`, with nothing but white space, `(`, `;` and comments between. No other comment says what language the template `e` is in. */
 function isBehindComment(e: number, f: Formatter): boolean {
   const cm = cxOf(f).comments;
-  exprSpan(e);
-  const start = SP[0] | 0;
+  const start = exprStart(e);
   const n = cm.commentsBefore(start);
   const nearest = n > 0 ? (cm.from + n - 1) | 0 : cm.lastPrinted();
   if (nearest < 0) return false;

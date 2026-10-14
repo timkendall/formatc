@@ -8,6 +8,7 @@ import {
   SP,
   exprJsxContainerSpan,
   exprSpan,
+  exprEnd,
   exprTag,
   jsxAttrsLen,
   jsxAttrsStart,
@@ -88,8 +89,7 @@ export function writeOpeningElement(e: number, f: Formatter): void {
   let typeArgumentsOrNameEnd = spanStart;
   if (typeListAngleBrackets(typeArgsStart, typeArgsLen)) typeArgumentsOrNameEnd = SP[1] | 0;
   else if (tag >= 0) {
-    exprSpan(tag);
-    typeArgumentsOrNameEnd = SP[1] | 0;
+    typeArgumentsOrNameEnd = exprEnd(tag);
   }
   let firstAttributeStartOrElementEnd = spanEnd;
   if (attrsLen > 0) {

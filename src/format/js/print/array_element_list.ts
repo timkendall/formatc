@@ -2,7 +2,7 @@
 import { Formatter } from "../../ir/formatter.ts";
 import { COMMA } from "../../ir/tokens.ts";
 import { FLAVOR_OXFMT, FTC_ES5, trailingSeparator } from "../../options.ts";
-import { EXPR_NUMBER, EXPR_UNARY, SP, UN_MINUS, UN_PLUS, exprOperand, exprSpan, exprTag, exprUnaryOpOf, listAt } from "../../../lint/ast/index.ts";
+import { EXPR_NUMBER, EXPR_UNARY, SP, UN_MINUS, UN_PLUS, exprOperand, exprEnd, exprSpan, exprStart, exprTag, exprUnaryOpOf, listAt } from "../../../lint/ast/index.ts";
 import { exprAsAstNodes } from "../ast_nodes.ts";
 import { writeSeparatorAfter } from "../builders.ts";
 import { cxOf } from "../context.ts";
@@ -36,8 +36,7 @@ export function fmtArrayElementList(array: number, elementsStart: number, elemen
   const last = listAt(elementsStart, elementsLen - 1);
   let lastWithOwnLineComment = -1;
   if (!cx.isQuiet) {
-    exprSpan(last);
-    const n = cm.commentsIn(SP[1] | 0, arrayEnd);
+    const n = cm.commentsIn(exprEnd(last), arrayEnd);
     if (n > 0 && cm.precededByNewline(cm.from)) lastWithOwnLineComment = last;
   }
   const oxfmt = blockCommentThatEndsLineStartsOne(f);
@@ -125,8 +124,7 @@ export function canConciselyPrintArrayList(arrayStart: number, arrayEnd: number,
 
   // Not with a line comment behind an element.
   const first = listAt(listStart, 0);
-  exprSpan(first);
-  const firstStart = SP[0] | 0;
+  const firstStart = exprStart(first);
   for (let i = from; i < to; i++) {
     if (cm.isLine(i) && !cm.precededByNewline(i) && (cm.spanStart[i] | 0) > firstStart) return false;
   }

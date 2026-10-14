@@ -109,7 +109,7 @@ import {
   nodeParent,
   nodeOfProp,
 } from "./node.ts";
-import { exprOuterEnd, exprSpan } from "./expr.ts";
+import { exprEnd, exprOuterEnd, exprSpan } from "./expr.ts";
 import { stmtEnd, stmtSpan, stmtSpanWithoutExport, stmtModuleSpecifierSpan, stmtImportAttributes } from "./stmt.ts";
 import { patSpan } from "./pat.ts";
 import { typeAnnotationSpan, typeEnd, typeOuterStart, typeParamListAngleBrackets, typeListAngleBrackets } from "./ty.ts";
@@ -299,8 +299,7 @@ export function funcSpan(f: number): void {
   SP[1] = end;
 }
 function exprEndOf(e: number): number {
-  exprSpan(e);
-  return SP[1] | 0;
+  return exprEnd(e);
 }
 export function funcStart(f: number): number {
   return hir.fnStart[f] | 0;
@@ -402,6 +401,22 @@ export function funcCloseParen(f: number): number {
 
 /** `Func::params_span` into `SP`: from the `(` to the `)` of the parameters. For an arrow function without parentheses, the parameter. For an index signature, the brackets. */
 export function funcParamsSpan(f: number): boolean {
+  const fs = F;
+  if (fs.paramsFn === f) {
+    SP[0] = fs.paramsStart;
+    SP[1] = fs.paramsEnd;
+    return true;
+  }
+  const found = funcParamsSpanFound(f);
+  if (found) {
+    fs.paramsFn = f;
+    fs.paramsStart = SP[0] | 0;
+    fs.paramsEnd = SP[1] | 0;
+  }
+  return found;
+}
+
+function funcParamsSpanFound(f: number): boolean {
   const close = funcCloseParen(f);
   if (close < 0) {
     if ((hir.fnParamsLen[f] | 0) > 0) {

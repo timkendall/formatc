@@ -16,6 +16,7 @@ import {
   SP,
   exprTag,
   exprSpan,
+  exprStart,
   exportSpecSpan,
   identIsString,
   identSpan,
@@ -587,8 +588,7 @@ function writeImportAttribute(attribute: number, bracesStart: number, bracesEnd:
 
   const value = propValue(attribute);
   if (value >= 0) {
-    exprSpan(value);
-    const valueStart = SP[0] | 0;
+    const valueStart = exprStart(value);
     let breaksAfterColon = false;
     if (!cx.isQuiet) {
       const n = cm.commentsBefore(valueStart);

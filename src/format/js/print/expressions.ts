@@ -38,6 +38,7 @@ import {
   exprParent,
   exprRight,
   exprSpan,
+  exprStart,
   exprTag,
   funcHasBody,
   keyLoad,
@@ -282,8 +283,7 @@ function writeObjectProperty(property: number, f: Formatter): void {
         const keyStart = SP[0] | 0;
         const keyEnd = SP[1] | 0;
         if (!cm.hasCommentInRange(keyStart, keyEnd)) {
-          exprSpan(v);
-          const n = cm.commentsLeadingProperty(keyEnd, SP[0] | 0);
+          const n = cm.commentsLeadingProperty(keyEnd, exprStart(v));
           const from = cm.from;
           for (let i = 0; i < n; i++) {
             if (cm.isSuppressionComment((from + i) | 0)) {
@@ -430,10 +430,8 @@ export function isLastBinaryOperandComment(argument: number, comment: number, f:
   const cm = cx.comments;
   if (cm.precededByNewline(comment) || !cm.followedByNewline(comment) || cm.isMultilineBlock(comment)) return false;
   const right = exprRight(argument);
-  exprSpan(argument);
-  const argumentStart = SP[0] | 0;
-  exprSpan(right);
-  const rightStart = SP[0] | 0;
+  const argumentStart = exprStart(argument);
+  const rightStart = exprStart(right);
   const src = cx.src;
   return src.containsNewline(argumentStart, rightStart) && !src.containsNewline(rightStart, cm.spanStart[comment] | 0);
 }

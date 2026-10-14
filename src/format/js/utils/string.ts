@@ -321,6 +321,37 @@ export function cleanStringLiteralText(start: number, end: number, jsx: boolean,
     return normalizeJsxAttribute(text, start, cs, ce, chosenQuoteStyle);
   }
   const isInHtmlAttribute = options.inHtml.isInAttribute;
+  if (!isInHtmlAttribute && parentKind === STRING_LITERAL_PARENT_KIND_EXPRESSION && end - start >= 2) {
+    // One scan of the content for the quote counts, the backslashes and the `\r`s.
+    const chosen = quoteStyleAsByte(chosenQuoteStyle);
+    const alternate = quoteStyleAsByte(quoteStyleOther(chosenQuoteStyle));
+    let chosenCount = 0;
+    let alternateCount = 0;
+    let cr = false;
+    let backslash = false;
+    for (let i = cs; i < ce; i++) {
+      const b = text[i] | 0;
+      if (b === chosen) chosenCount = ((chosenCount | 0) + 1) | 0;
+      else if (b === alternate) alternateCount = ((alternateCount | 0) + 1) | 0;
+      else if (b === 92) backslash = true;
+      else if (b === 13) cr = true;
+    }
+    const current = (text[start] | 0) === 39 ? QUOTE_SINGLE : QUOTE_DOUBLE;
+    const preferred = chosenCount > alternateCount ? quoteStyleOther(chosenQuoteStyle) : chosenQuoteStyle;
+    if (!cr) {
+      if (preferred === current) return false;
+      if (!backslash && (preferred === chosenQuoteStyle ? chosenCount : alternateCount) === 0) {
+        const q = quoteStyleAsByte(preferred);
+        CLEAN.reset();
+        CLEAN.push(q);
+        CLEAN.append(text, cs, ce);
+        CLEAN.push(q);
+        return true;
+      }
+    }
+    const info0 = current | (preferred << 1) | ((chosenCount > 0 || alternateCount > 0 ? 1 : 0) << 2);
+    return normalizeStringLiteral(text, cs, ce, info0);
+  }
   const isDirective = parentKind === STRING_LITERAL_PARENT_KIND_DIRECTIVE;
   let info = computeStringInformation(text, end > start ? text[start] | 0 : 0, cs, ce, isInHtmlAttribute && isDirective ? options.inHtml.quoteStyle : chosenQuoteStyle);
   if (isInHtmlAttribute && !isDirective) info = (info & ~2) | (QUOTE_SINGLE << 1);
@@ -357,8 +388,46 @@ function isPrintableAsciiWithout(text: Uint8Array, start: number, end: number, q
  */
 export function fmtLiteralStringToken(start: number, end: number, jsx: boolean, parentKind: number, f: Formatter): void {
   const text = f.source;
-  // Enough for the text to be the literal as it is written, and for that to be as wide as it is long. Most literals are like that.
-  if (!jsx && parentKind === STRING_LITERAL_PARENT_KIND_EXPRESSION && end - start >= 2) {
+  if (!jsx && parentKind === STRING_LITERAL_PARENT_KIND_EXPRESSION && end - start >= 2 && !f.options.inHtml.isInAttribute) {
+    // One scan of the content decides: as it is written, or only the quotes swapped, or the general way.
+    const chosenQuote = f.options.quoteStyle;
+    const chosen = quoteStyleAsByte(chosenQuote);
+    const alternate = quoteStyleAsByte(quoteStyleOther(chosenQuote));
+    let chosenCount = 0;
+    let alternateCount = 0;
+    let odd = false; // a byte that is not printable ASCII
+    let cr = false;
+    let backslash = false;
+    for (let i = start + 1; i < end - 1; i++) {
+      const b = text[i] | 0;
+      if (b === chosen) chosenCount = ((chosenCount | 0) + 1) | 0;
+      else if (b === alternate) alternateCount = ((alternateCount | 0) + 1) | 0;
+      else if (b === 92) backslash = true;
+      else if (b < 32 || b > 126) {
+        odd = true;
+        if (b === 13) cr = true;
+      }
+    }
+    const current = (text[start] | 0) === 39 ? QUOTE_SINGLE : QUOTE_DOUBLE;
+    const preferred = chosenCount > alternateCount ? quoteStyleOther(chosenQuote) : chosenQuote;
+    if (!cr) {
+      if (preferred === current) {
+        if (odd) f.textSource(start, end);
+        else f.textSourceWithWidth(start, end, twSingle(end - start));
+        return;
+      }
+      if (!backslash && (preferred === chosenQuote ? chosenCount : alternateCount) === 0) {
+        const q = quoteStyleAsByte(preferred);
+        CLEAN.reset();
+        CLEAN.push(q);
+        CLEAN.append(text, start + 1, end - 1);
+        CLEAN.push(q);
+        if (odd) f.textBytes(CLEAN.data, 0, CLEAN.len);
+        else f.textBytesWithWidth(CLEAN.data, 0, CLEAN.len, twSingle(CLEAN.len));
+        return;
+      }
+    }
+  } else if (!jsx && parentKind === STRING_LITERAL_PARENT_KIND_EXPRESSION && end - start >= 2) {
     const quote = quoteStyleAsByte(f.options.quoteStyle);
     if ((text[start] | 0) === quote && (text[end - 1] | 0) === quote && isPrintableAsciiWithout(text, start + 1, end - 1, quote)) {
       f.textSourceWithWidth(start, end, twSingle(end - start));

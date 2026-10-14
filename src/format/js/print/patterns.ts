@@ -8,6 +8,8 @@ import {
   PAT_OBJECT,
   SP,
   exprSpan,
+  exprEnd,
+  exprStart,
   keyLoad,
   keySpan,
   KEY_NONE,
@@ -89,8 +91,7 @@ function writeAssignmentPattern(left: number, right: number, f: Formatter): void
   const slot = f.startCapture();
   fmtPat(left, f);
   const captured = f.endCapture(slot);
-  exprSpan(right);
-  const n = cm.ownLineCommentsBefore(SP[0] | 0);
+  const n = cm.ownLineCommentsBefore(exprStart(right));
   const from = cm.from;
   formatLeadingCommentsRange(from, (from + n) | 0, f);
   f.startGroup();
@@ -190,8 +191,7 @@ export function fmtBindingPropertyValue(property: number, f: Formatter): void {
   // format_node(value.span().to(default.span()), || BindingProperty(property), f, ..)
   patSpan(value);
   const start = SP[0] | 0;
-  exprSpan(def);
-  const end = SP[1] | 0;
+  const end = exprEnd(def);
   if (cx.isQuiet) {
     writeAssignmentPattern(value, def, f);
     return;

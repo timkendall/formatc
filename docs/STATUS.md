@@ -768,3 +768,26 @@ What decides whether `bun fmt` takes a script file, and what it says when it doe
 ### perf R2 scan
 - Tried (1) Uint32Array SWAR pre-check in markOddBlocks: 164.1G (worse than 163.8G); (2) share odd blocks between buildUnicodeEscapes and Formatter.setSource via cache: 165.4G (worse). Both reverted.
 - Result: no change kept; baseline 163.8G unchanged. Gate (fast) mismatches 0 in both attempts. Files: none changed.
+
+### perf R3 str
+- Change: string literals scanned once (quote counts, backslash, CR, non-ASCII) in fmtLiteralStringToken and cleanStringLiteralText; unchanged -> plain source token with known width, quote-swap-only -> direct copy with known width, rest falls back to normalizeStringLiteral.
+- Instructions: 161.9G -> ~159.7G (runs: 159.4, 160.3, 159.7, 158.8).
+- Gate: vscode byte mismatches (excl .html): 0, no GATE FAILED, conformance ok.
+- Files: src/format/js/utils/string.ts
+
+### perf R3 span
+- Change: number-returning span accessors (exprStart/exprEnd/stmtStart read HIR columns directly, anStart/anEnd and anSpan fast path for expression kinds), ~75 single-end `exprSpan`/`anSpan` + `SP[k]` sites switched to them; one-entry cache for `funcParamsSpan` (FORMAL_PARAMETERS span was re-scanned ~5x per function; reset per file in lint/ast/mod.ts).
+- Instructions: 161.9G -> 160.0G (1 thread); cycles 34.5G -> 33.7G; 8 threads 1.15s (noisy).
+- Gate: 0 vscode byte mismatches, no GATE FAILED, conformance no regression.
+- Files: src/format/js/ast_nodes.ts, src/lint/ast/{expr,stmt,decl,state,mod}.ts, call sites in src/format/js/** and src/format/cursor.ts. Not committed.
+
+### perf R3 quiet
+Change: measured first. Quiet already covers most nodes (1.3M of 2.0M statements, 198k of 378k non-leaf expressions); the non-quiet cost was in trailing-comment lookup: 465k calls past the `INF` check, only 13k print anything, 155k computed parent span + `followingSpanStartIn` for nothing. New `Comments.firstLeadsWord()` (own-line, unmoved comment followed by a word) lets `writeTrailingCommentsIn` return before `parentOfRef`/`spanForComments`/`followingSpanStartIn`; not applied to decorators (child starts with `@`: conformance regressed without that).
+Instructions: 161.9G -> 160.1G (-1.8G, 1 thread). 8 threads 1.17s (noise).
+Gate: vscode byte mismatches 0, conformance no language below baseline (full gate, no GATE_FAST).
+Files: src/format/js/format.ts (writeTrailingCommentsIn), src/format/js/comments.ts (firstLeadsWord).
+
+### perf R3 nl
+- Tried: memoized "first line break at/after X" scan in `SourceText.hasNewlineInRange` and `containsNewline` (source_text.ts); a full per-file break table rejected (a byte pass over every file costs more than the scans it replaces; only 2 callers of hasNewlineInRange, short ranges for containsNewline; lineEndAt scans each comment byte once so a table cannot help).
+- Instructions 161.9G -> 162.1G (hasNewlineInRange only), 160.9G / 161.6G (both; same binary, two runs): within noise (+-0.8G). Gate: 0 mismatches, conformance ok.
+- Reverted (no gain beyond noise). Files: none changed.
