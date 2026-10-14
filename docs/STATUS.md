@@ -913,3 +913,11 @@ Fix (source only, `| 0`): cursor.ts operandsInRightSide (`stack.pop()`, `operand
 - Kept: identifier fast path in fmtExpr (skips needsParentheses/mayNeedParentheses/exprParent for names that cannot need parens; exact same predicate via identMayNeedParentheses), byte-compare isNameThatMayNeedParentheses, length/first-letter filter before the 10 nameIs in keepsArgumentsOnOneLine. Other candidates (exprParent shortcuts, fmtArguments simple path) measured at <0.1% each by count: not done.
 - Instructions (1 thread, min of 4 alternating runs; run-to-run noise ~0.7G): 88.6G -> 88.4G median-ish gain ~0.3G (0.3%); gate run 89.9G. Full gate: 0 vscode mismatches, no GATE FAILED, conformance ok, 0.75s @8.
 - Files: src/format/js/format.ts, src/format/js/parentheses/expression.ts, src/format/js/print/call_like_expression/mod.ts.
+
+### ablation rc
+Measured on a clonefile of bench/vscode, `--check --threads=1` (no oracle tree bench/vscode-fmt exists here). Ablation = release-only no-ops (`ABL_RC` in shapes.js `releaseSym`/`vAdapters`); retain no-op is impossible: the V1 build with retains removed too hung/corrupted (strings and arrays are mutated in place when rc==1).
+- Baseline /tmp/fmt-main: 85.46 G instr, 27.0 G cycles (loaded machine), RSS 304 MB.
+- V1 (string releases nop; scr_str_release sites 9424 -> 50): 778 G instr, RSS 18.4 GB, no output (OOM-killed). Leaked strings blow up, so the leak, not RC, dominates; no valid number.
+- V2 (str+bytes+arr releases nop; bytes 9470 -> 0, arr 6103 -> 18): 85.08 G instr (-0.4%), 28.7 G cycles (noisy), RSS 717 MB, but 394 more files reported than baseline, so output differs; indicative only.
+- Retain sites unchanged (str 1491, bytes 1153, arr 421). Patches: scratch/ablations/rc-V1.patch, rc-V2.patch (apply on dist/backend/llvm/shapes.js).
+- Reading: release call sites for strings/bytes/arrays cost under ~0.5% of instructions; not worth chasing.
