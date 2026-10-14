@@ -59,8 +59,13 @@ threads.
 | P1 · IR building + compiler | IR writer without the per-file width pass; borrowed typed-array aliases (95); i32 call signatures and table bounds checks (96); five `\| 0` fixes that un-boxed the parameters of 8 hot functions; identifier fast path. Not kept: flat node tables, simple-argument paths | 7 × Sonnet 5.5 (medium/high) | 407 | 34.3 M | ~$9.5 | 84.6 G (−9%) | 0.64 s (1.49×) | 5 of 7 |
 | P2 · processes (branch `processes`) | child processes instead of worker threads: non-worker code generation (no thread-locals) | 1 × Sonnet 5.5 (high) | 81 | 9.9 M | ~$2.5 | 77.8 G (−8%) | 0.60 s (1.40×) | on a branch |
 | orchestrator, P1–P2 | profiling, merging, gating, docs | Opus 5.5 | ~50 | ~27 M | ~$20 | | | |
+| C1 · 0.3.2 + ablations (2026-10-14) | compiler moved to scriptc 0.3.2 (patches 30/60 re-ported; 90 and half of 96 retired, upstream has them); ablation builds sized the remaining per-call taxes: typed-array bounds checks 7.3 G, post-call exception checks 4.3 G, stack guard 3.0 G, refcount releases ≈0 | 5 × Sonnet 5.5 (1 high, 4 medium) | 150² | | | 83.2 G (no change) | | measurements |
+| C2 · compiler patches | 97: no stack guard (`SCRIPTC_NO_STACK_GUARD`; the parser's depth limit protects the build, −3.6%); 98: provable `Uint8Array` lengths don't throw; 99: runtime-raised errors abort (`SCRIPTC_TRAP_RUNTIME_ERRORS`, −3.5%); 99c: cache key. Not kept: sound bounds-check elimination (41 of 12k sites provable, no gain), trapping TDZ/published writes (no gain) | 5 × Sonnet 5.5 (3 high, 2 medium) | 213² | | | 78.2 G (−6%) | 0.62 s | 3 of 5 |
+| C3 · processes merged | the hang seen once was not reproduced in ~8,000 loaded runs with fault injection; `FMT_HANGDUMP` diagnostics added; child processes become the default build, tag `workers-last` keeps the worker build | 1 × Sonnet 5.5 (high) | 93² | | | **73.2 G (−12% vs P1)** | **0.59 s (1.37×)** | merged |
+| orchestrator, C1–C3 | live measurements, synthetic per-construct benchmark, merging, gating, docs, corpus restore | Claude Fable 5.1 | | | | | | |
 
 ¹ Measured while other agents were running; the idle 8-thread time after round 2 is in the table below.
+² Round C lists tool calls, not API calls; its token counts and cost were not computed.
 
 Rounds 1–8 cost about $28 in total (~$9 for 26 agents, ~$19 for the orchestrator), against ~$560 for round 0. The scriptc
 rounds S1–S3 cost about $22 more (~$8 for 10 agents, ~$14 for the orchestrator).
@@ -83,7 +88,7 @@ more than the short scans it replaces. Before round 3 the orchestrator measured 
 by switching them off in a scratch build, so it gave that target no agent.
 
 A TypeScript port of [Bun's formatter](https://bun.com/docs/format) (`bun fmt`, Rust), compiled to a native executable with
-[scriptc](https://scriptc.dev) and parallelized with `node:worker_threads` + [`@scriptc/threads`](https://scriptc.dev/docs/threads).
+[scriptc](https://scriptc.dev) and parallelized with child processes (the worker-thread build with [`@scriptc/threads`](https://scriptc.dev/docs/threads) is kept at tag `workers-last`; see docs/PERFORMANCE.md §7).
 
 The goal: the same output as `bun fmt`, byte for byte, at the same speed as Bun on its published benchmark
 (`bun fmt --check` over [microsoft/vscode](https://github.com/microsoft/vscode), 8 threads).
@@ -94,14 +99,15 @@ measurements, where the time goes, and the ways we see to close the gap.
 ## Results
 
 `--check` over bench/vscode (18,080 files, 238 MB, 193 MB of it TypeScript), Apple M5 Pro, Bun canary 1.4.4, built with the
-patched scriptc compiler (`tools/scriptc-dev`), after swarm round P1. Interleaved runs, min of 3 (min of 5 at 8 and 18
-threads). The `processes` branch, which uses child processes instead of worker threads, gives 3.94 / 0.60 / 0.41 s:
+patched scriptc 0.3.2 compiler (`tools/scriptc-dev`, patches 30–99c), after round C (2026-10-14). The default build runs child
+processes (`src/driver/child.ts`); the last worker-thread build of the same source is tag `workers-last` (4.27 / 0.62 / 0.41 s).
+Interleaved runs on an idle machine, min of 3 (min of 5 at 8 and 18 threads):
 
 | threads | formatc | `bun fmt` | gap |
 | ------- | ------- | --------- | --- |
-| 1       | 4.19 s  | 2.30 s    | 1.8× |
-| 8 (Bun's published benchmark) | 0.64 s | 0.43 s | 1.49× |
-| 18      | 0.42 s  | 0.28 s    | 1.5× |
+| 1       | 3.96 s  | 2.40 s    | 1.65× |
+| 8 (Bun's published benchmark) | 0.59 s | 0.43 s | 1.37× |
+| 18      | 0.44 s  | 0.30 s    | 1.5× |
 
 Correctness against `bun fmt` on the same tree (`bin/fmt --check --compare-to=../vscode-fmt`):
 

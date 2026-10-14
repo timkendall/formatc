@@ -10,12 +10,13 @@ each round:
 
 | threads | formatc | `bun fmt` | gap |
 | ------- | ------- | --------- | --- |
-| 1       | 8.42 → 6.10 → 4.86 → 4.19 s | 2.30–2.42 s | 3.5× → 1.8× |
-| 8       | 1.25 → 0.90 → 0.73 → 0.64 s | 0.43–0.44 s | 2.85× → 1.49× |
-| 18      | 0.75 → 0.57 → 0.46 → 0.42 s | 0.28–0.29 s | 2.5× → 1.5× |
+| 1       | 8.42 → 6.10 → 4.86 → 4.19 → 3.96 s | 2.30–2.42 s | 3.5× → 1.65× |
+| 8       | 1.25 → 0.90 → 0.73 → 0.64 → 0.59 s | 0.43–0.44 s | 2.85× → 1.37× |
+| 18      | 0.75 → 0.57 → 0.46 → 0.42 → 0.44 s | 0.28–0.30 s | 2.5× → 1.5× |
 
-The last column is after round P1 (84.6 G instructions). The `processes` branch replaces worker threads with child
-processes, so scriptc compiles without worker mode: 77.8 G instructions, and 3.94 / 0.60 / 0.41 s at 1 / 8 / 18 threads.
+The last column is after round C (2026-10-14, §7): scriptc 0.3.2 with patches 30–99c, no stack guard, runtime-raised errors
+abort, and child processes instead of worker threads (73.2 G instructions, 17.2 G cycles). The worker-thread build of the same
+source (tag `workers-last`) measures 4.27 / 0.62 / 0.41 s, 79.5 G instructions, 19.3 G cycles.
 
 Whole run, one thread, from `/usr/bin/time -l` (instructions retired are stable when the machine is busy; wall time is not):
 
@@ -238,3 +239,60 @@ To reach 0.44 s at 8 threads with a 0.24–0.27 s driver floor, parse + IR + pri
 Steps 1–4 together plausibly bring the JS work from 79 G to ~45 G and the 8-thread time to ~0.55 s (~1.25× Bun). Parity
 most likely needs step 5 as well, plus a scriptc whose integer and bounds handling is closer to what Rust gets by default.
 These are estimates, not measurements.
+
+## 7. Round C (2026-10-14): where the gap is, ablations, patches 97–99, processes
+
+**At 8 threads the run is CPU-bound and the gap is user CPU.** `/usr/bin/time -l`, idle machine, worker build before the round:
+
+| 8 threads | wall | user | sys | cores busy |
+| - | - | - | - | - |
+| formatc (workers) | 0.64 s | 4.37 s | 0.74 s | 8.0 |
+| `bun fmt` | 0.43 s | 2.13 s | 1.19 s | 7.7 |
+
+Our kernel time is below Bun's and the walk ends around 227 ms while the workers stay saturated, so the driver floor of §6 step 5
+is not a lever. Matching 0.43 s with our sys time means user CPU of about 2.7 s, −38%.
+
+**The gap is uniform across constructs.** Synthetic files of one construct each (/tmp/synth, 1.1–1.8 MB, 1 thread, outputs
+identical to Bun's), cost per byte relative to Bun: identifiers/calls 2.7× instructions / 2.4× cycles, declarations 2.6 / 2.4,
+arrows+objects 2.8 / 2.5, string literals 3.4 / 3.1, interfaces 3.0 / 2.8, comments 2.9 / 2.9, control flow 2.7 / 1.9, long
+call chains that must break 2.5 / 2.0, classes 2.8 / 2.4, JSX 2.5 / 2.7, imports 2.8 / 2.4. No construct is an outlier: the
+remaining cost is per-operation code generation, not an algorithm, which is why the profile is flat.
+
+**Backend knobs are exhausted.** LLVM opt level 3 instead of 2: no change. One LLVM partition instead of 16 (whole-program
+inlining): +2% instructions. `--optimization speed`: no change (earlier). scriptc 0.3.2 stock: 122.5 G against 125.8 G for stock
+0.3.0, and every worker-mode defect of SCRIPTC_UPSTREAM.md is still present; our patches re-ported to 0.3.2 give the same
+83.2 G as on 0.3.0 (patches 90 and the i32-ABI half of 96 are retired because 0.3.1 ships the same analyses).
+
+**Ablations** (incorrect-but-measurable builds, 1 thread, instructions; cycles were not readable because other agents loaded the
+machine; details in STATUS.md "### ablation …", patches in scratch/ablations/):
+
+| tax removed | instructions | realistic recovery |
+| - | - | - |
+| typed-array bounds checks (integer index) | −7.3 G (8.8%) | a sound flow-sensitive prover (branch swarm/c-bounds) proves 41 of 12,000 sites: the hot indices are field arrays (`this.src[pos]`), masks and node ids with no relation to a length |
+| post-call exception checks | −4.3 G (5%) | dropping checks after user-function calls alone gets nearly all of it; the seeds are real runtime throws (typed-array allocation and `set`, DataView, narrowing), not analysis imprecision |
+| stack guard (283 functions after patch 40) | −3.0 G (3.7%) | all of it, by not emitting the guard |
+| reference-count releases (strings, bytes, arrays) | ≈ −0.4 G | nothing to recover |
+
+**Kept (patches 97–99c, all opt-in, the gate sets them):** `SCRIPTC_NO_STACK_GUARD=1` omits the stack guard (the parser's own
+depth limit refuses deep nesting first, as in Bun; 2,000 nested parentheses format identically, 20,000 are refused identically):
+83.2 → 80.2 G. `SCRIPTC_TRAP_RUNTIME_ERRORS=1` makes errors the runtime raises for an operation (invalid typed-array length,
+`set` overflow, DataView bounds, `x!`/narrowing/cast TypeErrors) print the uncaught-error report and exit 1 at the operation
+instead of becoming catchable exceptions, the `panic=abort` model; explicit `throw`s and the 36 refused files are unchanged:
+80.2 → 78.2 G, `scr_exc_pending` sites 24,630 → 11,706. Patch 98 (provable `Uint8Array` lengths don't throw) is sound and
+small. Extending 99 to TDZ and published-write errors: no change, not kept.
+
+**Instructions are not cycles.** On the worker build the round cut instructions from 83.0 to 79.5 G but cycles stayed at
+19.2–19.3 G: a predicted compare-and-branch costs an issue slot, not a cycle, at our IPC of 4.3. The same holds for the bounds
+checks, so the 7.3 G there is worth little wall time even if it were recoverable. The metric for the next rounds has to be cycles
+on an idle machine, with instructions as the noise-free proxy only for changes that remove dependent work.
+
+**Processes.** The hang seen once in ~1,000 runs was not reproduced in ~8,000 loaded runs (8/12/18 threads, shrunken chunk and
+spawn parameters, random SIGSTOP/SIGCONT of parent and children, 3-byte pipe writes); the protocol audit found no fault. The
+branch gained `FMT_HANGDUMP=<ms>` (pool state to stderr) and a dead-child EPIPE report, and is merged: 73.2 G instructions,
+17.2 G cycles, 3.96 / 0.59 / 0.44 s. The worker-thread build stays at tag `workers-last` (79.5 G, 19.3 G, 4.27 / 0.62 / 0.41 s).
+At 18 threads the single walk in the parent is the limit (0.44 vs 0.41 s).
+
+**Where that leaves the gap:** 0.59 s against 0.43 s at 8 threads (1.37×), 17.2 G cycles against 10.5 G at 1 thread (1.64×). What
+remains is the uniform per-operation tax of scriptc's code generation, measured but not patchable from outside at the size needed
+(the source-level items of §6 steps 3–4 are worth perhaps 5%). The upstream reports are drafted in docs/upstream/ (worker-mode
+findings re-verified on 0.3.2 with the repro; the `as number` union widening with a 4-line repro).
