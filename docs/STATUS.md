@@ -969,3 +969,6 @@ Patch 99 (named 99: setup.sh globs patches lexicographically, so 100 would apply
 - Why: of 11.7k unproven sites 55% index a field array (`this.src[pos]`, `this.names.meta[r + 3]`), 30% a local array whose index has no relation to its length (`pos < n` with `n = this.len`, `h & mask`, `col[id]`). Hot: Lexer.name, Names.atomOfKeys, Lexer.scan (sampled).
 - Source follow-ups (needed, compiler cannot prove them): make the bound `src.length` itself (or keep `const src = this.src; const n = src.length | 0` and loop on that, never a separate `this.len`); pad `src` with sentinel bytes so reads at `pos + 1..7` need no `< n` test; `x & (t.length - 1)` rather than a stored `mask`; `pos = pos + 1` (no `| 0`) or `n = a.length | 0` bounds so `(pos + 1) | 0` provably cannot wrap.
 - Orchestrator: not merged (80.9 -> 80.3 G is within noise); the flow-sensitive prover (bytes-flow.js, patch on branch swarm/c-bounds, commit 2dac740) stays available if the lexer's loops are rewritten to index a local bounded by its own length.
+
+### perf C exc3 (not kept)
+- Orchestrator: not merged (79.506 vs 79.502 G is noise); the extended patch 99 is on branch swarm/c-exc3 (7fa38f2).
