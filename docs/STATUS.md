@@ -931,3 +931,10 @@ Measurement only (patches in scratch/ablations/bounds-V1.patch, bounds-V2.patch 
 - vscode --check --threads=1, min of 3 interleaved: 83.25 G -> 80.21 G instructions (-3.7%, 3.0 G); cycles 28.7 G -> 27.9 G (machine loaded, noisy; indicative only). Output mismatches: 0.
 - V2 static counts (IR): 16223 internal sc_f__/sc_bf__ functions (9351 + 6872); 3583 have an int-return ".i" clone beside the double base; 2810 have i32 params, 1279 return i32, 9076 have double params.
 - Call sites to sc_f__/sc_bf__: 48485; 21391 go to ".i" clones; 2024 go to a double base that has an ".i" twin; 23279 pass a double argument.
+
+### perf C stack
+- Patch 97 `SCRIPTC_NO_STACK_GUARD=1` disables stackChecks at the decision point in the emitter (no marked functions, no init call, no RangeError edges); gate.sh exports it.
+- IR (grep -c) guard_get/overflow/stacksave/guard_init: with var 0/0/0/0; default 284/284/284/2 (default unchanged).
+- bench/vscode --check 1 thread, min of 3: instructions 83.19 G (main032) -> 80.16 G (-3.6%); cycles noisy (20.8-25.6 G cstack vs 21.4-22.3 G main032, other agents loading the machine).
+- Gate: 0 byte mismatches, conformance ok, no GATE FAILED.
+- Deep nesting: 2,000 parens gives identical output/exit 1 in both; 20,000 and 200,000 give "The code is nested too deeply", exit 2 in both. The parser limit protects the guardless build.

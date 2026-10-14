@@ -1,0 +1,12 @@
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/emitter.js b/dist/backend/llvm/emitter.js
+--- a/dist/backend/llvm/emitter.js	2026-10-14 11:01:39
++++ b/dist/backend/llvm/emitter.js	2026-10-14 11:01:40
+@@ -774,7 +774,7 @@
+         const triple = (options.targetTriple ?? "").toLowerCase();
+         const windows = triple === "" ? process.platform === "win32" : triple.includes("windows");
+         const mt = computeMayThrow(mod, {
+-            stackChecks: !this.wasi && mod.lib === undefined && !windows,
++            stackChecks: !this.wasi && mod.lib === undefined && !windows && !process.env.SCRIPTC_NO_STACK_GUARD,
+         });
+         this.mayThrow = mt.fns;
+         this.workerEntryPolls = mt.workerEntryPolls ?? null;
