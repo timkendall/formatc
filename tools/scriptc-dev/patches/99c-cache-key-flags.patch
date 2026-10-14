@@ -1,0 +1,20 @@
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/optimization.js b/dist/backend/optimization.js
+--- a/dist/backend/optimization.js	2026-10-14 12:13:41
++++ b/dist/backend/optimization.js	2026-10-14 12:13:44
+@@ -10,9 +10,15 @@
+ /** Cache-key parts for a posture; empty for release so historical release
+  * keys are unchanged. */
+ export function optimizationKeyParts(optimization) {
+-    return optimization === undefined || optimization === "release"
++    const parts = optimization === undefined || optimization === "release"
+         ? []
+         : [`optimization-${optimization}`];
++    // Build-mode environment variables of the local patches change the emitted code: key the executable cache on them.
++    for (const name of ["SCRIPTC_NO_STACK_GUARD", "SCRIPTC_TRAP_RUNTIME_ERRORS", "SCRIPTC_NO_PROG_TLS"]) {
++        if (process.env[name])
++            parts.push(`${name.toLowerCase().replace(/_/g, "-")}-${process.env[name]}`);
++    }
++    return parts;
+ }
+ /** Posture as an optional options field: release stays absent. */
+ export function optimizationField(optimization) {
