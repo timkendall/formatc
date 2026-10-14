@@ -1,0 +1,11 @@
+diff -ruN a/dist/backend/llvm/emitter.js b/dist/backend/llvm/emitter.js
+--- a/dist/backend/llvm/emitter.js	2026-10-14 10:58:40
++++ b/dist/backend/llvm/emitter.js	2026-10-14 10:58:31
+@@ -3208,6 +3208,7 @@
+     /** A recursive function's entry check: below the running stack's guard,
+      * throw Node's RangeError and unwind like any other pending exception. */
+     emitStackCheck() {
++        return; // ABLATION V1: no stack guard
+         const B = this.B;
+         this.declare(`declare ptr @llvm.stacksave.p0()`);
+         this.declare(`declare i1 @llvm.expect.i1(i1, i1)`);

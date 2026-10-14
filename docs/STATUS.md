@@ -913,3 +913,9 @@ Fix (source only, `| 0`): cursor.ts operandsInRightSide (`stack.pop()`, `operand
 - Kept: identifier fast path in fmtExpr (skips needsParentheses/mayNeedParentheses/exprParent for names that cannot need parens; exact same predicate via identMayNeedParentheses), byte-compare isNameThatMayNeedParentheses, length/first-letter filter before the 10 nameIs in keepsArgumentsOnOneLine. Other candidates (exprParent shortcuts, fmtArguments simple path) measured at <0.1% each by count: not done.
 - Instructions (1 thread, min of 4 alternating runs; run-to-run noise ~0.7G): 88.6G -> 88.4G median-ish gain ~0.3G (0.3%); gate run 89.9G. Full gate: 0 vscode mismatches, no GATE FAILED, conformance ok, 0.75s @8.
 - Files: src/format/js/format.ts, src/format/js/parentheses/expression.ts, src/format/js/print/call_like_expression/mod.ts.
+
+### ablation stack
+- V1 (no stack guard; `return` at top of emitStackCheck, dist/backend/llvm/emitter.js:3211; scratch/ablations/stack-V1.patch, applies on top of the patch stack): sites 283 guard_get + 283 overflow -> 0 + 0.
+- vscode --check --threads=1, min of 3 interleaved: 83.25 G -> 80.21 G instructions (-3.7%, 3.0 G); cycles 28.7 G -> 27.9 G (machine loaded, noisy; indicative only). Output mismatches: 0.
+- V2 static counts (IR): 16223 internal sc_f__/sc_bf__ functions (9351 + 6872); 3583 have an int-return ".i" clone beside the double base; 2810 have i32 params, 1279 return i32, 9076 have double params.
+- Call sites to sc_f__/sc_bf__: 48485; 21391 go to ".i" clones; 2024 go to a double base that has an ".i" twin; 23279 pass a double argument.
