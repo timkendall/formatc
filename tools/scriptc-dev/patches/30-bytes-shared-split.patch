@@ -1,21 +1,21 @@
 diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/emitter.js b/dist/backend/llvm/emitter.js
---- a/dist/backend/llvm/emitter.js	2026-10-13 18:39:03
-+++ b/dist/backend/llvm/emitter.js	2026-10-13 18:39:03
-@@ -538,6 +538,7 @@
+--- a/dist/backend/llvm/emitter.js	2026-10-14 10:24:03
++++ b/dist/backend/llvm/emitter.js	2026-10-14 10:24:04
+@@ -625,6 +625,7 @@
          this.runtimeAbiMarker = options.runtimeAbiMarker === true;
          this.detachedExit = options.detachedExit === true;
          this.rcHelpers = options.inlineRc === true ? new Set() : null;
 +        this.sanitizeAttr = options.objectAudit === false ? "uwtable" : "sanitize_address";
-         // ScrCycHdr.buffered sits 6 bytes behind every object. The wasm32
-         // header pads before its descriptor so its payload remains
-         // double-aligned without changing this ABI offset.
-@@ -1621,11 +1622,11 @@
+         // ScrCycHdr.buf sits 4 bytes behind every object on every target.
+         this.cycleBufOffset = CYC_HDR - CYC_BUF;
+         this.ffiCallbackAdapters = allocateFfiCallbackAdapters(mod.ffiImports ?? []);
+@@ -1774,11 +1775,11 @@
              for (const line of this.emitLibDefs(globals, globalReleaseLines, stamps))
                  out.push(line);
              out.push(...this.inlineRcTail(flushedDecls));
 -            out.push(`attributes #0 = { sanitize_address }`);
 +            out.push(`attributes #0 = { ${this.sanitizeAttr} }`);
-             if (this.wasi)
+             if (this.usesCoroutines)
 -                out.push(`attributes #1 = { sanitize_address presplitcoroutine }`);
 +                out.push(`attributes #1 = { ${this.sanitizeAttr} presplitcoroutine }`);
              if (hasNoInlineRecordClone)
@@ -24,27 +24,27 @@ diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/emitter.js b/dist/
              out.push(``);
              out.push(...this.fieldAliasMetadata());
              if (this.debug !== null)
-@@ -1737,7 +1738,7 @@
+@@ -1890,7 +1891,7 @@
          // sanitize_address is inert under the plain pipeline; the sanitized
          // lane's -fsanitize=address link activates instrumentation over the
          // emitted functions too (the runtime TUs get theirs from clang).
--        `attributes #0 = { sanitize_address }`, ...(this.wasi ? [`attributes #1 = { sanitize_address presplitcoroutine }`] : []), ...(hasNoInlineRecordClone ? [`attributes #2 = { noinline sanitize_address }`] : []), ``);
-+        `attributes #0 = { ${this.sanitizeAttr} }`, ...(this.wasi ? [`attributes #1 = { ${this.sanitizeAttr} presplitcoroutine }`] : []), ...(hasNoInlineRecordClone ? [`attributes #2 = { noinline ${this.sanitizeAttr} }`] : []), ``);
+-        `attributes #0 = { sanitize_address }`, ...(this.usesCoroutines ? [`attributes #1 = { sanitize_address presplitcoroutine }`] : []), ...(hasNoInlineRecordClone ? [`attributes #2 = { noinline sanitize_address }`] : []), ``);
++        `attributes #0 = { ${this.sanitizeAttr} }`, ...(this.usesCoroutines ? [`attributes #1 = { ${this.sanitizeAttr} presplitcoroutine }`] : []), ...(hasNoInlineRecordClone ? [`attributes #2 = { noinline ${this.sanitizeAttr} }`] : []), ``);
          if (this.mod.workers) {
              out.push(`declare void @scr_context_cleanup()`, `declare i32 @scr_worker_argc()`, `declare ptr @scr_worker_argv()`, `define i32 @sc_worker_entry(i32 %root) ${FN_ATTRS} {`, `entry:`, `  %argc = call i32 @scr_worker_argc()`, `  %argv = call ptr @scr_worker_argv()`, `  %result = call i32 @sc_context_entry(i32 %argc, ptr %argv)`, `  ret i32 %result`, `}`, `define i32 @main(i32 %argc, ptr %argv) ${FN_ATTRS} {`, `entry:`, `  %result = call i32 @sc_context_entry(i32 %argc, ptr %argv)`, `  call void @scr_context_cleanup()`, `  ret i32 %result`, `}`);
          }
-@@ -4294,7 +4295,7 @@
-         if (this.logArgSlots > 0) {
-             B.entryAllocas.push(`%logargs = alloca [${this.logArgSlots} x %ScrLogArg]`);
+@@ -4749,7 +4750,7 @@
          }
--        const params = fn.params.map((p) => `${this.llType(p.type)} %p_${mangleLocal(p.localId)}`);
-+        const params = fn.params.map((p) => `${this.llType(p.type)}${p.type.kind === "bytes" && this.mod.workers ? (this.sizeType === "i64" ? " nonnull align 8 dereferenceable(56)" : " nonnull align 4 dereferenceable(28)") : ""} %p_${mangleLocal(p.localId)}`);
-         // Lifted functions receive their closure first (the callValue ABI).
-         if (fn.captures !== undefined)
-             params.unshift("ptr %sc_env");
+         const params = fn.params.map((p, index) => int32Abi?.params[index]
+             ? `i32 %p_${mangleLocal(p.localId)}${INT32_ABI_SUFFIX}`
+-            : `${this.llType(p.type)} %p_${mangleLocal(p.localId)}`);
++            : `${this.llType(p.type)}${p.type.kind === "bytes" && this.mod.workers ? (this.sizeType === "i64" ? " nonnull align 8 dereferenceable(56)" : " nonnull align 4 dereferenceable(28)") : ""} %p_${mangleLocal(p.localId)}`);
+         // The i32 entry widens its i32 parameters once; the proof makes the
+         // double exact, so readers of the incoming number see the same value.
+         if (int32Abi)
 diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/expr-bytes.js b/dist/backend/llvm/expr-bytes.js
---- a/dist/backend/llvm/expr-bytes.js	2026-10-13 18:39:03
-+++ b/dist/backend/llvm/expr-bytes.js	2026-10-13 18:39:03
+--- a/dist/backend/llvm/expr-bytes.js	2026-10-14 10:24:03
++++ b/dist/backend/llvm/expr-bytes.js	2026-10-14 10:24:04
 @@ -79,7 +79,8 @@
      const lenPtr = B.tmp();
      const len = B.tmp();

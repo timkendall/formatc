@@ -1,7 +1,7 @@
 diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/emitter.js b/dist/backend/llvm/emitter.js
---- a/dist/backend/llvm/emitter.js	2026-10-13 18:46:49
-+++ b/dist/backend/llvm/emitter.js	2026-10-13 18:46:50
-@@ -3159,7 +3159,7 @@
+--- a/dist/backend/llvm/emitter.js	2026-10-14 10:24:56
++++ b/dist/backend/llvm/emitter.js	2026-10-14 10:24:58
+@@ -3540,7 +3540,7 @@
          }
      }
      workerLoopBudget(loop) {
@@ -11,8 +11,8 @@ diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/emitter.js b/dist/
          // A loop that runs a pending test on every iteration observes a
          // terminate request through it; a separate poll would only add work.
 diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/may-throw.js b/dist/backend/may-throw.js
---- a/dist/backend/may-throw.js	2026-10-13 18:46:49
-+++ b/dist/backend/may-throw.js	2026-10-13 18:46:50
+--- a/dist/backend/may-throw.js	2026-10-14 10:24:56
++++ b/dist/backend/may-throw.js	2026-10-14 10:24:58
 @@ -23,7 +23,7 @@
   * and generator bodies keep the conservative answer: a termination request
   * and a generator's `.return()` unwind through `catch`. */
@@ -23,9 +23,9 @@ diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/may-throw.js b/dist/bac
      const stackChecks = stackPlan ? stackPlan.checks : null;
      // Stores that can reach a published object throw the frozen TypeError.
 diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/frontend/lowering/lowerer.js b/dist/frontend/lowering/lowerer.js
---- a/dist/frontend/lowering/lowerer.js	2026-10-13 18:46:49
-+++ b/dist/frontend/lowering/lowerer.js	2026-10-13 18:46:49
-@@ -1650,6 +1650,34 @@
+--- a/dist/frontend/lowering/lowerer.js	2026-10-14 10:24:55
++++ b/dist/frontend/lowering/lowerer.js	2026-10-14 10:24:57
+@@ -1667,6 +1667,34 @@
      workerTargets;
      workerTargetIdByPath = new Map();
      usesWorkers = false;
@@ -57,14 +57,14 @@ diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/frontend/lowering/lowerer.js b/
 +        }
 +        return found;
 +    }
-     forkTargetIdByPath = new Map();
-     /** Namespace ModuleBlocks this program lowers, filled by splitFiles:
-      * "flattened" — an instantiated namespace whose body joined the file's
-@@ -5060,6 +5088,7 @@
+     /** The program constructs a LifetimeRegion (lifetime-regions.ts). */
+     usesLifetimeRegions = false;
+     /** Per-directory answers of experimental-import.ts's declaration-file test. */
+@@ -5177,6 +5205,7 @@
                  globals: this.globalsList,
                  entry: ENTRY_NAME,
                  ...(this.usesWorkers ? { workers: true } : {}),
 +                ...(this.usesWorkers && !this.programMayRequestTermination() ? { workerNoTermination: true } : {}),
+                 ...(this.usesLifetimeRegions ? { lifetimeRegions: true } : {}),
                  ...(isNodeEsmFile(this.entry, this.program) ? {} : { commonJsEntry: true }),
                  ...(this.ffiImports.length > 0 ? { ffiImports: [...this.ffiImports] } : {}),
-             };

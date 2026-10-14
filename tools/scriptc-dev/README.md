@@ -1,7 +1,7 @@
-# scriptc-dev: the scriptc 0.3.0 compiler with local patches
+# scriptc-dev: the scriptc 0.3.2 compiler with local patches
 
 The released `scriptc` CLI is a self-hosted native binary, so it cannot be patched in place. The same compiler is published
-on npm as JavaScript (`@scriptc/compiler@0.3.0`, with its LLVM and runtime packs as optional dependencies). This directory
+on npm as JavaScript (`@scriptc/compiler@0.3.2`, with its LLVM and runtime packs as optional dependencies). This directory
 installs that package, applies our patches to its `dist/` files, and runs its CLI under Node with `scriptc.mjs`. A build
 with the unpatched package gives the same executable as the native CLI (same size, same instruction count).
 

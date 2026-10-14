@@ -1,6 +1,6 @@
 diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/bytes-bounds.js b/dist/backend/llvm/bytes-bounds.js
---- a/dist/backend/llvm/bytes-bounds.js	2026-10-13 19:59:29
-+++ b/dist/backend/llvm/bytes-bounds.js	2026-10-13 19:59:29
+--- a/dist/backend/llvm/bytes-bounds.js	2026-10-14 10:25:30
++++ b/dist/backend/llvm/bytes-bounds.js	2026-10-14 10:25:32
 @@ -6,9 +6,46 @@
   * their receiver identity only when that binding is never reassigned.
   * Loops may use offsets in either direction, but both index integrality
@@ -62,9 +62,9 @@ diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/bytes-bounds.js b/
          proved.set(node, (proved.get(node) ?? true) && safe);
      }
 diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/emitter.js b/dist/backend/llvm/emitter.js
---- a/dist/backend/llvm/emitter.js	2026-10-13 19:59:29
-+++ b/dist/backend/llvm/emitter.js	2026-10-13 19:59:29
-@@ -11,7 +11,7 @@
+--- a/dist/backend/llvm/emitter.js	2026-10-14 10:25:30
++++ b/dist/backend/llvm/emitter.js	2026-10-14 10:25:32
+@@ -12,7 +12,7 @@
  import { matchIntegerArrayForLoop, matchIntegerBytesForLoop, matchIntegerCountedForLoop, } from "../../ir/integer-loops.js";
  import { emitCountedLoopLimit } from "./counted-loops.js";
  import { emitLiteralSwitch } from "./switch-dispatch.js";
@@ -73,7 +73,7 @@ diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/emitter.js b/dist/
  import { emitByteWindowGuard, findInitializedByteLoopBindings, matchByteWindow, } from "./byte-windows.js";
  import { canDeferSplitPiece, emitSplitSpanNext, materializeSplitPiece, emitSplitCursor, emitSplitNext, emitSplitScratch, emitSplitSnapshot, findPrivateSplitLocals, loadSplitSnapshot, storeSplitSnapshot, stringSplit, } from "./split-loops.js";
  import { scalarizeNumericRecords } from "../../ir/scalar-records.js";
-@@ -4020,6 +4020,29 @@
+@@ -4422,6 +4422,29 @@
       * the fiber eagerly to its first suspension and returns the promise);
       * generator bodies via theirs (which only ALLOCATES the suspended
       * fiber and returns the generator object). */
@@ -103,118 +103,19 @@ diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/emitter.js b/dist/
      callTarget(fnName) {
          const fn = this.fnByName.get(fnName);
          if (fn?.generator !== undefined)
-@@ -4208,7 +4231,8 @@
-             this.int32Locals = found.locals;
-             this.integerRanges = found.ranges ?? analyzeIntegerRanges(numericFn, baseFacts);
-         }
+@@ -4612,7 +4635,8 @@
+         this.localUnionStorage = new Map();
+         this.walkBorrows = this.walkBorrowsByFunction.get(fn.name) ?? new Set();
+         this.integerRanges = analyzeIntegerRanges(numericFn, this.int32Slots.facts(fn.name));
 -        this.bytesBounds = findBytesBounds(numericFn, this.integerRanges);
 +        this.constBytesLens ??= findConstBytesGlobals(this.mod);
 +        this.bytesBounds = findBytesBounds(numericFn, this.integerRanges, this.constBytesLens);
-         this.chainSlots.clear();
-         this.finallyStack = [];
-         this.tryStack = [];
-@@ -4446,11 +4470,12 @@
-         if (this.logArgSlots > 0) {
-             B.entryAllocas.push(`%logargs = alloca [${this.logArgSlots} x %ScrLogArg]`);
-         }
--        const params = fn.params.map((p) => `${this.llType(p.type)}${p.type.kind === "bytes" && this.mod.workers ? (this.sizeType === "i64" ? " nonnull align 8 dereferenceable(56)" : " nonnull align 4 dereferenceable(28)") : ""} %p_${mangleLocal(p.localId)}`);
-+        const abi = this.callAbi(fn.name);
-+        const params = fn.params.map((p, pi) => abi?.params.has(pi) ? `i32 %pi_${mangleLocal(p.localId)}` : `${this.llType(p.type)}${p.type.kind === "bytes" && this.mod.workers ? (this.sizeType === "i64" ? " nonnull align 8 dereferenceable(56)" : " nonnull align 4 dereferenceable(28)") : ""} %p_${mangleLocal(p.localId)}`);
-         // Lifted functions receive their closure first (the callValue ABI).
-         if (fn.captures !== undefined)
-             params.unshift("ptr %sc_env");
--        const ret = this.llType(fn.returnType);
-+        const ret = abi?.ret ? "i32" : this.llType(fn.returnType);
-         let attrs = coro !== null ? "#1" : FN_ATTRS;
-         // The shared indexed-read helper (lowerSafeIndexRead) is a dense bounds
-         // test, a state test and a load behind cold runtime fallbacks, called
-@@ -4461,7 +4486,36 @@
-             attrs = `inlinehint ${attrs}`;
-         const debug = this.debugScope === null ? "" : ` !dbg ${this.debugScope}`;
-         const symbol = borrowed ? mangleBorrowedFunction(fn.name) : mangleFunction(fn.name);
--        const body = `define internal ${ret} @${symbol}(${params.join(", ")}) ${attrs}${debug} { ; ${fn.name}\n${B.render()}\n}`;
-+        let rendered = B.render();
-+        let body;
-+        if (abi) {
-+            // Patch 96: int32 ABI. The body takes/returns i32 where the
-+            // whole-program analysis proved the value int32; the original
-+            // symbol stays a double-ABI adapter for every non-direct use.
-+            let n = 0;
-+            if (abi.ret)
-+                rendered = rendered.replace(/^(\s*)ret double (.+)$/gm, (_m, ind, v) => {
-+                    const r = `%abi.r${n++}`;
-+                    return `${ind}${r} = fptosi double ${v} to i32\n${ind}ret i32 ${r}`;
-+                });
-+            const prologue = fn.params
-+                .map((p, pi) => abi.params.has(pi) ? `  %p_${mangleLocal(p.localId)} = sitofp i32 %pi_${mangleLocal(p.localId)} to double\n` : "")
-+                .join("");
-+            rendered = rendered.replace(/^entry:\n/, (m) => m + prologue);
-+            const origRet = this.llType(fn.returnType);
-+            const wparams = fn.params.map((p, pi) => `${this.llType(p.type)} %w${pi}`);
-+            const wargs = fn.params.map((p, pi) => abi.params.has(pi) ? `i32 %c${pi}` : `${this.llType(p.type)} %w${pi}`);
-+            const wlines = fn.params.map((p, pi) => abi.params.has(pi) ? `  %c${pi} = fptosi double %w${pi} to i32\n` : "").join("");
-+            const wcall = `call ${ret} @${symbol}.i(${wargs.join(", ")})`;
-+            const wret = origRet === "void"
-+                ? `  ${wcall}\n  ret void`
-+                : abi.ret
-+                    ? `  %wr = ${wcall}\n  %wd = sitofp i32 %wr to double\n  ret double %wd`
-+                    : `  %wr = ${wcall}\n  ret ${origRet} %wr`;
-+            body = `define internal ${ret} @${symbol}.i(${params.join(", ")}) ${attrs}${debug} { ; ${fn.name}\n${rendered}\n}\ndefine internal ${origRet} @${symbol}(${wparams.join(", ")}) ${FN_ATTRS} {\nentry:\n${wlines}${wret}\n}`;
-+        }
-+        else
-+            body = `define internal ${ret} @${symbol}(${params.join(", ")}) ${attrs}${debug} { ; ${fn.name}\n${rendered}\n}`;
-         if (!borrowed)
-             return body;
-         const slot = this.implSlotBorrowed(fn.name);
-diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/expr-calls.js b/dist/backend/llvm/expr-calls.js
---- a/dist/backend/llvm/expr-calls.js	2026-10-13 19:59:29
-+++ b/dist/backend/llvm/expr-calls.js	2026-10-13 19:59:29
-@@ -72,14 +72,22 @@
-                 if (!borrowed?.has(index))
-                     host.moveTemp(a);
-             });
-+            const abi96 = host.callAbi(e.callee);
-             const argList = args
--                .map((a, i) => `${host.llType(callee.params[i].type)} ${a.name}`)
-+                .map((a, i) => {
-+                if (abi96?.params.has(i)) {
-+                    const c = B.tmp();
-+                    B.line(`${c} = fptosi double ${a.name} to i32`);
-+                    return `i32 ${c}`;
-+                }
-+                return `${host.llType(callee.params[i].type)} ${a.name}`;
-+            })
-                 .join(", ");
-             // Async callee: the spawn wrapper runs the body eagerly to its
-             // first suspension and returns the promise (+1). The call itself
-             // never unwinds — rejections surface at await (computeMayThrow's
-             // async exclusion).
--            const target = `@${borrowed ? mangleBorrowedFunction(e.callee) : host.callTarget(e.callee)}`;
-+            const target = `@${borrowed ? mangleBorrowedFunction(e.callee) : host.callTarget(e.callee)}${abi96 ? ".i" : ""}`;
-             if (e.type.kind === "void") {
-                 B.line(`call void ${target}(${argList})`);
-                 if (host.mayThrow.has(e.callee))
-@@ -88,8 +96,15 @@
-                     host.releaseFrame(host.frames.pop());
-                 return { name: "", type: e.type };
-             }
--            const t = B.tmp();
--            B.line(`${t} = call ${host.llType(e.type)} ${target}(${argList})`);
-+            let t = B.tmp();
-+            if (abi96?.ret) {
-+                const raw = t;
-+                B.line(`${raw} = call i32 ${target}(${argList})`);
-+                t = B.tmp();
-+                B.line(`${t} = sitofp i32 ${raw} to double`);
-+            }
-+            else
-+                B.line(`${t} = call ${host.llType(e.type)} ${target}(${argList})`);
-             let out;
-             if (borrowed && host.borrowedReturns.has(e.callee)) {
-                 // A borrowed-return body hands back +0 (a null dummy when it threw):
+         // Debug builds keep every number local a double for the debugger's
+         // variable view. Lazily boxed captured parameters keep their double,
+         // which the box is created from.
 diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/ir/integer-ranges.js b/dist/ir/integer-ranges.js
---- a/dist/ir/integer-ranges.js	2026-10-13 19:59:28
-+++ b/dist/ir/integer-ranges.js	2026-10-13 19:59:29
+--- a/dist/ir/integer-ranges.js	2026-10-14 10:25:29
++++ b/dist/ir/integer-ranges.js	2026-10-14 10:25:32
 @@ -60,8 +60,18 @@
  export function isBitwiseOp(op) {
      return op === "&" || op === "|" || op === "^" || op === "<<" || op === ">>" || op === ">>>";
