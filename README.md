@@ -5,6 +5,59 @@
 > Rust formatter and everything it depends on) into TypeScript compiled by scriptc, and whether scriptc's native code can match Rust.
 > Output matches `bun fmt` on the benchmark corpus; the speed does not yet, and parts are unfinished. Use `bun fmt`.
 
+A TypeScript port of [Bun's formatter](https://bun.com/docs/format) (`bun fmt`, Rust), compiled to a native executable with
+[scriptc](https://scriptc.dev) and parallelized with child processes (the worker-thread build with [`@scriptc/threads`](https://scriptc.dev/docs/threads) is kept at tag `workers-last`; see docs/PERFORMANCE.md §7).
+
+The goal: the same output as `bun fmt`, byte for byte, at the same speed as Bun on its published benchmark
+(`bun fmt --check` over [microsoft/vscode](https://github.com/microsoft/vscode), 8 threads).
+
+**Status (2026-10-13): the output matches; the speed does not yet.** See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for the
+measurements, where the time goes, and the ways we see to close the gap.
+
+## Contents
+
+- [Results](#results)
+- [What it took so far](#what-it-took-so-far)
+- [Swarm rounds](#swarm-rounds)
+- [What is ported](#what-is-ported)
+- [Setup](#setup)
+- [Build and run](#build-and-run)
+- [Docs](#docs)
+- [How it was built](#how-it-was-built)
+- [License and credits](#license-and-credits)
+
+## Results
+
+`--check` over bench/vscode (18,080 files, 238 MB, 193 MB of it TypeScript), Apple M5 Pro, Bun canary 1.4.4, built with the
+patched scriptc 0.3.2 compiler (`tools/scriptc-dev`, patches 30–99c), after round C (2026-10-14). The default build runs child
+processes (`src/driver/child.ts`); the last worker-thread build of the same source is tag `workers-last` (4.27 / 0.62 / 0.41 s).
+Interleaved runs on an idle machine, min of 3 (min of 5 at 8 and 18 threads):
+
+| threads | formatc | `bun fmt` | gap |
+| ------- | ------- | --------- | --- |
+| 1       | 3.96 s  | 2.40 s    | 1.65× |
+| 8 (Bun's published benchmark) | 0.59 s | 0.43 s | 1.37× |
+| 18      | 0.44 s  | 0.30 s    | 1.5× |
+
+Correctness against `bun fmt` on the same tree (`bin/fmt --check --compare-to=../vscode-fmt`):
+
+| | identical | differ |
+| - | - | - |
+| `.ts` / `.tsx` / `.js` / `.mjs` / `.cjs` / `.mts` / `.jsx` | 14,861 | 0 |
+| `.json` / `.jsonc` / `.code-snippets` / `.code-workspace` | 1,401 | 0 |
+| `.css` / `.scss` / `.less` | 516 | 0 |
+| `.yaml` / `.yml` | 767 | 0 |
+| `.md` | 371 | 0 |
+| `.toml`, `.pac`, extensionless JS | 7 | 0 |
+| `.html` | 16 | 105 (the HTML port is unfinished) |
+
+The 36 vscode files that Bun refuses (25 JS/TS, 6 CSS, 3 YAML, 2 Handlebars) are refused here too, with the same messages and
+code frames.
+
+Prettier's own test suite (9,733 fixtures, via Bun's conformance runner, ported): 92.9% of the cases of the ported languages
+pass; JSON, CSS, SCSS, Less, YAML, GraphQL, Handlebars and MDX score exactly what Bun scores; JS 1342/1357, TypeScript 747/756,
+JSX 184/186, Markdown 1568/1572; Flow and HTML/Vue/Angular are unfinished. Baseline: [docs/conformance-baseline.txt](docs/conformance-baseline.txt).
+
 ## What it took so far
 
 Everything in this repo was written by AI agents in one session on 2026-10-13 (about 8.5 hours of wall-clock time, including
@@ -64,7 +117,7 @@ threads.
 | C3 · processes merged | the hang seen once was not reproduced in ~8,000 loaded runs with fault injection; `FMT_HANGDUMP` diagnostics added; child processes become the default build, tag `workers-last` keeps the worker build | 1 × Sonnet 5.5 (high) | 93² | | | **73.2 G (−12% vs P1)** | **0.59 s (1.37×)** | merged |
 | orchestrator, C1–C3 | live measurements, synthetic per-construct benchmark, merging, gating, docs, corpus restore | Claude Fable 5.1 | | | | | | |
 
-¹ Measured while other agents were running; the idle 8-thread time after round 2 is in the table below.
+¹ Measured while other agents were running; the idle 8-thread time after round 2 is in the next row.
 ² Round C lists tool calls, not API calls; its token counts and cost were not computed.
 
 Rounds 1–8 cost about $28 in total (~$9 for 26 agents, ~$19 for the orchestrator), against ~$560 for round 0. The scriptc
@@ -86,47 +139,6 @@ and why is logged in [docs/STATUS.md](docs/STATUS.md). For example, hoisting fie
 instructions in worker mode, reading 4 bytes at a time does not beat a byte loop, and a per-file line-break table costs
 more than the short scans it replaces. Before round 3 the orchestrator measured Prettier's refusal checks at ~1.2 G (0.8%)
 by switching them off in a scratch build, so it gave that target no agent.
-
-A TypeScript port of [Bun's formatter](https://bun.com/docs/format) (`bun fmt`, Rust), compiled to a native executable with
-[scriptc](https://scriptc.dev) and parallelized with child processes (the worker-thread build with [`@scriptc/threads`](https://scriptc.dev/docs/threads) is kept at tag `workers-last`; see docs/PERFORMANCE.md §7).
-
-The goal: the same output as `bun fmt`, byte for byte, at the same speed as Bun on its published benchmark
-(`bun fmt --check` over [microsoft/vscode](https://github.com/microsoft/vscode), 8 threads).
-
-**Status (2026-10-13): the output matches; the speed does not yet.** See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for the
-measurements, where the time goes, and the ways we see to close the gap.
-
-## Results
-
-`--check` over bench/vscode (18,080 files, 238 MB, 193 MB of it TypeScript), Apple M5 Pro, Bun canary 1.4.4, built with the
-patched scriptc 0.3.2 compiler (`tools/scriptc-dev`, patches 30–99c), after round C (2026-10-14). The default build runs child
-processes (`src/driver/child.ts`); the last worker-thread build of the same source is tag `workers-last` (4.27 / 0.62 / 0.41 s).
-Interleaved runs on an idle machine, min of 3 (min of 5 at 8 and 18 threads):
-
-| threads | formatc | `bun fmt` | gap |
-| ------- | ------- | --------- | --- |
-| 1       | 3.96 s  | 2.40 s    | 1.65× |
-| 8 (Bun's published benchmark) | 0.59 s | 0.43 s | 1.37× |
-| 18      | 0.44 s  | 0.30 s    | 1.5× |
-
-Correctness against `bun fmt` on the same tree (`bin/fmt --check --compare-to=../vscode-fmt`):
-
-| | identical | differ |
-| - | - | - |
-| `.ts` / `.tsx` / `.js` / `.mjs` / `.cjs` / `.mts` / `.jsx` | 14,861 | 0 |
-| `.json` / `.jsonc` / `.code-snippets` / `.code-workspace` | 1,401 | 0 |
-| `.css` / `.scss` / `.less` | 516 | 0 |
-| `.yaml` / `.yml` | 767 | 0 |
-| `.md` | 371 | 0 |
-| `.toml`, `.pac`, extensionless JS | 7 | 0 |
-| `.html` | 16 | 105 (the HTML port is unfinished) |
-
-The 36 vscode files that Bun refuses (25 JS/TS, 6 CSS, 3 YAML, 2 Handlebars) are refused here too, with the same messages and
-code frames.
-
-Prettier's own test suite (9,733 fixtures, via Bun's conformance runner, ported): 92.9% of the cases of the ported languages
-pass; JSON, CSS, SCSS, Less, YAML, GraphQL, Handlebars and MDX score exactly what Bun scores; JS 1342/1357, TypeScript 747/756,
-JSX 184/186, Markdown 1568/1572; Flow and HTML/Vue/Angular are unfinished. Baseline: [docs/conformance-baseline.txt](docs/conformance-baseline.txt).
 
 ## What is ported
 
