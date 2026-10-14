@@ -913,3 +913,9 @@ Fix (source only, `| 0`): cursor.ts operandsInRightSide (`stack.pop()`, `operand
 - Kept: identifier fast path in fmtExpr (skips needsParentheses/mayNeedParentheses/exprParent for names that cannot need parens; exact same predicate via identMayNeedParentheses), byte-compare isNameThatMayNeedParentheses, length/first-letter filter before the 10 nameIs in keepsArgumentsOnOneLine. Other candidates (exprParent shortcuts, fmtArguments simple path) measured at <0.1% each by count: not done.
 - Instructions (1 thread, min of 4 alternating runs; run-to-run noise ~0.7G): 88.6G -> 88.4G median-ish gain ~0.3G (0.3%); gate run 89.9G. Full gate: 0 vscode mismatches, no GATE FAILED, conformance ok, 0.75s @8.
 - Files: src/format/js/format.ts, src/format/js/parentheses/expression.ts, src/format/js/print/call_like_expression/mod.ts.
+
+### ablation bounds
+Measurement only (patches in scratch/ablations/bounds-V1.patch, bounds-V2.patch (cumulative)); base 83.2 G instr, cycles noisy (~29-31 G, machine loaded).
+- V1: expr-bytes.js:71 `if (integer)` (drop compare-and-branch for every integer-index typed-array get/set). `^bytes.index.invalid` blocks in IR 12090 -> 5689 (rest are non-integer indices). 83.2 -> 75.9 G (-7.3 G, 8.8%); cycles within noise (~-1 G, 29.0-30.5 vs 28.3-29.5). Output identical (0 mismatches), no crashes.
+- V2: V1 + string-reads.js `sc_str_char_code_at_int` without length compare (the double-index helper keeps its check). 75.9 -> 75.9 G (no further gain, within noise); 0 mismatches.
+- V3 not done.
