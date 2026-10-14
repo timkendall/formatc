@@ -5,8 +5,8 @@ Measured 2026-10-13 on an Apple M5 Pro (18 cores), macOS, scriptc 0.3.0, Bun can
 ## 1. The numbers
 
 `--check`, wall time, interleaved runs, min of 3 (5 at 8 threads). Before the perf rounds → after round 8 (stock scriptc
-0.3.0) → with the patched compiler (`tools/scriptc-dev`, patches 30–90), 2026-10-13; the README's "Swarm rounds" table has
-each round:
+0.3.0) → with the patched compiler (`tools/scriptc-dev`, patches 30–90), 2026-10-13. Each round is in
+[SWARM.md](SWARM.md).
 
 | threads | formatc | `bun fmt` | gap |
 | ------- | ------- | --------- | --- |
