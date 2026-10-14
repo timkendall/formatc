@@ -1,0 +1,156 @@
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/may-throw.js b/dist/backend/may-throw.js
+--- a/dist/backend/may-throw.js	2026-10-13 18:37:13
++++ b/dist/backend/may-throw.js	2026-10-13 18:37:13
+@@ -24,7 +24,8 @@
+  * and a generator's `.return()` unwind through `catch`. */
+ export function computeMayThrow(mod, options = {}) {
+     const terminations = mod.workers === true ? workerTerminationPolls(mod) : null;
+-    const stackChecks = options.stackChecks === true ? stackCheckedFunctions(mod) : null;
++    const stackPlan = options.stackChecks === true ? stackCheckPlan(mod) : null;
++    const stackChecks = stackPlan ? stackPlan.checks : null;
+     // Stores that can reach a published object throw the frozen TypeError.
+     const published = computePublishedTypes(mod);
+     const explain = options.explain === true;
+@@ -449,7 +450,7 @@
+         fns: may,
+         ...(why !== null ? { why } : {}),
+         indirect,
+-        ...(terminations ? { workerEntryPolls: entryPolls(mod, terminations.entry, stackChecks) } : {}),
++        ...(terminations ? { workerEntryPolls: entryPolls(mod, terminations.entry, stackPlan) } : {}),
+         ...(stackChecks ? { stackChecks } : {}),
+     };
+ }
+@@ -666,9 +667,10 @@
+  * the entry poll only delays the stop by bounded work, which Node's
+  * asynchronous terminate allows. The entry poll's slow path rejoins the
+  * body, so every polled function kept its arguments live across a call. */
+-function entryPolls(mod, entry, stackChecks) {
+-    if (stackChecks === null)
++function entryPolls(mod, entry, stackPlan) {
++    if (stackPlan === null)
+         return entry;
++    const stackChecks = stackPlan.cyclic;
+     // Calling an async or generator function never tests the caller's pending
+     // state, and the module entry has no caller: those keep their polls.
+     const keep = new Set(mod.functions.filter((fn) => fn.async || fn.generator !== undefined).map((fn) => fn.name));
+@@ -889,6 +891,15 @@
+  * operation can invoke: closure targets and class members. Non-recursive
+  * functions, including leaf callbacks, stay check-free. */
+ export function stackCheckedFunctions(mod) {
++    return stackCheckPlan(mod).cyclic;
++}
++/** Every cycle of the call graph needs only one stack-checked function:
++ * unbounded recursion must pass through it, and the frames between two checks
++ * are bounded by the acyclic stretch of the call graph, far inside the
++ * guard's reserve. `checks` is such a feedback vertex set (hubs first, so a
++ * recursive visitor pays one check per level); `cyclic` is every function on
++ * a cycle. */
++export function stackCheckPlan(mod) {
+     const reentry = "\0reentry";
+     const methodImpls = new Map();
+     const memberPrefixes = new Set();
+@@ -938,16 +949,78 @@
+     edges.set(reentry, [...targets].filter((name) => names.has(name)));
+     const cyclic = cyclicFunctions(edges);
+     cyclic.delete(reentry);
+-    return cyclic;
++    return { cyclic, checks: feedbackFunctions(edges, reentry) };
+ }
++/** A small set of non-pseudo vertices hitting every cycle: self-recursive
++ * functions, then repeatedly the busiest vertex (in-degree times out-degree)
++ * of each remaining strongly connected component. */
++function feedbackFunctions(edges, pseudo) {
++    const chosen = new Set();
++    for (const [name, callees] of edges)
++        if (name !== pseudo && callees.includes(name))
++            chosen.add(name);
++    for (;;) {
++        const live = new Map();
++        for (const [name, callees] of edges) {
++            if (chosen.has(name))
++                continue;
++            live.set(name, callees.filter((c) => !chosen.has(c)));
++        }
++        const comps = stronglyConnected(live);
++        let picked = false;
++        for (const comp of comps) {
++            if (comp.length < 2)
++                continue;
++            const inside = new Set(comp);
++            const indeg = new Map();
++            for (const name of comp)
++                for (const c of live.get(name))
++                    if (inside.has(c))
++                        indeg.set(c, (indeg.get(c) ?? 0) + 1);
++            let best = null;
++            let bestScore = -1;
++            for (const name of comp) {
++                if (name === pseudo)
++                    continue;
++                let out = 0;
++                for (const c of live.get(name))
++                    if (inside.has(c))
++                        out++;
++                const score = (indeg.get(name) ?? 0) * out;
++                if (score > bestScore || (score === bestScore && name < best)) {
++                    best = name;
++                    bestScore = score;
++                }
++            }
++            if (best !== null) {
++                chosen.add(best);
++                picked = true;
++            }
++        }
++        if (!picked)
++            return chosen;
++    }
++}
+ /** Functions on a cycle of the call graph (Tarjan's strongly connected
+  * components, iterative so deep call chains cannot exhaust the stack). */
+ function cyclicFunctions(edges) {
++    const cyclic = new Set();
++    for (const [name, callees] of edges)
++        if (callees.includes(name))
++            cyclic.add(name);
++    for (const comp of stronglyConnected(edges))
++        if (comp.length > 1)
++            for (const name of comp)
++                cyclic.add(name);
++    return cyclic;
++}
++/** Strongly connected components (Tarjan, iterative). */
++function stronglyConnected(edges) {
++    const comps = [];
+     const index = new Map();
+     const low = new Map();
+     const onStack = new Set();
+     const stack = [];
+-    const cyclic = new Set();
+     let next = 0;
+     for (const root of edges.keys()) {
+         if (index.has(root))
+@@ -962,8 +1035,6 @@
+             const callees = edges.get(frame.name) ?? [];
+             if (frame.edge < callees.length) {
+                 const callee = callees[frame.edge++];
+-                if (callee === frame.name)
+-                    cyclic.add(callee);
+                 if (!index.has(callee)) {
+                     index.set(callee, next);
+                     low.set(callee, next++);
+@@ -989,11 +1060,9 @@
+                 onStack.delete(member);
+                 component.push(member);
+             } while (member !== frame.name);
+-            if (component.length > 1)
+-                for (const name of component)
+-                    cyclic.add(name);
++            comps.push(component);
+         }
+     }
+-    return cyclic;
++    return comps;
+ }
+ //# sourceMappingURL=may-throw.js.map
+\ No newline at end of file

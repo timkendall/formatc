@@ -2,6 +2,7 @@
 # One command for every perf change: build, measure, check correctness. Prints ~6 lines.
 #   tools/perf/gate.sh <name>        builds /tmp/fmt-<name> with its own scriptc cache
 #   GATE_FAST=1 tools/perf/gate.sh <name>   skips the 8-thread timing and the conformance run
+#   SCRIPTC="node tools/scriptc-dev/scriptc.mjs" tools/perf/gate.sh <name>   builds with the locally patched compiler
 # Metric: instructions retired, whole bench/vscode corpus, 1 thread (stable on a busy machine).
 # Gates: 0 byte mismatches vs bench/vscode-fmt (except .html, unfinished); no Prettier conformance language below baseline.
 N=${1:-gate}
@@ -10,7 +11,7 @@ BIN=/tmp/fmt-$N
 T=/tmp/gate-$N
 cd "$ROOT" || exit 2
 start=$(date +%s)
-if ! SCRIPTC_CACHE_DIR=/tmp/scriptc-cache-$N scriptc build src/main.ts -o "$BIN" > "$T-build.txt" 2>&1; then
+if ! SCRIPTC_CACHE_DIR=/tmp/scriptc-cache-$N ${SCRIPTC:-scriptc} build src/main.ts -o "$BIN" > "$T-build.txt" 2>&1; then
   echo "BUILD FAILED"; grep -m5 "error SC" "$T-build.txt" | sed "s|$ROOT/||" | cut -c1-200; exit 1
 fi
 echo "build ok ($(( $(date +%s) - start )) s): $BIN"

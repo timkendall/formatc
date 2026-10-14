@@ -146,7 +146,9 @@ zstd -dc vendor/bun/test/cli/format/prettier/bundle.zst > /tmp/prettier-bundle.t
 ## Build and run
 
 ```sh
-scriptc build src/main.ts -o bin/fmt          # ~25 s, whole program
+tools/scriptc-dev/setup.sh                    # once: scriptc 0.3.0 from npm with our compiler patches (tools/scriptc-dev/README.md)
+node tools/scriptc-dev/scriptc.mjs build src/main.ts -o bin/fmt   # ~20 s, whole program, patched compiler (fastest)
+scriptc build src/main.ts -o bin/fmt          # or the stock 0.3.0 CLI (~7% more instructions)
 bin/fmt --check                               # same flags as `bun fmt`; --help --all
 node src/main.ts --check                      # the same program under Node 24 (slower)
 

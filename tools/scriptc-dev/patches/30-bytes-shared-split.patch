@@ -1,0 +1,89 @@
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/emitter.js b/dist/backend/llvm/emitter.js
+--- a/dist/backend/llvm/emitter.js	2026-10-13 18:39:03
++++ b/dist/backend/llvm/emitter.js	2026-10-13 18:39:03
+@@ -538,6 +538,7 @@
+         this.runtimeAbiMarker = options.runtimeAbiMarker === true;
+         this.detachedExit = options.detachedExit === true;
+         this.rcHelpers = options.inlineRc === true ? new Set() : null;
++        this.sanitizeAttr = options.objectAudit === false ? "uwtable" : "sanitize_address";
+         // ScrCycHdr.buffered sits 6 bytes behind every object. The wasm32
+         // header pads before its descriptor so its payload remains
+         // double-aligned without changing this ABI offset.
+@@ -1621,11 +1622,11 @@
+             for (const line of this.emitLibDefs(globals, globalReleaseLines, stamps))
+                 out.push(line);
+             out.push(...this.inlineRcTail(flushedDecls));
+-            out.push(`attributes #0 = { sanitize_address }`);
++            out.push(`attributes #0 = { ${this.sanitizeAttr} }`);
+             if (this.wasi)
+-                out.push(`attributes #1 = { sanitize_address presplitcoroutine }`);
++                out.push(`attributes #1 = { ${this.sanitizeAttr} presplitcoroutine }`);
+             if (hasNoInlineRecordClone)
+-                out.push(`attributes #2 = { noinline sanitize_address }`);
++                out.push(`attributes #2 = { noinline ${this.sanitizeAttr} }`);
+             out.push(``);
+             out.push(...this.fieldAliasMetadata());
+             if (this.debug !== null)
+@@ -1737,7 +1738,7 @@
+         // sanitize_address is inert under the plain pipeline; the sanitized
+         // lane's -fsanitize=address link activates instrumentation over the
+         // emitted functions too (the runtime TUs get theirs from clang).
+-        `attributes #0 = { sanitize_address }`, ...(this.wasi ? [`attributes #1 = { sanitize_address presplitcoroutine }`] : []), ...(hasNoInlineRecordClone ? [`attributes #2 = { noinline sanitize_address }`] : []), ``);
++        `attributes #0 = { ${this.sanitizeAttr} }`, ...(this.wasi ? [`attributes #1 = { ${this.sanitizeAttr} presplitcoroutine }`] : []), ...(hasNoInlineRecordClone ? [`attributes #2 = { noinline ${this.sanitizeAttr} }`] : []), ``);
+         if (this.mod.workers) {
+             out.push(`declare void @scr_context_cleanup()`, `declare i32 @scr_worker_argc()`, `declare ptr @scr_worker_argv()`, `define i32 @sc_worker_entry(i32 %root) ${FN_ATTRS} {`, `entry:`, `  %argc = call i32 @scr_worker_argc()`, `  %argv = call ptr @scr_worker_argv()`, `  %result = call i32 @sc_context_entry(i32 %argc, ptr %argv)`, `  ret i32 %result`, `}`, `define i32 @main(i32 %argc, ptr %argv) ${FN_ATTRS} {`, `entry:`, `  %result = call i32 @sc_context_entry(i32 %argc, ptr %argv)`, `  call void @scr_context_cleanup()`, `  ret i32 %result`, `}`);
+         }
+@@ -4294,7 +4295,7 @@
+         if (this.logArgSlots > 0) {
+             B.entryAllocas.push(`%logargs = alloca [${this.logArgSlots} x %ScrLogArg]`);
+         }
+-        const params = fn.params.map((p) => `${this.llType(p.type)} %p_${mangleLocal(p.localId)}`);
++        const params = fn.params.map((p) => `${this.llType(p.type)}${p.type.kind === "bytes" && this.mod.workers ? (this.sizeType === "i64" ? " nonnull align 8 dereferenceable(56)" : " nonnull align 4 dereferenceable(28)") : ""} %p_${mangleLocal(p.localId)}`);
+         // Lifted functions receive their closure first (the callValue ABI).
+         if (fn.captures !== undefined)
+             params.unshift("ptr %sc_env");
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/expr-bytes.js b/dist/backend/llvm/expr-bytes.js
+--- a/dist/backend/llvm/expr-bytes.js	2026-10-13 18:39:03
++++ b/dist/backend/llvm/expr-bytes.js	2026-10-13 18:39:03
+@@ -79,7 +79,8 @@
+     const lenPtr = B.tmp();
+     const len = B.tmp();
+     B.line(`${lenPtr} = getelementptr inbounds %ScrBytes, ptr ${receiver}, i64 0, i32 1`);
+-    B.line(`${len} = load ${host.sizeType}, ptr ${lenPtr}`);
++    host.declare(`!900001 = !{}`);
++    B.line(`${len} = load ${host.sizeType}, ptr ${lenPtr}, !invariant.load !900001`);
+     if (integer) {
+         const wideIndex = widenInteger(host, integer);
+         const wideLength = host.sizeType === "i64" ? len : B.tmp();
+@@ -134,7 +135,8 @@
+     const p = host.B.tmp();
+     const data = host.B.tmp();
+     host.B.line(`${p} = getelementptr inbounds %ScrBytes, ptr ${receiver}, i64 0, i32 3`);
+-    host.B.line(`${data} = load ptr, ptr ${p}`);
++    host.declare(`!900001 = !{}`);
++    host.B.line(`${data} = load ptr, ptr ${p}, !invariant.load !900001`);
+     return data;
+ }
+ export function emitBytesLength(host, elem, receiver, bytes) {
+@@ -142,7 +144,8 @@
+     const p = B.tmp();
+     const len = B.tmp();
+     B.line(`${p} = getelementptr inbounds %ScrBytes, ptr ${receiver}, i64 0, i32 1`);
+-    B.line(`${len} = load ${host.sizeType}, ptr ${p}`);
++    host.declare(`!900001 = !{}`);
++    B.line(`${len} = load ${host.sizeType}, ptr ${p}, !invariant.load !900001`);
+     const size = BYTES_ELEMENT_SIZE[elem];
+     const count = bytes && size !== 1 ? B.tmp() : len;
+     if (count !== len)
+@@ -201,9 +204,10 @@
+ function emitSharedBytesSplit(host, receiver) {
+     const B = host.B;
+     host.declare(`declare i1 @llvm.expect.i1(i1, i1)`);
++    host.declare(`!900001 = !{}`);
+     const slot = B.tmp(), storage = B.tmp(), isShared = B.tmp(), expected = B.tmp();
+     B.line(`${slot} = getelementptr inbounds %ScrBytes, ptr ${receiver}, i64 0, i32 8`);
+-    B.line(`${storage} = load ptr, ptr ${slot}`);
++    B.line(`${storage} = load ptr, ptr ${slot}, !invariant.load !900001`);
+     B.line(`${isShared} = icmp ne ptr ${storage}, null`);
+     B.line(`${expected} = call i1 @llvm.expect.i1(i1 ${isShared}, i1 false)`);
+     const shared = B.newLabel("bytes.shared"), local = B.newLabel("bytes.local");

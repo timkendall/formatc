@@ -860,3 +860,11 @@ No files kept.
 hoist-globals.mjs phase 2 (--accessors) already counts accessor calls as mentions and adds alias+import when absent (no tool change needed; no accessor shapes left to extend: hir.ts/lint accessors are all `return hir.<col>[p] | 0`).
 Dry run/real: 294 functions, 1615 accessor calls inlined, 9 refs hoisted, 63 files (imports of `hir` added, build ok, no SC1016).
 Instructions 133.4G -> 133.3G (within +-1G noise), 0 mismatches. Not worth it (LLVM likely already hoists TLV after inlining): reverted src, tool default unchanged.
+
+### scriptc compiler patches (S1): tools/scriptc-dev
+- The released CLI is a native binary; `@scriptc/compiler@0.3.0` on npm is the same compiler in JS. tools/scriptc-dev installs it, applies patches/*.patch, runs its CLI under Node (scriptc.mjs). Unpatched build = native CLI build (same size, same instructions).
+- 40-loop-poll-stack-guard.patch (may-throw.js): stack-overflow checks only on a feedback vertex set of the call graph (self-recursive functions + one hub per remaining SCC) instead of every function on a cycle; every cycle still passes a check; mutual recursion still raises a catchable RangeError. 133.3G → 125.6G.
+- 30-bytes-shared-split.patch (emitter.js, expr-bytes.js): `sanitize_address` was on every emitted function even without --sanitize (blocks LLVM load hoisting); now only with --sanitize. ScrBytes header loads (shared/len/data) get !invariant.load (the runtime never changes them after creation); non-null bytes params are dereferenceable(56). −1.9G more.
+- Combined: 133.3G → 123.6G instructions, 26.7G cycles, 0.88s @8 threads; full gate clean.
+- Measured, not kept: one threadlocal.address per global per function (+2%: spills; our codemods already removed repeats); inline exception checks (already inline in 0.3.0: a process-wide alert word, scr_exc_pending only on the cold path).
+- Ablations (prizes left): loop cancellation budget ~6G (no safe design yet: the cost is the per-iteration decrement); typed-array shared split ~12.8G total (only ~1.9G recovered: receivers that are not params are not known dereferenceable).
