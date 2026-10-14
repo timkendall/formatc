@@ -1,0 +1,27 @@
+--- a/dist/backend/llvm/emitter.js	2026-10-14 11:02:28
++++ b/dist/backend/llvm/emitter.js	2026-10-14 11:02:28
+@@ -3106,6 +3106,24 @@
+         const B = this.B;
+         if (B.isTerminated())
+             return;
++        {
++            // ABLATION exc
++            const mode = "V2";
++            if (mode === "V1") {
++                // checks survive only lexically inside try regions (fs probes that catch)
++                if (this.tryStack.length === 0)
++                    return;
++            }
++            else
++            for (let i = B.cur.lines.length - 1; i >= 0; i--) {
++                const m = /\bcall\b[^@]*@"?([A-Za-z0-9_.$]+)/.exec(B.cur.lines[i]);
++                if (m && !m[1].startsWith("llvm.")) {
++                    if (m[1].startsWith("sc_f__") || m[1].startsWith("sc_bf__"))
++                        return;
++                    break;
++                }
++            }
++        }
+         if (this.mod.lib !== undefined) {
+             this.declare(`declare zeroext i1 @scr_exc_pending()`);
+             const p = B.tmp();

@@ -913,3 +913,9 @@ Fix (source only, `| 0`): cursor.ts operandsInRightSide (`stack.pop()`, `operand
 - Kept: identifier fast path in fmtExpr (skips needsParentheses/mayNeedParentheses/exprParent for names that cannot need parens; exact same predicate via identMayNeedParentheses), byte-compare isNameThatMayNeedParentheses, length/first-letter filter before the 10 nameIs in keepsArgumentsOnOneLine. Other candidates (exprParent shortcuts, fmtArguments simple path) measured at <0.1% each by count: not done.
 - Instructions (1 thread, min of 4 alternating runs; run-to-run noise ~0.7G): 88.6G -> 88.4G median-ish gain ~0.3G (0.3%); gate run 89.9G. Full gate: 0 vscode mismatches, no GATE FAILED, conformance ok, 0.75s @8.
 - Files: src/format/js/format.ts, src/format/js/parentheses/expression.ts, src/format/js/print/call_like_expression/mod.ts.
+
+### ablation exc
+Post-call exception checks, measured with `--check --threads=1` on the vscode corpus minus the 36 syntax-error files (copy; /tmp/fmt-main measured on the same copy: 81.7 G instr / 27.2 G cycles, cycles noisy under load). Edit: `emitPendingCheck` in dist/backend/llvm/emitter.js (~line 3108); patches in scratch/ablations/.
+- V1 (exc-V1.patch): no post-call checks except lexically inside try regions (a fully check-free binary hangs in `fsx.readText`, whose catch needs them). `scr_exc_pending` call sites 25,145 -> 532 (alert loads 72). 77.3 G instr (-4.4 G, -5.4%), 26.3 G cycles (min of 3, -3%). 0 mismatches vs ../vscode-fmt.
+- V2 (exc-V2.patch): no checks after `sc_f__*`/`sc_bf__*` calls (found by scanning the last emitted call), runtime checks kept. Sites 2,746 (alert loads 2,286). 77.5 G instr (-4.2 G, -5.1%), 25.4 G cycles (min of 3). 0 mismatches.
+- Conclusion: ~4.3 G instructions (~5%) is the ceiling for removing exception checks; almost all of it is recoverable by a precise "user function cannot throw" analysis (V2 ~ V1). Cycle gain is within noise, ~0-3%.
