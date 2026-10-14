@@ -32,6 +32,11 @@ class Kid {
   spawnAt = 0;
   firstAt = 0;
   lastAt = 0;
+  // bytes written to its stdin, bytes read from its stdout, chunks sent and results received (diagnostics: FMT_HANGDUMP)
+  bytesOut = 0;
+  bytesIn = 0;
+  sent = 0;
+  got = 0;
   constructor(proc: ChildProcess) {
     this.proc = proc;
   }
@@ -80,6 +85,23 @@ export class Pool {
     this.joined = new Promise<void>((resolve) => {
       this.onJoined = resolve;
     });
+    // FMT_HANGDUMP=<ms>: while the run is not joined, the state of the pool is written to stderr every <ms>. Off by default.
+    if (process.env["FMT_HANGDUMP"] !== undefined) {
+      const every = Number(process.env["FMT_HANGDUMP"] as string);
+      const t = setInterval((): void => this.dump(), every > 0 ? every : 5000);
+      t.unref();
+    }
+  }
+
+  // The state that decides whether the run can go on: what is queued, and per child what was sent and what came back.
+  dump(): void {
+    const now = performance.now();
+    let line = "pool @" + now.toFixed(0) + "ms: closed=" + this.closed + " joined=" + (this.onJoined === null) + " spawned=" + this.spawned + " backlog=" + this.backlog() + " files=" + (this.paths0.length + this.paths1.length) + " sent=" + (this.next0 + this.next1) + "\n";
+    for (let i = 0; i < this.kids.length; i++) {
+      const k = this.kids[i];
+      line += "  kid " + i + " pid=" + k.proc.pid + " inflight=" + k.inflight + " chunks=" + k.sent + "/" + k.got + " out=" + k.bytesOut + "B in=" + k.bytesIn + "B pending=" + k.pending.length + "B ended=" + k.ended + " lastData=" + (k.lastAt === 0 ? "never" : (now - k.lastAt).toFixed(0) + "ms ago") + "\n";
+    }
+    process.stderr.write(line);
   }
 
   // Adds a file to format. false if there are too many.
@@ -133,6 +155,8 @@ export class Pool {
       if (!kid.ended) fail("a child process exited with " + code);
     });
     proc.on("error", (e: Error): void => fail(e.message));
+    // a child that is gone while jobs are written to it: a failed run (otherwise the runtime ends the process with "Unhandled 'error' event")
+    (proc.stdin as NonNullable<typeof proc.stdin>).on("error", (e: Error): void => fail("the pipe to a child process: " + e.message));
     const w = this.wire;
     w.begin(M_CONFIG);
     w.u8(cfg.writes ? 1 : 0);
@@ -143,7 +167,9 @@ export class Pool {
     w.str(cfg.dumpTo);
     w.str(cfg.cwd);
     w.end();
-    (proc.stdin as NonNullable<typeof proc.stdin>).write(w.take());
+    const first = w.take();
+    kid.bytesOut = kid.bytesOut + first.length;
+    (proc.stdin as NonNullable<typeof proc.stdin>).write(first);
   }
 
   // Gives every child that has room a chunk of files.
@@ -202,11 +228,15 @@ export class Pool {
     if (lane === 1) this.next1 = this.next1 + take;
     else this.next0 = this.next0 + take;
     kid.inflight = kid.inflight + 1;
-    (kid.proc.stdin as NonNullable<typeof kid.proc.stdin>).write(w.take());
+    kid.sent = kid.sent + 1;
+    const out = w.take();
+    kid.bytesOut = kid.bytesOut + out.length;
+    (kid.proc.stdin as NonNullable<typeof kid.proc.stdin>).write(out);
   }
 
   onData(kid: Kid, d: Buffer): void {
     kid.lastAt = performance.now();
+    kid.bytesIn = kid.bytesIn + d.length;
     if (kid.firstAt === 0) kid.firstAt = kid.lastAt;
     let b = d;
     if (kid.pending.length > 0) b = Buffer.concat([kid.pending, d]);
@@ -245,6 +275,7 @@ export class Pool {
       rep.lineText.push(r.str());
     }
     kid.inflight = kid.inflight - 1;
+    kid.got = kid.got + 1;
   }
 
   checkJoined(): void {
