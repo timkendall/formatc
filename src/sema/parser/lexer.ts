@@ -586,14 +586,16 @@ export class Lexer {
       }
       const byte = this.src[pos] | 0;
       const next = (((pos | 0) + 1) | 0);
+      const lower = byte | 32;
+      if ((lower >= 97 && lower <= 122) || byte === 95 || byte === 36) {
+        // F_NAME, without the table read
+        this.name(pos);
+        return;
+      }
       const k = FIRST[byte] | 0;
       if (k === F_BLANK) {
         pos = next;
         continue;
-      }
-      if (k === F_NAME) {
-        this.name(pos);
-        return;
       }
       if (k >= F_SIMPLE) {
         this.set((k - F_SIMPLE) | 0, pos, next);
@@ -987,16 +989,18 @@ export class Lexer {
   name(start: number): void {
     this.hasEscape = false;
     const n = this.len | 0;
+    const src = this.src;
     let p = ((start | 0) + 1) | 0;
-    let k0 = this.src[start] | 0;
+    let k0 = src[start] | 0;
     let k1 = 0;
-    // bytes 1..3
+    // bytes 1..3 (a name byte is a letter, a digit, `_` or `$`: tested with ranges, a table is a thread local read in a worker)
     let stop = ((start | 0) + 4) | 0;
     if (stop > n) stop = n;
     let sh = 8;
     while (p < stop) {
-      const c = this.src[p] | 0;
-      if ((NAME_BYTE[c] | 0) === 0) break;
+      const c = src[p] | 0;
+      const l = c | 32;
+      if (!((l >= 97 && l <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) break;
       k0 = k0 | (c << sh);
       sh = (sh + 8) | 0;
       p = ((p | 0) + 1) | 0;
@@ -1007,15 +1011,21 @@ export class Lexer {
       if (stop > n) stop = n;
       sh = 0;
       while (p < stop) {
-        const c = this.src[p] | 0;
-        if ((NAME_BYTE[c] | 0) === 0) break;
+        const c = src[p] | 0;
+        const l = c | 32;
+        if (!((l >= 97 && l <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) break;
         k1 = k1 | (c << sh);
         sh = (sh + 8) | 0;
         p = ((p | 0) + 1) | 0;
       }
       if (p === (((start | 0) + 8) | 0)) {
         // the rest of a long name
-        while (p < n && (NAME_BYTE[this.src[p] | 0] | 0) !== 0) p = ((p | 0) + 1) | 0;
+        while (p < n) {
+          const c = src[p] | 0;
+          const l = c | 32;
+          if (!((l >= 97 && l <= 122) || (c >= 48 && c <= 57) || c === 95 || c === 36)) break;
+          p = ((p | 0) + 1) | 0;
+        }
       }
     }
     if (p < n) {

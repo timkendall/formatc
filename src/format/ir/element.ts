@@ -265,6 +265,8 @@ export const TOK_W1 = new Int32Array(MAX_TOKENS);
 export const TOK_W2 = new Int32Array(MAX_TOKENS);
 export const TOK_LEN = new Int32Array(MAX_TOKENS);
 export const TOK_OFF = new Int32Array(MAX_TOKENS);
+/** The same by handle in one array, 4 per token: length, w0, w1, w2 (the writer reads one array through a field, not four through thread-local globals). */
+export const TOK_TAB = new Int32Array(MAX_TOKENS * 4);
 
 let tokenPool = new Uint8Array(2048);
 let tokenPoolLen = 0;
@@ -303,6 +305,10 @@ export function token(text: string): number {
   TOK_W0[h] = w0;
   TOK_W1[h] = w1;
   TOK_W2[h] = w2;
+  TOK_TAB[h * 4] = n;
+  TOK_TAB[h * 4 + 1] = w0;
+  TOK_TAB[h * 4 + 2] = w1;
+  TOK_TAB[h * 4 + 3] = w2;
   tokenPoolLen = tokenPoolLen + n;
   tokenIndex.set(text, h);
   return h;

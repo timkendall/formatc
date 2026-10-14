@@ -791,3 +791,13 @@ Files: src/format/js/format.ts (writeTrailingCommentsIn), src/format/js/comments
 - Tried: memoized "first line break at/after X" scan in `SourceText.hasNewlineInRange` and `containsNewline` (source_text.ts); a full per-file break table rejected (a byte pass over every file costs more than the scans it replaces; only 2 callers of hasNewlineInRange, short ranges for containsNewline; lineEndAt scans each comment byte once so a table cannot help).
 - Instructions 161.9G -> 162.1G (hasNewlineInRange only), 160.9G / 161.6G (both; same binary, two runs): within noise (+-0.8G). Gate: 0 mismatches, conformance ok.
 - Reverted (no gain beyond noise). Files: none changed.
+### perf R4 printer
+Counted (15,132 files): 71M elements, 199M output bytes; push4 21M, pushPlain 30M, token 17M, text() 29M, isPlainSource 9.5M (avg 11 bytes), printElements 36M + printFlat 29M visits, fitsElement 15M in 3.8M fits (3.9 each; group measure shortcut already hits 99%). No redundant pass found; the cost was `Formatter.token`/`tokenIfBreaks` reading 4 module-level token tables = 4 thread-local `_tlv_get_addr` calls per token (17M tokens).
+Change: one interleaved `TOK_TAB` (len, w0, w1, w2) in element.ts, read through a Formatter field (`tokTab`); `sourceText` writes its element and calls `tracker.text` directly (no push4 -> note switch); `isPlainSource` single-block fast path; dropped the dead `fStartFlags[n] = 0` store in `Tracker.open`.
+Instructions 157.8G -> 153.6G (second run of the same binary: 155.1G, noise), gate: 0 mismatches, conformance ok, 1.20s @8 threads (noisy). Files: src/format/ir/{element,formatter,document}.ts.
+### perf R4 lexer
+- Change: no module-level table reads on the identifier path. `Lexer.name` tests name bytes with arithmetic ranges instead of `NAME_BYTE[]` (a `_tlv_get_addr` call per byte in worker mode) and uses a local `src`; `Lexer.scan` recognizes identifier starts arithmetically before the `FIRST[]` read.
+- Instructions: 157.8G -> 155.6G (1 thread; same-code builds varied 154.6-155.7G). Cycles 34.3G.
+- Gate (full): vscode byte mismatches 0, no GATE FAILED, conformance ok.
+- Tried and dropped: DataView key reads in `name` (158.7G, worse); same fast path in `scanAfterLineFeed` and a space shortcut in `scan` (no gain).
+- Files: src/sema/parser/lexer.ts

@@ -79,11 +79,8 @@ import {
   TOK_BASE,
   token as tokenOf,
   TOK_INLINE_MAX,
-  TOK_LEN,
   TOK_OFF,
-  TOK_W0,
-  TOK_W1,
-  TOK_W2,
+  TOK_TAB,
   twSingle,
 } from "./element.ts";
 import { Storage } from "./storage.ts";
@@ -104,6 +101,8 @@ export class Formatter {
   /** One byte per 64 bytes of `source`: 1 if a closer look at its width is needed (`markOddBlocks`). */
   oddBlocks: Uint8Array;
   oddCount: number;
+  /** `TOK_TAB`, by field: a module-level global is a thread-local lookup in each access. */
+  tokTab: Int32Array;
   nextGroupId: number;
   options: FormatOptions;
   /** The hook for what is language specific (JsFormatContext extends FormatContext). */
@@ -130,6 +129,7 @@ export class Formatter {
     this.source = new Uint8Array(0);
     this.oddBlocks = new Uint8Array(64);
     this.oddCount = 0;
+    this.tokTab = TOK_TAB;
     this.nextGroupId = 1;
     this.options = options;
     this.context = new FormatContext(options);
@@ -227,15 +227,16 @@ export class Formatter {
 
   /** A keyword or a punctuator, registered with `token("...")` in element.ts. */
   token(handle: number): void {
-    const len = TOK_LEN[handle] | 0;
+    const h4 = handle * 4;
+    const len = this.tokTab[h4] | 0;
     if (len <= TOK_INLINE_MAX) {
       const st = this.st;
       const i = st.len;
       if (i === st.tag.length) st.grow(i + 1);
       st.tag[i] = (TOK_BASE + len) | 0;
-      st.a[i] = TOK_W0[handle] | 0;
-      st.b[i] = TOK_W1[handle] | 0;
-      st.c[i] = TOK_W2[handle] | 0;
+      st.a[i] = this.tokTab[h4 + 1] | 0;
+      st.b[i] = this.tokTab[h4 + 2] | 0;
+      st.c[i] = this.tokTab[h4 + 3] | 0;
       st.len = i + 1;
       this.tracker.text(len, i);
     } else {
@@ -253,8 +254,9 @@ export class Formatter {
 
   /** Rust `if_group_breaks(&"..")`: a token that is only written if the enclosing group breaks. */
   tokenIfBreaks(handle: number): void {
-    const len = TOK_LEN[handle] | 0;
-    if (len <= TOK_INLINE_MAX) this.pushPlain(TIB_BASE + len, TOK_W0[handle] | 0, TOK_W1[handle] | 0, TOK_W2[handle] | 0);
+    const h4 = handle * 4;
+    const len = this.tokTab[h4] | 0;
+    if (len <= TOK_INLINE_MAX) this.pushPlain(TIB_BASE + len, this.tokTab[h4 + 1] | 0, this.tokTab[h4 + 2] | 0, this.tokTab[h4 + 3] | 0);
     else this.pushPlain(E_TOKEN_IF_BREAKS, TOK_OFF[handle] | 0, len, 0);
   }
 
@@ -345,10 +347,13 @@ export class Formatter {
    * backslash. It can be so without this saying so.
    */
   isPlainSource(start: number, end: number): boolean {
+    const first = start >> 6;
+    const last = end >> 6;
+    // Most tokens are inside one block of 64 bytes.
+    if (first === last) return first < this.oddCount && (this.oddBlocks[first] | 0) === 0;
     const odd = this.oddBlocks;
     const n = this.oddCount;
-    const last = end >> 6;
-    for (let blk = start >> 6; blk <= last; blk++) {
+    for (let blk = first; blk <= last; blk++) {
       if (blk >= n || (odd[blk] | 0) !== 0) return false;
     }
     return true;
@@ -363,7 +368,17 @@ export class Formatter {
       this.writeOddSourceToken(start, end);
       return;
     }
-    this.push4(E_SOURCE_TEXT, start, end - start, twSingle(end - start));
+    // push4 and Tracker.note, for a single-line text of known width.
+    const st = this.st;
+    const i = st.len;
+    if (i === st.tag.length) st.grow(i + 1);
+    const w = twSingle(end - start);
+    st.tag[i] = E_SOURCE_TEXT;
+    st.a[i] = start | 0;
+    st.b[i] = (end - start) | 0;
+    st.c[i] = w | 0;
+    st.len = i + 1;
+    this.tracker.text(w, i);
   }
 
   writeOddSourceToken(start: number, end: number): void {

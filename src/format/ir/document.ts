@@ -286,7 +286,6 @@ export class Tracker {
     const n = this.nFrames;
     if (n === this.fKind.length) this.growFrames();
     this.fKind[n] = kind | 0;
-    this.fStartFlags[n] = 0;
     this.fStart[n] = start | 0;
     this.fFirstText[n] = NO_TEXT;
     this.nFrames = n + 1;
