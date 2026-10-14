@@ -208,16 +208,21 @@ for (let c = 0; c < 256; c++) {
   ODD[c] = plain ? 0 : 1;
 }
 
+export function oddTable(): Uint8Array {
+  return ODD;
+}
+
 /** Whether text[start, end) is one line of ASCII, as wide as it is long. */
 export function isAllPrintable(text: Uint8Array, start: number, end: number): boolean {
   const table = PRINT; // module state is thread-local in worker programs: read it once
+  const e = end | 0;
   let bad = 0;
-  let i = start;
-  for (; i + 4 <= end; i += 4) {
-    bad = bad | (table[text[i] | 0] | 0) ^ 1 | (table[text[i + 1] | 0] | 0) ^ 1 | (table[text[i + 2] | 0] | 0) ^ 1 |
-      (table[text[i + 3] | 0] | 0) ^ 1;
+  let i = start | 0;
+  for (; (i + 4) <= e; i = (i + 4) | 0) {
+    bad = bad | (table[text[i] | 0] | 0) ^ 1 | (table[text[(i + 1) | 0] | 0] | 0) ^ 1 | (table[text[(i + 2) | 0] | 0] | 0) ^ 1 |
+      (table[text[(i + 3) | 0] | 0] | 0) ^ 1;
   }
-  for (; i < end; i++) bad = bad | (1 ^ (table[text[i] | 0] | 0));
+  for (; i < e; i = (i + 1) | 0) bad = bad | (1 ^ (table[text[i] | 0] | 0));
   return bad === 0;
 }
 
@@ -229,14 +234,15 @@ export function stringWidth(text: Uint8Array, start: number, end: number): numbe
 /** The same as `flavor` counts. */
 export function stringWidthAs(text: Uint8Array, start: number, end: number, flavor: number): number {
   const table = PW;
+  const e = end | 0;
   let bad = 0;
-  let i = start;
-  for (; i + 4 <= end; i += 4) {
-    bad = bad | (table[text[i] | 0] | 0) ^ 1 | (table[text[i + 1] | 0] | 0) ^ 1 | (table[text[i + 2] | 0] | 0) ^ 1 |
-      (table[text[i + 3] | 0] | 0) ^ 1;
+  let i = start | 0;
+  for (; (i + 4) <= e; i = (i + 4) | 0) {
+    bad = bad | (table[text[i] | 0] | 0) ^ 1 | (table[text[(i + 1) | 0] | 0] | 0) ^ 1 | (table[text[(i + 2) | 0] | 0] | 0) ^ 1 |
+      (table[text[(i + 3) | 0] | 0] | 0) ^ 1;
   }
-  for (; i < end; i++) bad = bad | (1 ^ (table[text[i] | 0] | 0));
-  if (bad === 0) return end - start;
+  for (; i < e; i = (i + 1) | 0) bad = bad | (1 ^ (table[text[i] | 0] | 0));
+  if (bad === 0) return e - (start | 0);
   return widthOfNonAscii(text, start, end, flavor);
 }
 
@@ -251,7 +257,8 @@ export function textWidth(text: Uint8Array, start: number, end: number, flavor: 
   let rest = start;
   while (true) {
     let at = -1;
-    for (let i = rest; i < end; i++) {
+    const e = end | 0;
+    for (let i = rest | 0; i < e; i = (i + 1) | 0) {
       const b = text[i] | 0;
       if (b === 9 || b === 10) { at = i; break; }
     }

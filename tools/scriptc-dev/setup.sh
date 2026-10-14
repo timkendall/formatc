@@ -1,14 +1,22 @@
 #!/bin/sh
-# Installs scriptc 0.3.0's compiler package and applies our patches to it (idempotent).
+# Installs scriptc 0.3.0's compiler package and applies our patches to it, always from a pristine copy, in order.
 #   tools/scriptc-dev/setup.sh            then build with: node tools/scriptc-dev/scriptc.mjs build ...
 #   SCRIPTC="node tools/scriptc-dev/scriptc.mjs" tools/perf/gate.sh <name>
+# Fails if any hunk does not apply cleanly (a fuzzy or partial application would leave a different compiler).
 set -e
 D=$(cd "$(dirname "$0")" && pwd)
 cd "$D"
 [ -d node_modules/@scriptc/compiler ] || npm install --silent
 C=node_modules/@scriptc/compiler
+P=node_modules/.scriptc-compiler-pristine
+if [ ! -d "$P" ]; then
+  T=$(mktemp -d)
+  (cd "$T" && npm pack @scriptc/compiler@0.3.0 --silent > /dev/null && tar -xzf scriptc-compiler-0.3.0.tgz)
+  mv "$T/package" "$P"
+fi
+rm -rf "$C/dist" && cp -R "$P/dist" "$C/dist"
 for p in patches/*.patch; do
   [ -e "$p" ] || continue
-  if patch -p1 -d "$C" --dry-run -R -s -f < "$p" > /dev/null 2>&1; then echo "already applied: $p"
-  else patch -p1 -d "$C" -s -f < "$p" && echo "applied: $p"; fi
+  if ! patch -p1 -d "$C" -s -N -F0 --no-backup-if-mismatch -r - < "$p"; then echo "FAILED: $p"; exit 1; fi
+  echo "applied: $p"
 done

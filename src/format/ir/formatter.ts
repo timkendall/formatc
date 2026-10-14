@@ -74,6 +74,7 @@ import {
   T_START_LABELLED,
   T_START_LINE_SUFFIX,
   TW_ONE_STRING,
+  TW_VALUE_MASK,
   lineModeWillBreak,
   TIB_BASE,
   TOK_BASE,
@@ -84,7 +85,7 @@ import {
   twSingle,
 } from "./element.ts";
 import { Storage } from "./storage.ts";
-import { markOddBlocks, stringWidthAs, textWidth } from "./width.ts";
+import { oddTable, stringWidthAs, textWidth } from "./width.ts";
 import { printCaptureToText } from "./printer.ts";
 
 /** `Variants`: which of the variants of a best-fitting are left when soft line breaks are removed. */
@@ -98,9 +99,8 @@ export class Formatter {
   tracker: Tracker;
   /** What `E_SOURCE_TEXT` is a range of. */
   source: Uint8Array;
-  /** One byte per 64 bytes of `source`: 1 if a closer look at its width is needed (`markOddBlocks`). */
-  oddBlocks: Uint8Array;
-  oddCount: number;
+  /** `ODD_TAB`, by field: 1 for the bytes that make a text "odd" (see `isPlainSource`). */
+  oddTab: Uint8Array;
   /** `TOK_TAB`, by field: a module-level global is a thread-local lookup in each access. */
   tokTab: Int32Array;
   nextGroupId: number;
@@ -119,16 +119,13 @@ export class Formatter {
   spare: I32Vec[];
   // Embedded formatters (`beginEmbedded`)
   embedSources: Uint8Array[];
-  embedOdds: Uint8Array[];
-  embedOddCounts: I32Vec;
   embedState: I32Vec;
 
   constructor(options: FormatOptions) {
     this.st = new Storage(4096);
     this.tracker = new Tracker(this.st);
     this.source = new Uint8Array(0);
-    this.oddBlocks = new Uint8Array(64);
-    this.oddCount = 0;
+    this.oddTab = oddTable();
     this.tokTab = TOK_TAB;
     this.nextGroupId = 1;
     this.options = options;
@@ -140,8 +137,6 @@ export class Formatter {
     this.conditions = new I32Vec(16);
     this.spare = [];
     this.embedSources = [];
-    this.embedOdds = [];
-    this.embedOddCounts = new I32Vec(8);
     this.embedState = new I32Vec(8);
   }
 
@@ -161,8 +156,6 @@ export class Formatter {
     this.nextGroupId = 1;
     this.stack.reset();
     this.embedSources.length = 0;
-    this.embedOdds.length = 0;
-    this.embedOddCounts.reset();
     this.embedState.reset();
     // Measured by oxc on the sources of VS Code: the median is 0.19 elements per byte, and 95% of the files are below 0.4.
     this.st.reserve(RESERVED + ((source.length * 2) / 5 | 0) + 16);
@@ -170,9 +163,6 @@ export class Formatter {
 
   setSource(source: Uint8Array): void {
     this.source = source;
-    const need = (source.length >> 6) + 2;
-    if (this.oddBlocks.length < need) this.oddBlocks = new Uint8Array(need * 2);
-    this.oddCount = markOddBlocks(source, this.oddBlocks);
   }
 
   /** Where the document is: `[RESERVED, len)`. Use `rootStart()`/`rootEnd()`. */
@@ -206,6 +196,22 @@ export class Formatter {
     st.len = i + 1;
     this.tracker.note(t, a | 0, b | 0, c | 0, i);
     return i;
+  }
+
+  /** `push4` for E_SOURCE_TEXT / E_OWNED_TEXT: the tracker's `note` for a text, without the dispatch. */
+  pushText(t: number, a: number, b: number, w: number): void {
+    const st = this.st;
+    const i = st.len;
+    if (i === st.tag.length) st.grow(i + 1);
+    st.tag[i] = t | 0;
+    st.a[i] = a | 0;
+    st.b[i] = b | 0;
+    st.c[i] = w | 0;
+    st.len = i + 1;
+    const wi = w | 0;
+    // multiline and not one string
+    if (wi < 0 && (wi & TW_ONE_STRING) === 0) this.tracker.forcedBreak(i);
+    this.tracker.text(wi & TW_VALUE_MASK, i);
   }
 
   /** An element that the tracker has nothing to learn from (indentation, entries of a fill, labels, a token that is only written if the group breaks). */
@@ -347,16 +353,16 @@ export class Formatter {
    * backslash. It can be so without this saying so.
    */
   isPlainSource(start: number, end: number): boolean {
-    const first = start >> 6;
-    const last = end >> 6;
-    // Most tokens are inside one block of 64 bytes.
-    if (first === last) return first < this.oddCount && (this.oddBlocks[first] | 0) === 0;
-    const odd = this.oddBlocks;
-    const n = this.oddCount;
-    for (let blk = first; blk <= last; blk++) {
-      if (blk >= n || (odd[blk] | 0) !== 0) return false;
+    const src = this.source;
+    const tab = this.oddTab;
+    const e = end | 0;
+    let bad = 0;
+    let i = start | 0;
+    for (; (i + 4) <= e; i = (i + 4) | 0) {
+      bad = bad | (tab[src[i] | 0] | 0) | (tab[src[(i + 1) | 0] | 0] | 0) | (tab[src[(i + 2) | 0] | 0] | 0) | (tab[src[(i + 3) | 0] | 0] | 0);
     }
-    return true;
+    for (; i < e; i = (i + 1) | 0) bad = bad | (tab[src[i] | 0] | 0);
+    return bad === 0;
   }
 
   /**
@@ -364,20 +370,30 @@ export class Formatter {
    * tab: an identifier, a number, a regular expression. This is the cheapest way to write text.
    */
   sourceText(start: number, end: number): void {
-    if (!this.isPlainSource(start, end)) {
-      this.writeOddSourceToken(start, end);
+    const s0 = start | 0;
+    const e = end | 0;
+    const src = this.source;
+    const tab = this.oddTab;
+    let bad = 0;
+    let k = s0;
+    for (; (k + 4) <= e; k = (k + 4) | 0) {
+      bad = bad | (tab[src[k] | 0] | 0) | (tab[src[(k + 1) | 0] | 0] | 0) | (tab[src[(k + 2) | 0] | 0] | 0) | (tab[src[(k + 3) | 0] | 0] | 0);
+    }
+    for (; k < e; k = (k + 1) | 0) bad = bad | (tab[src[k] | 0] | 0);
+    if (bad !== 0) {
+      this.writeOddSourceToken(s0, e);
       return;
     }
     // push4 and Tracker.note, for a single-line text of known width.
     const st = this.st;
-    const i = st.len;
+    const i = st.len | 0;
     if (i === st.tag.length) st.grow(i + 1);
-    const w = twSingle(end - start);
+    const w = (e - s0) | 0;
     st.tag[i] = E_SOURCE_TEXT;
-    st.a[i] = start | 0;
-    st.b[i] = (end - start) | 0;
-    st.c[i] = w | 0;
-    st.len = i + 1;
+    st.a[i] = s0;
+    st.b[i] = w;
+    st.c[i] = w;
+    st.len = (i + 1) | 0;
     this.tracker.text(w, i);
   }
 
@@ -388,7 +404,7 @@ export class Formatter {
       if ((src[i] | 0) === 92) { hasBackslash = true; break; }
     }
     if (hasBackslash && this.writeNameWithoutEscapes(start, end)) return;
-    this.push4(E_SOURCE_TEXT, start, end - start, twSingle(this.stringWidth(src, start, end)));
+    this.pushText(E_SOURCE_TEXT, start, end - start, twSingle(this.stringWidth(src, start, end)));
   }
 
   /**
@@ -414,7 +430,7 @@ export class Formatter {
    * the element is a range of the source.
    */
   textSource(start: number, end: number): void {
-    this.push4(E_SOURCE_TEXT, start, end - start, this.textWidth(this.source, start, end));
+    this.pushText(E_SOURCE_TEXT, start, end - start, this.textWidth(this.source, start, end));
   }
 
   /**
@@ -422,7 +438,7 @@ export class Formatter {
    * `TextWidth`: `twSingle(n)`, `twMultiline(n)`, `twMultilineString(n)` from element.ts).
    */
   textSourceWithWidth(start: number, end: number, width: number): void {
-    this.push4(E_SOURCE_TEXT, start, end - start, width);
+    this.pushText(E_SOURCE_TEXT, start, end - start, width);
   }
 
   /** Rust `write_text(&owned, Some(width))`: `bytes[start, end)` is copied. */
@@ -430,12 +446,12 @@ export class Formatter {
     const text = this.st.text;
     const at = text.len;
     text.append(bytes, start, end);
-    this.push4(E_OWNED_TEXT, at, end - start, width);
+    this.pushText(E_OWNED_TEXT, at, end - start, width);
   }
 
   /** Rust `text_without_whitespace(&source[range])`: the text has no tab and no line break. */
   textSourceNoWs(start: number, end: number): void {
-    this.push4(E_SOURCE_TEXT, start, end - start, twSingle(this.stringWidth(this.source, start, end)));
+    this.pushText(E_SOURCE_TEXT, start, end - start, twSingle(this.stringWidth(this.source, start, end)));
   }
 
   /** Rust `text(&owned)`: writes `bytes[start, end)`, which can be anything but has no `\r`. It is copied. */
@@ -443,7 +459,7 @@ export class Formatter {
     const text = this.st.text;
     const at = text.len;
     text.append(bytes, start, end);
-    this.push4(E_OWNED_TEXT, at, end - start, this.textWidth(this.st.text.data, at, at + (end - start)));
+    this.pushText(E_OWNED_TEXT, at, end - start, this.textWidth(this.st.text.data, at, at + (end - start)));
   }
 
   /** Rust `text_without_whitespace(&owned)`. */
@@ -451,7 +467,7 @@ export class Formatter {
     const text = this.st.text;
     const at = text.len;
     text.append(bytes, start, end);
-    this.push4(E_OWNED_TEXT, at, end - start, twSingle(this.stringWidth(this.st.text.data, at, at + (end - start))));
+    this.pushText(E_OWNED_TEXT, at, end - start, twSingle(this.stringWidth(this.st.text.data, at, at + (end - start))));
   }
 
   /** Writes a JS string (UTF-8 encoded; slow path: for text that is built at run time and is rare). */
@@ -472,7 +488,7 @@ export class Formatter {
     const text = this.st.text;
     const len = text.len - start;
     const w = this.textWidth(text.data, start, text.len);
-    this.push4(E_OWNED_TEXT, start, len, w);
+    this.pushText(E_OWNED_TEXT, start, len, w);
   }
 
   // ───────────────────────────── tags ─────────────────────────────
@@ -1074,13 +1090,9 @@ export class Formatter {
    */
   beginEmbedded(source: Uint8Array, offset: number): void {
     this.embedSources.push(this.source);
-    this.embedOdds.push(this.oddBlocks);
-    this.embedOddCounts.push(this.oddCount);
     this.embedState.push(this.st.len);
     this.embedState.push(offset);
-    this.oddBlocks = new Uint8Array((source.length >> 6) + 2);
     this.source = source;
-    this.oddCount = markOddBlocks(source, this.oddBlocks);
   }
 
   /** Ends `beginEmbedded`: the ranges of the inner source that were written become ranges of the outer one. */
@@ -1089,8 +1101,6 @@ export class Formatter {
     const offset = this.embedState.pop();
     const first = this.embedState.pop();
     this.source = this.embedSources.pop() as Uint8Array;
-    this.oddBlocks = this.embedOdds.pop() as Uint8Array;
-    this.oddCount = this.embedOddCounts.pop();
     const st = this.st;
     let copyAt = -1;
     for (let i = first; i < st.len; i++) {

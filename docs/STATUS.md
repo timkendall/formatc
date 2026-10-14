@@ -878,3 +878,22 @@ Instructions 133.4G -> 133.3G (within +-1G noise), 0 mismatches. Not worth it (L
 - 90-int32-locals.patch (new int32-locals.js, emitter.js, expr-primitives.js): non-captured locals whose every write the existing contract range prover shows to be int32 get an `alloca i32` (~11,100 of ~26,000 locals). 97.6G → 96.5G. The least certain patch (new codegen path); drop it first if anything misbehaves.
 - Not kept: a pthread-TSD fast path for TLS on Darwin (all three designs neutral or worse; LLVM already sinks the TLV calls; the remaining ones are in the prebuilt runtime).
 - Stacked 30–90: 92.9–94.5G instructions, 21.8–22.3G cycles; interleaved vs Bun: 4.86/0.73/0.46 s at 1/8/18 threads (Bun 2.42/0.44/0.29). Full gate clean.
+
+### perf P1 irw
+Change: dropped the per-file `markOddBlocks` pass (2.2G: the whole source classified byte by byte); `sourceText` now checks only the token's own bytes (int indices, 4-way unrolled, inlined) and `isPlainSource` does the same; `isAllPrintable`/`stringWidthAs`/`textWidth` scan with int indices; text elements (`textSource*`, `textBytes*`, `endBuiltText`) go through `pushText` (tracker.text directly, no `note` dispatch).
+Counters (71.35M elements: 17.4M tokens, 9.8M source text, 14.8M group tags, 6.2M indent tags, 5.0M lines, 3.0M spaces): unchanged, merging adjacent text/space/token pairs is at most ~4M (6%) and a leading-space merge is not safe at line starts; the costs were per byte, not per element.
+Instructions (min of 5, interleaved, 1 thread; run-to-run noise is +-1G, so compare binaries only interleaved): 93.2G -> 91.8G (-1.4%); full gate: 0 mismatches, 0.83s @8 threads (noisy), conformance ok.
+Tried and not better: Int32-local rewrites of `token`/`pushPlain`; field-direct (no local alias) `isPlainSource` loop (+0.7G vs aliased); Uint8Array.indexOf/isAscii natives (indexOf unsupported on Uint8Array, scalar 600 MB/s on Buffer).
+Files: src/format/ir/formatter.ts, src/format/ir/width.ts.
+
+### perf P1 flat
+- Result: NOT KEPT (no code change). Baseline re-measured 93.7G instr (the 94.3G was noise); no design beat it.
+- Query counts (vscode corpus, 10.2M exprs): exprParent 12.7M calls / 5.9M distinct, exprSpan 7.6M / 5.4M, exprEnd 7.0M, exprStart 3.1M, exprChain 9.5M, exprIsInOptionalChain 5.9M, keyLoad 3.4M, asciiNameLen 1.1M, fileEndOfTokenBefore 0.7M, anParent 0.67M, parentOfExpr 1.6M, anSpan 2.5M; buildTypeParents 11.4K builds.
+- Design 1 (lazy flat columns xS/xE/xP in FileState, reset per file, exprParent/exprSpan/exprStart/exprEnd read them): 95.4G (+1.7G). The accessors are already ~1 TLV + 2-3 loads; a column hit costs the same, a miss costs more, plus 3 fills per file.
+- Design 2 (fused exprIsInOptionalChain, tag-table filter in the buildTypeParents expression loop): 93.6G vs 93.7G, within noise; reverted. Remaining cost there is branch mispredicts over all exprs, not accessor layers.
+- Files touched then reverted: src/lint/ast/{state,expr,node,mod}.ts. 0 mismatches in both builds.
+### scriptc compiler patches (P1)
+- 95-borrow-aliases.patch (emitter.js, borrowed-receivers.js, expr-bytes.js): scriptc's existing borrow analysis (`unwrittenAlias`, effect summaries) now covers typed arrays: local aliases of fields, module-level tables read through the TDZ check, and projections passed to bytes intrinsics. Static `scr_bytes_retain_v` 2437 → 1178. Checked with --sanitize: retains when a write (grow(), field store) can intervene. −1.6G.
+- 96-bounds-i32-calls.patch (emitter.js, expr-calls.js, bytes-bounds.js, integer-ranges.js): internal functions whose params/returns are proven int32 at every call site get an i32 signature (double-ABI adapter kept for closures/vtables/runtime); bounds checks elided for fixed-length module tables with proven index ranges. Ablation: all integer-index bounds checks ≈ 5G (most hot reads are `this.src[pos]`, not provable without a `len <= src.length` invariant). −3.2G.
+- setup.sh now restores the pristine compiler and applies every patch in order with no fuzz (the old "already applied" check re-applied a patch and left a .rej).
+- With the IR-writer change (no per-file markOddBlocks pass; tokens check their own bytes): 88.7G instructions, 20.5G cycles, 0.73s @8 threads; full gate clean.

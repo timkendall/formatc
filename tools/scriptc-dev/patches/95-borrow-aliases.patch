@@ -1,0 +1,93 @@
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/borrowed-receivers.js b/dist/backend/llvm/borrowed-receivers.js
+--- a/dist/backend/llvm/borrowed-receivers.js	2026-10-13 19:51:27
++++ b/dist/backend/llvm/borrowed-receivers.js	2026-10-13 19:51:27
+@@ -10,6 +10,12 @@
+     if (e.kind !== "seqExpr")
+         return null;
+     for (const s of e.stmts) {
++        // A module-initialization (TDZ) check reads one scalar flag and throws.
++        if (s.kind === "exprStmt" &&
++            s.expr.kind === "intrinsic" &&
++            s.expr.name === "module.tdzCheck" &&
++            s.expr.args.every((arg) => (arg.kind === "varRef" && !isRefCounted(arg.type)) || arg.kind === "strLit"))
++            continue;
+         if (s.kind !== "if" ||
+             s.else_ !== null ||
+             isRefCounted(s.cond.type) ||
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/emitter.js b/dist/backend/llvm/emitter.js
+--- a/dist/backend/llvm/emitter.js	2026-10-13 19:51:27
++++ b/dist/backend/llvm/emitter.js	2026-10-13 19:51:27
+@@ -4610,7 +4610,7 @@
+         const rw = this.referenceWrites;
+         if (rw === null || s.init === null || cursor === null || cursor.stmts[cursor.index] !== s)
+             return false;
+-        if (!this.plainReference(s.init.type) ||
++        if (!this.aliasReference(s.init.type) ||
+             !this.canBorrowReceiver(s.init) ||
+             !this.unownedWalk(s.init))
+             return false;
+@@ -4686,12 +4686,12 @@
+             case "varRef": {
+                 const binding = this.binding(e.localId);
+                 if (binding.kind === "global")
+-                    return this.plainReference(binding.type);
++                    return this.aliasReference(binding.type);
+                 return (binding.kind === "local" &&
+                     binding.local !== undefined &&
+                     !binding.local.boxed &&
+                     !binding.local.tdz &&
+-                    this.plainReference(binding.local.type) &&
++                    this.aliasReference(binding.local.type) &&
+                     !this.stringSlices.has(e.localId) &&
+                     !this.storedSplits.has(e.localId) &&
+                     !this.localUnionStorage.has(e.localId));
+@@ -6915,6 +6915,12 @@
+             default:
+                 return false;
+         }
++    }
++    /** plainReference plus typed arrays: a bytes value is one plain pointer
++     * too, so a stable local can alias a field/local whose location nothing
++     * writes during the local's block (unwrittenAlias). */
++    aliasReference(type) {
++        return type.kind === "bytes" || this.plainReference(type);
+     }
+     /** A reference held as one plain pointer that emitReadReceiver can read
+      * without owning: class instances, records, arrays, strings and
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/expr-bytes.js b/dist/backend/llvm/expr-bytes.js
+--- a/dist/backend/llvm/expr-bytes.js	2026-10-13 19:51:26
++++ b/dist/backend/llvm/expr-bytes.js	2026-10-13 19:51:27
+@@ -1,6 +1,6 @@
+ /* Focused LLVM expression emission extracted from emitter.ts. */
+ import { InternalCompilerError } from "../../errors.js";
+-import { emitBorrowedInput } from "./borrowed-inputs.js";
++import { borrowableInputs, emitBorrowedInput } from "./borrowed-inputs.js";
+ import { BYTES_ELEMENT_SIZE, F64 } from "../../ir/ir.js";
+ import { F64_INF, exactIndexLines, f64Lit } from "./common.js";
+ import { exactInteger, widenInteger } from "./integer-values.js";
+@@ -411,12 +411,21 @@
+         method === "byteLength" ||
+         method === "get" ||
+         byteNumberAccess(e) !== null;
++    // Byte operations borrow every input and never replace a heap edge (bytes
++    // hold no references, no callbacks run); views and identity results return
++    // independent owners, while writes retain no operand beyond the call. A
++    // projection input (`this.out`) borrows when no later input writes it.
++    const lent = directElementAccess ? null : borrowableInputs(host, [e.receiver, ...e.args]);
+     const r = directElementAccess
+         ? host.emitStableReceiver(e.receiver, e.args)
+-        : emitBorrowedInput(host, e.receiver);
+-    // Byte operations borrow every input; views and identity results return
+-    // independent owners, while writes retain no operand beyond the call.
+-    const args = e.args.map((a) => emitBorrowedInput(host, a));
++        : lent[0]
++            ? host.emitReadReceiver(e.receiver)
++            : host.emitExpr(e.receiver);
++    const args = e.args.map((a, i) => lent === null
++        ? emitBorrowedInput(host, a)
++        : lent[i + 1]
++            ? host.emitReadReceiver(a)
++            : host.emitExpr(a));
+     const NAN = f64Lit(NaN);
+     switch (method) {
+         case "length":
