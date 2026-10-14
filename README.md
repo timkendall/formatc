@@ -44,12 +44,26 @@ threads.
 | 1 · hot spots | `buildUnicodeEscapes`, `parents.ts fill()`, width scans, printer `DataView` | 2 × Haiku 5.5, 2 × Sonnet 5.5 (medium) | 52 | 2.8 M | ~$0.40 | 163.8 G (−4.0%) | 1.25 s¹ | 4 of 4 (one redone by the orchestrator) |
 | 2 · worker-mode state | read thread-local singletons once in the lexer, IR writer/printer and tree handles; one fused byte scan | 3 × Haiku 5.5, 2 × Sonnet 5.5 (medium) | 101 | 6.8 M | ~$0.55 | 161.9 G (−1.2%) | 1.15 s (2.67×) | 1 of 5 |
 | 3 · less work per node (PERFORMANCE.md §4 C) | comment lookups on the quiet path, newline queries, unchanged string literals, span accessors | 4 × Sonnet 5.5 (high) | 126 | 9.3 M | ~$2.9 | 157.8 G (−2.5%) | 1.14 s (2.59×) | 3 of 4 |
-| orchestrator, rounds 1–3 | planning, probes, merging, gating, profiling, docs | Opus 5.5 | ~90 | ~12 M | ~$6.5 | | | |
+| 4 · thread-local lookups | token tables, lexer byte table, `tools/codemod/hoist-globals.mjs` (read module-level objects once per function) | 3 × Sonnet 5.5 (high) | 80 | 5.7 M | ~$2.0 | 150.2 G (−4.8%) | 1.11 s | 3 of 3 |
+| 5 · more lookups, refcounts | lexer records identifier escapes, `outslots.mjs` (`SP` and 12 other out-slot arrays become objects), fewer retain/release | 4 × Sonnet 5.5 (medium/high) | 73 | 3.9 M | ~$1.4 | 145.6 G (−3.1%) | 1.08 s | 3 of 4 |
+| 6 · constants in import cycles | `leaf-consts.mjs`: 578 constants of 45 cyclic modules moved to import-free leaves | 1 × Sonnet 5.5 (high) | 10 | 0.5 M | ~$0.24 | 134.2 G (−7.8%) | 1.00 s | 1 of 1 |
+| 7 · lexer, printer, parse, token ids | per-identifier path, native copies, per-node parse work, literal token ids | 4 × Sonnet 5.5 (medium/high) | 72 | 4.5 M | ~$1.5 | 133.4 G (−0.6%) | 1.01 s | 2 of 4 |
+| 8 · accessor-aware aliasing | inline trivial `hir` accessors into aliased callers | 1 × Sonnet 5.5 (medium) | 8 | 0.4 M | ~$0.17 | no gain | | 0 of 1 |
+| orchestrator, rounds 1–8 | planning, probes, disassembly, merging, gating, profiling, docs | Opus 5.5 | ~170 | ~38 M | ~$19 | | | |
+| **after round 8, idle machine** | | | | | | **132.2 G** | **0.90 s (2.09×)** | |
 
 ¹ Measured while other agents were running; the idle 8-thread time after round 2 is in the table below.
 
-Rounds 1–3 cost about $10.5 in total, against ~$560 for round 0. Together they took instructions from 170.6 G to 157.8 G
-(−7.5%) and the 8-thread time from 1.25 s to 1.14 s. Each agent ran in its own git worktree and stopped after one
+Rounds 1–8 cost about $28 in total (~$9 for 26 agents, ~$19 for the orchestrator), against ~$560 for round 0.
+Together they took instructions from 170.6 G to 132.2 G (−22.5%), cycles from 38.6 G to 27.9 G (−28%), and the 8-thread
+time from 1.25 s to 0.90 s.
+
+The big lesson of rounds 4–6: in a program that uses `Worker`, scriptc 0.3.0 makes every module-level binding
+thread-local, and on macOS every source-level mention of one is a separate `_tlv_get_addr` call. A numeric constant is
+folded, except when its module is in an import cycle; then each use is two calls (a checked "initialized" flag and the
+value). Our profile script hid this until round 4: it dropped samples whose leaf frame was a back-reference in the trace,
+so `_tlv_get_addr` showed 0.2% instead of 11%. Three re-runnable codemods in `tools/codemod/` remove most of it without
+touching the compiler. Run them in this order after merging new code: `leaf-consts.mjs`, `outslots.mjs`, `hoist-globals.mjs`. Each agent ran in its own git worktree and stopped after one
 target (after the gate passed, after two failed attempts, or at ~60 tool calls). None was resumed, so no agent re-read a long
 context. Haiku agents cost $0.02–0.11 each, Sonnet agents at medium effort ~$0.18, and Sonnet agents at high effort $0.32–1.20. Per-agent numbers come from `python3 -I tools/agent-cost.py
 <session-id>`. Sub-agent transcripts record only the first streaming count of output tokens, so output is estimated from the
@@ -71,14 +85,13 @@ measurements, where the time goes, and the ways we see to close the gap.
 ## Results
 
 `--check` over bench/vscode (18,080 files, 238 MB, 193 MB of it TypeScript), Apple M5 Pro, Bun canary 1.4.4, after swarm round
-3. Interleaved runs, min of 3 (min of 5 at 8 threads), with a background load average of ~7, so both tools are a little slower
-than on an idle machine:
+8. Interleaved runs, min of 3 (min of 5 at 8 threads), load average ~3:
 
 | threads | formatc | `bun fmt` | gap |
 | ------- | ------- | --------- | --- |
-| 1       | 7.56 s  | 2.44 s    | 3.1× |
-| 8 (Bun's published benchmark) | 1.14 s | 0.44 s | 2.59× |
-| 18      | 0.74 s  | 0.31 s    | 2.4× |
+| 1       | 6.10 s  | 2.36 s    | 2.6× |
+| 8 (Bun's published benchmark) | 0.90 s | 0.43 s | 2.09× |
+| 18      | 0.57 s  | 0.29 s    | 2.0× |
 
 Correctness against `bun fmt` on the same tree (`bin/fmt --check --compare-to=../vscode-fmt`):
 

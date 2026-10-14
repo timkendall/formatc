@@ -4,23 +4,23 @@ Measured 2026-10-13 on an Apple M5 Pro (18 cores), macOS, scriptc 0.3.0, Bun can
 
 ## 1. The numbers
 
-`--check`, wall time, interleaved runs. Perf rounds 1–3 (2026-10-13, commits e45b1c0, 995159a, f36929f). The first column is
-before the rounds on an idle machine; the others are after round 3, with a background load average of ~7:
+`--check`, wall time, interleaved runs, min of 3 (5 at 8 threads). Before the perf rounds vs after round 8 (2026-10-13, see the
+README's "Swarm rounds" table for each round):
 
 | threads | formatc before → after | `bun fmt` | gap |
 | ------- | ---------------------- | --------- | --- |
-| 1       | 8.42 → 7.56 s | 2.44 s | 3.5× → 3.1× |
-| 8       | 1.25 → 1.14 s | 0.44 s | 2.85× → 2.59× |
-| 18      | 0.75 → 0.74 s | 0.31 s | 2.5× → 2.4× |
+| 1       | 8.42 → 6.10 s | 2.36 s | 3.5× → 2.6× |
+| 8       | 1.25 → 0.90 s | 0.43 s | 2.85× → 2.09× |
+| 18      | 0.75 → 0.57 s | 0.29 s | 2.5× → 2.0× |
 
 Whole run, one thread, from `/usr/bin/time -l` (instructions retired are stable when the machine is busy; wall time is not):
 
 | | instructions retired | cycles | IPC | peak RSS |
 | - | - | - | - | - |
-| formatc | 170.6 G before the perf rounds → 161.9 G after round 2 → **157.8 G** after round 3 (156.7 G was the first build) | 38.6 → 34.5 G | ~4.6 | 307 MB |
+| formatc | 170.6 G before the perf rounds → **132.2 G** after round 8 (156.7 G was the first build) | 38.6 → 27.9 G | ~4.7 | 305 MB |
 | `bun fmt` | 35.9 G | 10.8 G | 3.3 | 124 MB |
 
-**We execute 4.4× more instructions than Bun.** They are cheap ones (IPC ~4.6 vs 3.3), so the cycle gap is ~3.2×. The
+**We execute 3.7× more instructions than Bun.** They are cheap ones (IPC ~4.7 vs 3.3), so the cycle gap is ~2.6×. The
 problem is instruction count, not cache misses or stalls.
 
 Per-language throughput, measured by the porting agents (compiled, single thread, in-process, MB/s; Bun estimated from `bun fmt
@@ -88,6 +88,14 @@ at any one algorithm.
    allocation"), which is exactly what worker mode makes expensive.
 4. **Reading `.stack` anywhere turns on stack tracking in every function** (−33% in the parser). It was in `main.ts` and is
    removed. Independently, the stack guard on every non-inlined call was ~19% of the parser's samples.
+3a. **Measured in perf rounds 4–7 (the biggest wins so far):** every source-level mention of a module-level binding is a
+   separate `_tlv_get_addr` call (LLVM merges none: `exprLeft` mentions `hir` 3 times, 3 calls). A module-level numeric
+   constant is folded unless its module is in an import cycle; then it is a thread-local global with a checked
+   `X_x25_initialized` flag, two calls per use, also as a `case` label (`anSpan` made 326 such calls). Moving those 578
+   constants into import-free leaf modules saved 11 G instructions (−7.8%). Aliasing a module-level object into a local is
+   one call and no refcount work; aliasing a typed array into a local adds `scr_bytes_retain_v`/release calls. The codemods
+   in `tools/codemod/` apply these rules. What remains (~6% of samples) is mostly functions that mention `hir`, `lx` or `p`
+   once per call; removing it means passing them as parameters.
 5. **`DataView` get/set are runtime calls, not inlined.** `scr_dataview_set` alone is ~1% of the profile.
 6. Closures cost 2.3–3 ns per call. Small top-level functions and methods are inlined. `try` is free. Allocating a small
    object costs 4–8 ns (V8 often allocates nothing for the same code).

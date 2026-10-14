@@ -855,3 +855,8 @@ Instructions 134.2G -> 133.5G / 133.9G / 133.6G: all within the +-1G noise, 0 mi
 Combined src+out buffer with copyWithin not tried (out is shared across embedded documents, many this.out reads/growth paths).
 No files kept.
 - Orchestrator: token-ids codemod not merged (−0.3G, within noise; not worth a generated token table).
+
+### perf R8 acc
+hoist-globals.mjs phase 2 (--accessors) already counts accessor calls as mentions and adds alias+import when absent (no tool change needed; no accessor shapes left to extend: hir.ts/lint accessors are all `return hir.<col>[p] | 0`).
+Dry run/real: 294 functions, 1615 accessor calls inlined, 9 refs hoisted, 63 files (imports of `hir` added, build ok, no SC1016).
+Instructions 133.4G -> 133.3G (within +-1G noise), 0 mismatches. Not worth it (LLVM likely already hoists TLV after inlining): reverted src, tool default unchanged.
