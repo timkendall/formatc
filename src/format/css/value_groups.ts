@@ -44,6 +44,7 @@ import {
   isAtWordPlaceholder,
   isListWithCommaGroup,
 } from "./value_parser.ts";
+import { SHAPE_GROUP_INDENT, SHAPE_GROUP_FILL, SHAPE_GROUP_INDENT_FILL } from "./value_groups.consts.ts";
 
 /** `isOperator` */
 function isOperator(v: Values, id: number, op: number): boolean {
@@ -193,13 +194,6 @@ function isKeyValuePairInParenGroup(v: Values, id: number): boolean {
   return g !== 0 && isKeyValuePair(v, g);
 }
 
-// What `printCommaSeparatedValueGroup` puts around the parts.
-/** `group(indent(parts))` */
-const SHAPE_GROUP_INDENT = 0;
-/** `group(fill(parts))` */
-const SHAPE_GROUP_FILL = 1;
-/** `group(indent(fill(parts)))` */
-const SHAPE_GROUP_INDENT_FILL = 2;
 
 /** The node of the value that what is being printed is in, and the one that that is in, and so on (0: none). */
 function valueAncestor(p: Printer, level: number): number {

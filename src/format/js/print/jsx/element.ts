@@ -61,14 +61,11 @@ import {
 } from "./child_list.ts";
 import { fmtJsxChild, writeJsxClosingElement, writeJsxFragmentTag } from "./mod.ts";
 import { writeOpeningElement } from "./opening_element.ts";
+import { LAYOUT_NO_CHILDREN, LAYOUT_TEMPLATE, LAYOUT_DEFAULT } from "./element.consts.ts";
 
 const LPAREN = token("(");
 const RPAREN = token(")");
 
-// ElementLayout
-const LAYOUT_NO_CHILDREN: number = 0;
-const LAYOUT_TEMPLATE: number = 1;
-const LAYOUT_DEFAULT: number = 2;
 
 const ROWS = new I32Vec(16);
 

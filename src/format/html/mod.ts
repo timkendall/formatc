@@ -46,12 +46,10 @@ import { wouldRepeatSubstitution } from "./in_js.ts";
 import { writeAngularExpression } from "./angular.ts";
 import { HUG_BARE } from "./js.ts";
 import { hasSameContent as contentIsSame } from "./verify.ts";
+import { PARSER_NG_ACTION, PARSER_NG_BINDING, PARSER_NG_DIRECTIVE, PARSER_NG_INTERPOLATION } from "./mod.consts.ts";
+export { PARSER_NG_ACTION, PARSER_NG_BINDING, PARSER_NG_DIRECTIVE, PARSER_NG_INTERPOLATION } from "./mod.consts.ts";
+import { PRAGMA_COMMENT } from "./mod.consts.ts";
 
-// Prettier's `parser` for the expressions of Angular: the numbers of `HTML_NG_*` of src/driver/kinds.ts.
-export const PARSER_NG_ACTION: number = 5;
-export const PARSER_NG_BINDING: number = 6;
-export const PARSER_NG_DIRECTIVE: number = 7;
-export const PARSER_NG_INTERPOLATION: number = 8;
 
 export { P_ANGULAR, P_HTML, P_LWC, P_MJML, P_VUE };
 
@@ -119,7 +117,6 @@ function scratchFor(options: FormatOptions): Scratch {
 }
 
 const BOM_BYTES = new Uint8Array([0xef, 0xbb, 0xbf]);
-const PRAGMA_COMMENT = "<!-- @format -->\n\n";
 
 /** `/^\s*<!--\s*@(?:a|b)\s*-->/.test(text)` */
 function hasPragma(text: Uint8Array, a: string, b: string): boolean {

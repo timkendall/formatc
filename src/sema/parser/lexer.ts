@@ -54,37 +54,10 @@ import { JSX_ENTITY_CODES, JSX_ENTITY_NAMES } from "./jsx_entities.ts";
 import { Bytes, I32Vec } from "../vec.ts";
 import { ATOM_NONE } from "../atom.ts";
 import { hir } from "../hir.ts";
+import { F_INVALID, F_BLANK, F_LINE_FEED, F_CARRIAGE_RETURN, F_NAME, F_DOT, F_EQUALS, F_QUOTE, F_SLASH, F_DIGIT, F_EXCLAMATION, F_QUESTION, F_LESS_THAN, F_GREATER_THAN, F_PLUS, F_MINUS, F_ASTERISK, F_PERCENT, F_AMPERSAND, F_BAR, F_CARET, F_BACKTICK, F_HASH, F_BACKSLASH, F_NOT_ASCII, F_SIMPLE, MARK_STRIDE } from "./lexer.consts.ts";
 
 // ───────────────────────────── tables ─────────────────────────────
 
-// What a token starts with, or what is between two (Rust `First`). Bytes whose token is unambiguous are in SIMPLE instead.
-const F_INVALID = 0;
-const F_BLANK = 1;
-const F_LINE_FEED = 2;
-const F_CARRIAGE_RETURN = 3;
-const F_NAME = 4;
-const F_DOT = 5;
-const F_EQUALS = 6;
-const F_QUOTE = 7;
-const F_SLASH = 8;
-const F_DIGIT = 9;
-const F_EXCLAMATION = 10;
-const F_QUESTION = 11;
-const F_LESS_THAN = 12;
-const F_GREATER_THAN = 13;
-const F_PLUS = 14;
-const F_MINUS = 15;
-const F_ASTERISK = 16;
-const F_PERCENT = 17;
-const F_AMPERSAND = 18;
-const F_BAR = 19;
-const F_CARET = 20;
-const F_BACKTICK = 21;
-const F_HASH = 22;
-const F_BACKSLASH = 23;
-const F_NOT_ASCII = 24;
-/** FIRST[c] >= F_SIMPLE: the byte is a token by itself, FIRST[c] - F_SIMPLE. */
-const F_SIMPLE = 100;
 
 const FIRST = new Uint8Array(256);
 /** Token of a byte that is a token by itself: ( ) { } [ ] ; , : ~ @ */
@@ -170,9 +143,6 @@ for (let i = 0, p = 1; i < 16; i++, p *= 10) POW10[i] = p;
 /** Result slot of the unicode-escape reader: the code point. */
 const ESC = new Int32Array(2);
 let jsxEntities: Map<string, number> | null = null;
-
-// Indices of a Mark in the mark stack (Float64Array, 8 numbers per mark).
-const MARK_STRIDE = 8;
 
 /** `v.toString(radix)` for a whole number (`Number.prototype.toString` with a radix is not used: the compiled code does not take it). */
 export function radixText(v: number, radix: number): string {

@@ -135,14 +135,10 @@ import { takeAsName, missingExpression } from "./mod.ts";
 import { isStartOfStatement } from "./recover.ts";
 import { T_SEMICOLON, T_CLASS } from "../token.ts";
 import { canParseSemicolon } from "./mod.ts";
+import { TS_FALSE, TS_TRUE, TS_UNKNOWN } from "./func.consts.ts";
+export { TS_TRUE } from "./func.consts.ts";
+import { AMBIGUITY_ALLOWED } from "./func.consts.ts";
 
-/** `Tristate` */
-const TS_FALSE = 0;
-export const TS_TRUE = 1;
-const TS_UNKNOWN = 2;
-
-/** `allowAmbiguity`: what is not surely a list of parameters is none. */
-const AMBIGUITY_ALLOWED = false;
 
 const PROPERTY_MODIFIERS = FLAG_PUBLIC | FLAG_PRIVATE | FLAG_PROTECTED | FLAG_READONLY | FLAG_OVERRIDE;
 

@@ -19,21 +19,11 @@ import { fileIsJavascript } from "../../lint/ast/index.ts";
 import { Comments } from "./comments.ts";
 import { SourceText } from "./source_text.ts";
 import type { CursorRegion } from "../cursor_region.ts";
+import { TWC_PRESERVES_WHITESPACE, TWC_IS_IN_TEMPLATE_EXPRESSION, TWC_HAS_WHITESPACE_BEFORE, TWC_HAS_WHITESPACE_BEHIND, TWC_AROUND_TEMPLATE_START, TWC_AROUND_TEMPLATE_END, TWC_IS_DISABLED, TWC_FOLLOWS_PLUGIN, TWC_SORTS_TEMPLATE } from "./context.consts.ts";
+export { TWC_PRESERVES_WHITESPACE, TWC_IS_IN_TEMPLATE_EXPRESSION, TWC_HAS_WHITESPACE_BEFORE, TWC_HAS_WHITESPACE_BEHIND, TWC_AROUND_TEMPLATE_START, TWC_AROUND_TEMPLATE_END, TWC_IS_DISABLED, TWC_FOLLOWS_PLUGIN, TWC_SORTS_TEMPLATE } from "./context.consts.ts";
+import { CURSOR_NONE_ACTIVE } from "./context.consts.ts";
+export { CURSOR_NONE_ACTIVE } from "./context.consts.ts";
 
-// `TailwindContext` (utils/tailwindcss.rs) as a packed int, for the stack of contexts. The porter of tailwindcss.ts owns the meaning of
-// the bits; they are here so that `JsFormatContext` can keep the stack.
-export const TWC_PRESERVES_WHITESPACE: number = 1 << 0;
-export const TWC_IS_IN_TEMPLATE_EXPRESSION: number = 1 << 1;
-export const TWC_HAS_WHITESPACE_BEFORE: number = 1 << 2;
-export const TWC_HAS_WHITESPACE_BEHIND: number = 1 << 3;
-export const TWC_AROUND_TEMPLATE_START: number = 1 << 4;
-export const TWC_AROUND_TEMPLATE_END: number = 1 << 5;
-export const TWC_IS_DISABLED: number = 1 << 6;
-export const TWC_FOLLOWS_PLUGIN: number = 1 << 7;
-export const TWC_SORTS_TEMPLATE: number = 1 << 8;
-
-/** The cursor of `cursorOffset` (cursor.rs). TODO(port): not ported; a region is never active. */
-export const CURSOR_NONE_ACTIVE: boolean = false;
 
 export class JsFormatContext extends FormatContext {
   /**

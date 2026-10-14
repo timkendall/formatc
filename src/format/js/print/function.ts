@@ -90,15 +90,13 @@ import { fmtStatements } from "./program.ts";
 import { optionalSemicolon } from "./semicolon.ts";
 import { typeParameters } from "./type_parameters.ts";
 import { writeComponentOrKeyword } from "./flow.ts";
+import { CACHE_HIT, CACHE_DIRECT } from "./function.consts.ts";
+export { CACHE_HIT, CACHE_DIRECT } from "./function.consts.ts";
 
 const T_DECLARE = token("declare ");
 const T_ASYNC = token("async ");
 const T_FUNCTION = token("function");
 
-/** `cacheBegin` says the content is cached and has been written: the caller must not write it. */
-export const CACHE_HIT: number = -2;
-/** `cacheBegin` says the content is not cached: the caller writes it. */
-export const CACHE_DIRECT: number = -1;
 
 /**
  * `FormatContentWithCacheMode::fmt`, for content that is written by the caller: content that is formatted once and written as often as

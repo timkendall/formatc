@@ -24,13 +24,11 @@ import { normalizeTagKind } from "./normalize.ts";
 import { EffTag, reorderParamTags } from "./param_order.ts";
 import { stableSort, trimEndMatchesCp } from "./text.ts";
 import { formatExampleTag, formatGenericTag, formatTypeCommentTag, formatTypeNameCommentTag } from "./tag_formatters.ts";
+import { FJ_EMPTY, FJ_SINGLE_LINE, FJ_MULTI_LINE, LINE_PREFIX_LEN, UNKNOWN_TAG_PRIORITY } from "./serialize.consts.ts";
+export { FJ_EMPTY, FJ_SINGLE_LINE, FJ_MULTI_LINE } from "./serialize.consts.ts";
+import { CONTINUATION_INDENT } from "./serialize.consts.ts";
+export { CONTINUATION_INDENT } from "./serialize.consts.ts";
 
-/** `FormattedJsdoc`: nothing is left of it. */
-export const FJ_EMPTY: number = 0;
-/** What is between `/** ` and ` *&#47;`. */
-export const FJ_SINGLE_LINE: number = 1;
-/** The lines, without the ` * ` before each. */
-export const FJ_MULTI_LINE: number = 2;
 
 export class FormattedJsdoc {
   kind: number;
@@ -40,9 +38,6 @@ export class FormattedJsdoc {
     this.text = text;
   }
 }
-
-/** ` * ` */
-const LINE_PREFIX_LEN = 3;
 
 /** What formatting a comment goes by, and the lines so far. */
 export class JsdocFormatter {
@@ -232,9 +227,6 @@ export class JsdocFormatter {
   }
 }
 
-/** What the lines of a description are indented by after the first. It does not depend on `useTabs`. */
-export const CONTINUATION_INDENT = "  ";
-
 function isReturn(kind: string): boolean {
   return kind === "returns" || kind === "yields";
 }
@@ -303,8 +295,6 @@ function isTypeCommentTag(kind: string): boolean {
       return false;
   }
 }
-
-const UNKNOWN_TAG_PRIORITY = 88;
 
 /** `TAGS_ORDER`, times two. */
 function tagSortPriority(kind: string): number {

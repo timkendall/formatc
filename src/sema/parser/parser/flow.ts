@@ -247,17 +247,11 @@ import { functionBlock, functionRest, typeParameters } from "./func.ts";
 import { identifierOrPattern } from "./pattern.ts";
 import { negativeLiteralType, typeAnnotation, typeQuery } from "./ty.ts";
 import { flagsOfMemberName } from "./class.ts";
+import { BODY_TYPE, BODY_INTERFACE, BODY_CLASS, NO_EXPR } from "./flow.consts.ts";
+export { NO_EXPR } from "./flow.consts.ts";
 
 void _unused;
 
-/** Which members an object type can have. */
-const BODY_TYPE = 0;
-const BODY_INTERFACE = 1;
-/** Of `declare class`: `static` and `proto` are modifiers. */
-const BODY_CLASS = 2;
-
-/** "none" of an `Option<ExprId>`: not a node id. */
-export const NO_EXPR = -2;
 
 // ───────────────────────────── tokens ─────────────────────────────
 

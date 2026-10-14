@@ -3,34 +3,14 @@
 // the parser porters' `parser/mod.ts::run`.)
 import type { Names } from "./names.ts";
 import type { Lexer } from "./lexer.ts";
+import { R_SYNTAX, R_REPORTED, R_TOO_LARGE, R_TOO_DEEP, R_NOT_UTF8, R_UNTERMINATED, R_UNEXPECTED_CHARACTER, R_CONFLICT_MARKER, R_INVALID_ESCAPE, R_ESCAPED_KEYWORD, R_UNUSUAL_NUMBER, R_UNUSUAL_REGEX, R_UNUSUAL_PRIVATE_NAME, R_JSX, R_JSON, R_AWAIT_IN_SCRIPT, R_DECORATORS, R_UNSUPPORTED, R_COUNT, DIALECT_TYPESCRIPT_5, DIALECT_ECMASCRIPT, DIALECT_BABEL, DIALECT_SCRIPT, DIALECT_FLOW, DIALECT_OXC, DIALECT_OXC_NAMES } from "./lib.consts.ts";
+export { R_SYNTAX, R_REPORTED, R_TOO_LARGE, R_TOO_DEEP, R_NOT_UTF8, R_UNTERMINATED, R_UNEXPECTED_CHARACTER, R_CONFLICT_MARKER, R_INVALID_ESCAPE, R_ESCAPED_KEYWORD, R_UNUSUAL_NUMBER, R_UNUSUAL_REGEX, R_UNUSUAL_PRIVATE_NAME, R_JSX, R_JSON, R_AWAIT_IN_SCRIPT, R_DECORATORS, R_UNSUPPORTED, R_COUNT, DIALECT_TYPESCRIPT_5, DIALECT_ECMASCRIPT, DIALECT_BABEL, DIALECT_SCRIPT, DIALECT_FLOW, DIALECT_OXC, DIALECT_OXC_NAMES } from "./lib.consts.ts";
 
 // ───────────────────────────── Refusal ─────────────────────────────
 // Why a text is not parsed. 0 = no refusal. Rust `Refusal::X` is `R_X` here; numbers are Rust's discriminant + 1.
 // `Lexer.refusal` holds one of these; `refuse(why)` sets it once (the first refusal wins) and from then on every token is
 // the end of the file, so the parser unwinds without testing anything.
 
-/** A token that the grammar does not allow where it is. In a speculative parse this only ends the speculation. */
-export const R_SYNTAX: number = 1;
-/** The text is valid for the grammar, and TypeScript reports an error about it while parsing. */
-export const R_REPORTED: number = 2;
-export const R_TOO_LARGE: number = 3;
-export const R_TOO_DEEP: number = 4;
-export const R_NOT_UTF8: number = 5;
-export const R_UNTERMINATED: number = 6;
-export const R_UNEXPECTED_CHARACTER: number = 7;
-export const R_CONFLICT_MARKER: number = 8;
-export const R_INVALID_ESCAPE: number = 9;
-export const R_ESCAPED_KEYWORD: number = 10;
-export const R_UNUSUAL_NUMBER: number = 11;
-export const R_UNUSUAL_REGEX: number = 12;
-export const R_UNUSUAL_PRIVATE_NAME: number = 13;
-/** Not written yet. */
-export const R_JSX: number = 14;
-export const R_JSON: number = 15;
-export const R_AWAIT_IN_SCRIPT: number = 16;
-export const R_DECORATORS: number = 17;
-export const R_UNSUPPORTED: number = 18;
-export const R_COUNT: number = 19;
 
 const REFUSAL_NAMES = [
   "None", "Syntax", "Reported", "TooLarge", "TooDeep", "NotUtf8", "Unterminated", "UnexpectedCharacter", "ConflictMarker",
@@ -51,13 +31,6 @@ export function refusalIsOfScanner(r: number): boolean {
 // `bun_sema::resolve::Dialect` is a struct of bools; here one Int32 of bit flags. The formatter uses `dialectBabel(isScript)`
 // (Prettier's `babel` / `babel-ts`), `dialectFlow` (`babel-flow`) and `dialectFlowParser` (`flow`).
 
-export const DIALECT_TYPESCRIPT_5 = 1 << 0; // typescript_5
-export const DIALECT_ECMASCRIPT = 1 << 1; // ecmascript
-export const DIALECT_BABEL = 1 << 2; // babel
-export const DIALECT_SCRIPT = 1 << 3; // script
-export const DIALECT_FLOW = 1 << 4; // flow
-export const DIALECT_OXC = 1 << 5; // oxc
-export const DIALECT_OXC_NAMES = 1 << 6; // oxc_names
 
 /** `Dialect::typescript_estree(script)` */
 export function dialectTypescriptEstree(script: boolean): number {

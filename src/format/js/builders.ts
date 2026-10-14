@@ -26,6 +26,8 @@ import {
 import { SP } from "../../lint/ast/index.ts";
 import { cxOf } from "./context.ts";
 import { nodeSpanOf, writeNode } from "./format.ts";
+import { JOIN_SOFT_LINE, JOIN_HARDLINE, JOIN_SPACE } from "./builders.consts.ts";
+export { JOIN_SOFT_LINE, JOIN_HARDLINE, JOIN_SPACE } from "./builders.consts.ts";
 
 /** oxfmt sees no empty line in `a: 1\n\n, b: 2`. */
 function commaEndsTheSearchForLineBreaks(f: Formatter): boolean {
@@ -66,9 +68,6 @@ export function isAtStartOfGroup(f: Formatter): boolean {
   return false;
 }
 
-export const JOIN_SOFT_LINE: number = 0;
-export const JOIN_HARDLINE: number = 1;
-export const JOIN_SPACE: number = 2;
 
 /** The separator of `join_nodes_with_*` itself. */
 export function writeJoinSeparator(f: Formatter, separator: number): void {

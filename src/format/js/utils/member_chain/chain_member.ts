@@ -45,19 +45,9 @@ import { writeLookupWithoutComments } from "../../print/member_expression.ts";
 import { formatLeadingCommentsRange, formatTrailingCommentsRange } from "../../trivia.ts";
 import { writeCalleeTrailingComments } from "../call_expression.ts";
 import { fmtNodeWithoutTrailingComments } from "../format_node_without_trailing_comments.ts";
+import { CM_STATIC_MEMBER, CM_CALL_MIDDLE, CM_CALL_END, CM_COMPUTED_MEMBER, CM_NON_NULL, CM_NODE } from "./chain_member.consts.ts";
+export { CM_STATIC_MEMBER, CM_CALL_MIDDLE, CM_CALL_END, CM_COMPUTED_MEMBER, CM_NON_NULL, CM_NODE } from "./chain_member.consts.ts";
 
-/** `.b`, `.#b` */
-export const CM_STATIC_MEMBER: number = 0;
-/** `(..)` of the `b()` of `a.b().c()` */
-export const CM_CALL_MIDDLE: number = 1;
-/** `(..)` of the `c()` of `a.b.c()`: the root */
-export const CM_CALL_END: number = 2;
-/** `[b]` */
-export const CM_COMPUTED_MEMBER: number = 3;
-/** `!`, `!!` */
-export const CM_NON_NULL: number = 4;
-/** What the chain starts with. */
-export const CM_NODE: number = 5;
 
 export function cmMake(kind: number, e: number): number {
   return (kind << 26) | e;

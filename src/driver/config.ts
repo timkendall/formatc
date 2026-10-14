@@ -31,6 +31,9 @@ import * as kinds from "./kinds.ts";
 import { NO_END, Resolved, isOptionOfPrettier, isOptionWithString, isValidOption, notAnInteger } from "./options.ts";
 import * as paths from "./paths.ts";
 import { Settings as SortSettings } from "../format/js/sort_imports/mod.ts";
+import { NAMES_OF_OXFMT, HEAVY } from "./config.consts.ts";
+export { HEAVY } from "./config.consts.ts";
+import { SORT_IMPORTS_OF_BUN, PLUGIN_FOR_CLASSES, PLUGIN_OF_OXC } from "./config.consts.ts";
 
 // A message for the user that ends the run (or the file).
 export class Fatal extends Error {
@@ -66,13 +69,9 @@ export const NAMES: string[] = [
   "prettier.config.cts",
   ".prettierrc.toml",
 ];
-const NAMES_OF_OXFMT = 4;
 
 const OTHER_KEYS = ["$schema", "overrides", "plugins", "filepath"];
-const SORT_IMPORTS_OF_BUN = "bun.sortImports";
 
-const PLUGIN_FOR_CLASSES = "prettier-plugin-tailwindcss";
-const PLUGIN_OF_OXC = "@prettier/plugin-oxc";
 
 const PLUGINS_FOR_LANGUAGES_NAMES: string[] = [
   "prettier-plugin-packagejson",
@@ -406,8 +405,6 @@ function isSortImportsName(name: string): boolean {
 function isTailwind(name: string): boolean {
   return name === "sortTailwindcss" || name === "experimentalTailwindcss";
 }
-
-export const HEAVY = 0;
 
 function patternOf(text: string, isOxfmt: boolean): Pattern {
   return new Pattern(isOxfmt ? new OxcGlob(text) : globOfPrettier(text, MICROMATCH), text);

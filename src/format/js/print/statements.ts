@@ -112,6 +112,8 @@ import { writeSuppressedNode } from "../utils/suppressed.ts";
 import { canAvoidParentheses } from "./parameters.ts";
 import { endsBeforeSemicolon } from "./program.ts";
 import { optionalSemicolon } from "./semicolon.ts";
+import { COMMENT_PLACEMENT_OWN_LINE, COMMENT_PLACEMENT_END_OF_LINE, COMMENT_PLACEMENT_BEFORE_TOKEN, COMMENT_PLACEMENT_BEFORE_NODE, HEAD_BEFORE, HEAD_ENDS_WITH } from "./statements.consts.ts";
+export { COMMENT_PLACEMENT_OWN_LINE, COMMENT_PLACEMENT_END_OF_LINE, COMMENT_PLACEMENT_BEFORE_TOKEN, COMMENT_PLACEMENT_BEFORE_NODE } from "./statements.consts.ts";
 
 const KW_DO = token("do");
 const KW_WHILE = token("while");
@@ -128,10 +130,6 @@ const KW_BREAK = token("break");
 const KW_CONTINUE = token("continue");
 const COLON_TOKEN = token(":");
 
-export const COMMENT_PLACEMENT_OWN_LINE: number = 0;
-export const COMMENT_PLACEMENT_END_OF_LINE: number = 1;
-export const COMMENT_PLACEMENT_BEFORE_TOKEN: number = 2;
-export const COMMENT_PLACEMENT_BEFORE_NODE: number = 3;
 
 /** Whether a placement leads the following node. */
 export function commentPlacementLeads(placement: number): boolean {
@@ -399,11 +397,6 @@ export function writeDoWhileStatement(statement: number, body: number, test: num
   optionalSemicolon(f);
 }
 
-/** The parentheses after the keyword of a statement. */
-/** They are followed by the body of the statement. */
-const HEAD_BEFORE = 0;
-/** `do .. while (..);` */
-const HEAD_ENDS_WITH = 1;
 
 /**
  * A position after the `)` and before the first comment after it. That comment is not in the head: it leads the body, or trails the statement.

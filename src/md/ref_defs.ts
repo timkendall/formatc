@@ -7,9 +7,8 @@ import { scanLinkDestination } from "./links.ts";
 import { FOLD, caseFold } from "./unicode.ts";
 import { BLOCK_CONTAINER_CLOSER, BLOCK_CONTAINER_OPENER, BLOCK_REF_DEF_ONLY, BT_P } from "./types.ts";
 import { pushRefDef } from "./blocks.ts";
-
-/** Maximum raw length of a link label (CommonMark: "a link label can have at most 999 characters inside the square brackets"). */
-export const MAX_LINK_LABEL_LEN = 999;
+import { MAX_LINK_LABEL_LEN } from "./ref_defs.consts.ts";
+export { MAX_LINK_LABEL_LEN } from "./ref_defs.consts.ts";
 
 const enc4 = new Uint8Array(4);
 

@@ -60,6 +60,7 @@ import { formatLeadingCommentsRange } from "../trivia.ts";
 import { stripChainElementWrappers } from "../utils/call_expression.ts";
 import { fmtComputedMemberExpressionWithoutObject } from "../utils/member_chain/chain_member.ts";
 import { isCastTarget, isCastTargetThatHidesItsKind } from "../utils/typecast.ts";
+import { LONG_CHAIN } from "./member_expression.consts.ts";
 
 /** A comment at the end of the line of the object stays there. oxfmt, like Prettier 3.8, moves it behind the member: `a // comment` and `.b` on the next line are `a.b // comment`. */
 function boundaryBehindObject(f: Formatter): boolean {
@@ -160,9 +161,6 @@ function isMemberOrWrapper(node: number): boolean {
 function isWrapper(node: number): boolean {
   return nodeKind(node) === N_EXPR && exprTag(nodeId(node)) === EXPR_NON_NULL;
 }
-
-/** With so many member accesses and `!`s around one, the way up is not gone for each of them. */
-const LONG_CHAIN: number = 16;
 
 /**
  * Whether there is no line break between the object and the `.`, however long the line.

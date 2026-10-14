@@ -129,6 +129,7 @@ import {
   printAngularIcuExpression,
   printAngularLetDeclaration,
 } from "./angular_print.ts";
+import { BL_NOTHING, BL_LINE, BL_SOFTLINE, BL_HARDLINE } from "./printer.consts.ts";
 
 export const TK_EQ: number = token("=");
 export const TK_DQ: number = token('"');
@@ -139,11 +140,6 @@ export const TK_CLOSE_BLOCK_COMMENT: number = token("*/");
 export const TK_HTML: number = token("html");
 export const TK_SP: number = token(" ");
 
-// `printBetweenLine`
-const BL_NOTHING = 0;
-const BL_LINE = 1;
-const BL_SOFTLINE = 2;
-const BL_HARDLINE = 3;
 
 export function formatsEmbedded(p: Printer): boolean {
   return p.o.format.embeddedLanguageFormatting === EMBEDDED_AUTO;

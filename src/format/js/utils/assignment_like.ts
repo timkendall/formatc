@@ -255,20 +255,9 @@ import { typeArguments } from "../print/type_parameters.ts";
 import { writeVarianceSign } from "../print/flow.ts";
 import { shouldInlineLogicalExpression } from "../print/binary_like_expression.ts";
 import { fmtLiteralStringToken, STRING_LITERAL_PARENT_KIND_EXPRESSION } from "./string.ts";
+import { ASSIGNMENT_LIKE_LAYOUT_FLUID, ASSIGNMENT_LIKE_LAYOUT_BREAK_AFTER_OPERATOR, ASSIGNMENT_LIKE_LAYOUT_NEVER_BREAK_AFTER_OPERATOR, ASSIGNMENT_LIKE_LAYOUT_CHAIN, ASSIGNMENT_LIKE_LAYOUT_CHAIN_TAIL, ASSIGNMENT_LIKE_LAYOUT_BREAK_LEFT_HAND_SIDE, ASSIGNMENT_LIKE_LAYOUT_CHAIN_TAIL_ARROW_FUNCTION, ASSIGNMENT_LIKE_VARIABLE_DECLARATOR, ASSIGNMENT_LIKE_ASSIGNMENT_EXPRESSION, ASSIGNMENT_LIKE_OBJECT_PROPERTY, ASSIGNMENT_LIKE_BINDING_PROPERTY, ASSIGNMENT_LIKE_PROPERTY_DEFINITION, ASSIGNMENT_LIKE_ACCESSOR_PROPERTY, MIN_OVERLAP_FOR_BREAK, LC_NONE, LC_BREAK, LC_TYPE_CAST, LC_TYPE_CAST_OF_LEFT_EDGE } from "./assignment_like.consts.ts";
+export { ASSIGNMENT_LIKE_LAYOUT_FLUID, ASSIGNMENT_LIKE_LAYOUT_BREAK_AFTER_OPERATOR, ASSIGNMENT_LIKE_LAYOUT_NEVER_BREAK_AFTER_OPERATOR, ASSIGNMENT_LIKE_LAYOUT_CHAIN, ASSIGNMENT_LIKE_LAYOUT_CHAIN_TAIL, ASSIGNMENT_LIKE_LAYOUT_BREAK_LEFT_HAND_SIDE, ASSIGNMENT_LIKE_LAYOUT_CHAIN_TAIL_ARROW_FUNCTION, ASSIGNMENT_LIKE_VARIABLE_DECLARATOR, ASSIGNMENT_LIKE_ASSIGNMENT_EXPRESSION, ASSIGNMENT_LIKE_OBJECT_PROPERTY, ASSIGNMENT_LIKE_BINDING_PROPERTY, ASSIGNMENT_LIKE_PROPERTY_DEFINITION, ASSIGNMENT_LIKE_ACCESSOR_PROPERTY } from "./assignment_like.consts.ts";
 
-export const ASSIGNMENT_LIKE_LAYOUT_FLUID: number = 0;
-export const ASSIGNMENT_LIKE_LAYOUT_BREAK_AFTER_OPERATOR: number = 1;
-export const ASSIGNMENT_LIKE_LAYOUT_NEVER_BREAK_AFTER_OPERATOR: number = 2;
-export const ASSIGNMENT_LIKE_LAYOUT_CHAIN: number = 3;
-export const ASSIGNMENT_LIKE_LAYOUT_CHAIN_TAIL: number = 4;
-export const ASSIGNMENT_LIKE_LAYOUT_BREAK_LEFT_HAND_SIDE: number = 5;
-export const ASSIGNMENT_LIKE_LAYOUT_CHAIN_TAIL_ARROW_FUNCTION: number = 6;
-export const ASSIGNMENT_LIKE_VARIABLE_DECLARATOR: number = 0; // h: VarDecl
-export const ASSIGNMENT_LIKE_ASSIGNMENT_EXPRESSION: number = 1; // h: Expr
-export const ASSIGNMENT_LIKE_OBJECT_PROPERTY: number = 2; // h: Prop
-export const ASSIGNMENT_LIKE_BINDING_PROPERTY: number = 3; // h: PatProp
-export const ASSIGNMENT_LIKE_PROPERTY_DEFINITION: number = 4; // h: Member
-export const ASSIGNMENT_LIKE_ACCESSOR_PROPERTY: number = 5; // h: Member
 
 const T_EQ_WITH_SPACE = token(" =");
 const T_COLON = token(":");
@@ -299,8 +288,6 @@ function makeAssignOperatorTokens(): Int32Array {
 const NAME = new Int32Array(4);
 /** What `sidesWithCommentsBetween` found: the end of the left side, the start of the right side, the end of the operator. */
 const SIDES = new Int32Array(3);
-/** A name is short if it is less than this much wider than the indentation: breaking after the operator would gain next to nothing. */
-const MIN_OVERLAP_FOR_BREAK: number = 3;
 
 const callExpressions = new I32Vec(16);
 const typeStack = new I32Vec(16);
@@ -806,14 +793,6 @@ function writeRight(kind: number, h: number, right: number, f: Formatter, layout
   if (kind === ASSIGNMENT_LIKE_ASSIGNMENT_EXPRESSION) writeCommentsBeforeClosingParenthesis(h, f);
 }
 
-// What the comments before the right side of an assignment mean for its layout.
-const LC_NONE: number = 0;
-/** One ends its line, or is a block whose lines all start with `*`: the right side starts on its own line. */
-const LC_BREAK: number = 1;
-/** `/** @type {T} *\/ (e)`: the right side is in parentheses. */
-const LC_TYPE_CAST: number = 2;
-/** `/** @type {T} *\/ (a).b`, `/** @type {T} *\/ (a) || b`: what the right side starts with is. */
-const LC_TYPE_CAST_OF_LEFT_EDGE: number = 3;
 
 /** `a = /** @type {T} *\/ (⏎/**⏎ * comment⏎ *\/⏎b)`: oxfmt looks at all comments before `b`. */
 function blockCommentInParenthesesOfCastBreaks(f: Formatter): boolean {

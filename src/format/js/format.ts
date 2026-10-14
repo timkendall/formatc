@@ -380,6 +380,8 @@ import { writeArrayAssignmentTarget, writeAssignmentExpression, writeAwaitExpres
 import { writeArrayExpression } from "./print/array_expression.ts";
 import { writeArrayPatternElement, writeBindingPattern, writeBindingProperty } from "./print/patterns.ts";
 import { writeFormalParameter } from "./print/parameters.ts";
+import { EO_NONE, EO_FUNCTION, EO_ARROW, PK_PARENT, PK_NODE, PK_STMT_OF_EXPORT, WK_EXPR, WK_STMT, WK_STMT_BEFORE_ANOTHER, WK_DECLARATION, WK_TYPE, WK_PAT, WK_PAT_ELEM, WK_PAT_PROP, WK_MEMBER, WK_MEMBER_BEFORE_ANOTHER, WK_PROP, WK_VAR_DECL, WK_PARAM, WK_CASE, WK_ENUM_MEMBER, WK_IMPORT_SPEC, WK_EXPORT_SPEC, WK_TYPE_PARAM, WK_TUPLE_ELEM, WK_TYPE_ANNOTATION, WK_RETURN_TYPE_OF_FUNCTION_TYPE, WK_TYPE_OF_PREDICATE } from "./format.consts.ts";
+export { EO_NONE, EO_FUNCTION, EO_ARROW, PK_PARENT, PK_NODE, PK_STMT_OF_EXPORT, WK_EXPR, WK_STMT, WK_STMT_BEFORE_ANOTHER, WK_DECLARATION, WK_TYPE, WK_PAT, WK_PAT_ELEM, WK_PAT_PROP, WK_MEMBER, WK_MEMBER_BEFORE_ANOTHER, WK_PROP, WK_VAR_DECL, WK_PARAM, WK_CASE, WK_ENUM_MEMBER, WK_IMPORT_SPEC, WK_EXPORT_SPEC, WK_TYPE_PARAM, WK_TUPLE_ELEM, WK_TYPE_ANNOTATION, WK_RETURN_TYPE_OF_FUNCTION_TYPE, WK_TYPE_OF_PREDICATE } from "./format.consts.ts";
 
 const T_THIS = token("this");
 const T_SUPER = token("super");
@@ -403,17 +405,6 @@ const T_SEMICOLON = token(";");
 
 // ───────────────────────────── ExprOptions ─────────────────────────────
 
-/**
- * How a function or an arrow function is written where it is (Rust `ExprOptions`): one int.
- *   0                                   `ExprOptions::None`
- *   EO_FUNCTION | cacheMode << 4        `ExprOptions::Function(FormatFunctionOptions { cache_mode })`
- *   EO_ARROW | cacheMode << 4 | (assignmentLayout + 1) << 8 | (callArgumentLayout + 1) << 16
- *                                       `ExprOptions::Arrow(FormatJsArrowFunctionExpressionOptions { .. })`
- * (`assignmentLayout`, `callArgumentLayout`: -1 for `None`; `cacheMode`: `FunctionCacheMode`, 0 `NoCache`, 1 `Cache`).
- */
-export const EO_NONE: number = 0;
-export const EO_FUNCTION: number = 1;
-export const EO_ARROW: number = 2;
 
 export function exprOptionsFunction(cacheMode: number): number {
   return EO_FUNCTION | (cacheMode << 4);
@@ -543,14 +534,6 @@ function withoutSemicolon(f: Formatter): void {
   SP$.s1 = (cxOf(f).comments.withoutSemicolon(start, end)) | 0;
 }
 
-// A reference to the parent of what is written (`pk`, `ph`), computed only if it is needed. `pk` is a `WK_*` (the parent of that kind of
-// handle) or one of these:
-/** `ph` is the parent itself (an `AstNodes`). */
-export const PK_PARENT: number = 100;
-/** `ph` is an `AstNodes`; the parent is its parent. */
-export const PK_NODE: number = 101;
-/** `ph` is a statement `s`: the parent is `s.as_ast_nodes()` (it is exported: the `export` around it is its parent). */
-export const PK_STMT_OF_EXPORT: number = 102;
 
 function parentOfRef(pk: number, ph: number): number {
   switch (pk) {
@@ -603,35 +586,6 @@ function parentOfRef(pk: number, ph: number): number {
 
 // ───────────────────────────── what is written: Format + Spanned ─────────────────────────────
 
-// The handles that can be written with `writeNode(wk, h, f)` and have a `nodeSpanOf(wk, h)` (Rust: `impl Format + Spanned`).
-export const WK_EXPR: number = 0;
-export const WK_STMT: number = 1;
-/** `FormatStatementBeforeAnother` */
-export const WK_STMT_BEFORE_ANOTHER: number = 2;
-/** `FormatDeclaration`: the statement without its `export`. */
-export const WK_DECLARATION: number = 3;
-export const WK_TYPE: number = 4;
-export const WK_PAT: number = 5;
-export const WK_PAT_ELEM: number = 6;
-export const WK_PAT_PROP: number = 7;
-export const WK_MEMBER: number = 8;
-/** `FormatMemberBeforeAnother` */
-export const WK_MEMBER_BEFORE_ANOTHER: number = 9;
-export const WK_PROP: number = 10;
-export const WK_VAR_DECL: number = 11;
-export const WK_PARAM: number = 12;
-export const WK_CASE: number = 13;
-export const WK_ENUM_MEMBER: number = 14;
-export const WK_IMPORT_SPEC: number = 15;
-export const WK_EXPORT_SPEC: number = 16;
-export const WK_TYPE_PARAM: number = 17;
-export const WK_TUPLE_ELEM: number = 18;
-/** `FormatTypeAnnotation` (`: T`) */
-export const WK_TYPE_ANNOTATION: number = 19;
-/** `FormatReturnTypeOfFunctionType` (`=> T`) */
-export const WK_RETURN_TYPE_OF_FUNCTION_TYPE: number = 20;
-/** `FormatTypeOfPredicate` */
-export const WK_TYPE_OF_PREDICATE: number = 21;
 
 /** `x.fmt(f)` for the handle `h` of kind `wk`. */
 export function writeNode(wk: number, h: number, f: Formatter): void {

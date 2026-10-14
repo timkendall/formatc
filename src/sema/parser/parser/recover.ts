@@ -129,13 +129,8 @@ import {
 import { firstOperandPos, isStartOfExpression } from "./expr.ts";
 import { isStartOfParameter, isStartOfType, isHeritageElement } from "./ty.ts";
 import { isLiteralPropertyName, isStartOfDeclaration, statement } from "./stmt.ts";
+import { STEP_ELEMENT, STEP_SKIPPED, STEP_OVER, ALL_LISTS_COUNT } from "./recover.consts.ts";
 
-// `ListStep`: what the token at the top of the loop of a list is to the list.
-const STEP_ELEMENT = 0;
-const STEP_SKIPPED = 1;
-const STEP_OVER = 2;
-
-const ALL_LISTS_COUNT = 23;
 
 /** `IsKeyword`: a keyword or a contextual word. */
 function isAtKeyword(): boolean {

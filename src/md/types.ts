@@ -1,4 +1,6 @@
 import type { Parser } from "./state.ts";
+import { OFF_MAX, BT_DOC, BT_QUOTE, BT_UL, BT_OL, BT_LI, BT_HR, BT_H, BT_CODE, BT_HTML, BT_P, BT_TABLE, BT_THEAD, BT_TBODY, BT_TR, BT_TH, BT_TD, SP_EM, SP_STRONG, SP_A, SP_IMG, SP_CODE, SP_DEL, SP_LATEXMATH, SP_LATEXMATH_DISPLAY, SP_WIKILINK, SP_U, TX_NORMAL, TX_NULLCHAR, TX_BR, TX_SOFTBR, TX_ENTITY, TX_CODE, TX_HTML, TX_LATEXMATH, AL_DEFAULT, AL_LEFT, AL_CENTER, AL_RIGHT, REF_NONE, REF_FULL, REF_COLLAPSED, REF_SHORTCUT, REF_FOOTNOTE, L_BLANK, L_HR, L_ATXHEADER, L_SETEXTUNDERLINE, L_INDENTEDCODE, L_FENCEDCODE, L_HTML, L_TEXT, L_TABLE, L_TABLEUNDERLINE, BLOCK_CONTAINER_CLOSER, BLOCK_CONTAINER_OPENER, BLOCK_LOOSE_LIST, BLOCK_SETEXT_HEADER, BLOCK_FENCED_CODE, BLOCK_REF_DEF_ONLY, BLOCK_CLOSED, BLOCK_HTML_UNTIL_TEXT, BLOCK_EXTENSION, BLOCK_FOOTNOTE, BLOCK_DIRECTIVE, TABLE_MAXCOLCOUNT } from "./types.consts.ts";
+export { OFF_MAX, BT_DOC, BT_QUOTE, BT_UL, BT_OL, BT_LI, BT_HR, BT_H, BT_CODE, BT_HTML, BT_P, BT_TABLE, BT_THEAD, BT_TBODY, BT_TR, BT_TH, BT_TD, SP_EM, SP_STRONG, SP_A, SP_IMG, SP_CODE, SP_DEL, SP_LATEXMATH, SP_LATEXMATH_DISPLAY, SP_WIKILINK, SP_U, TX_NORMAL, TX_NULLCHAR, TX_BR, TX_SOFTBR, TX_ENTITY, TX_CODE, TX_HTML, TX_LATEXMATH, AL_DEFAULT, AL_LEFT, AL_CENTER, AL_RIGHT, REF_NONE, REF_FULL, REF_COLLAPSED, REF_SHORTCUT, REF_FOOTNOTE, L_BLANK, L_HR, L_ATXHEADER, L_SETEXTUNDERLINE, L_INDENTEDCODE, L_FENCEDCODE, L_HTML, L_TEXT, L_TABLE, L_TABLEUNDERLINE, BLOCK_CONTAINER_CLOSER, BLOCK_CONTAINER_OPENER, BLOCK_LOOSE_LIST, BLOCK_SETEXT_HEADER, BLOCK_FENCED_CODE, BLOCK_REF_DEF_ONLY, BLOCK_CLOSED, BLOCK_HTML_UNTIL_TEXT, BLOCK_EXTENSION, BLOCK_FOOTNOTE, BLOCK_DIRECTIVE, TABLE_MAXCOLCOUNT } from "./types.consts.ts";
 
 // Port of vendor/bun/src/md/types.rs.
 //
@@ -7,98 +9,12 @@ import type { Parser } from "./state.ts";
 
 export const EMPTY = new Uint8Array(0);
 
-/** `OFF::MAX` of Rust: "none" / "end of the document" in `containerSource`. */
-export const OFF_MAX = -1;
 
-// ---- BlockType ----
-export const BT_DOC = 0;
-export const BT_QUOTE = 1;
-export const BT_UL = 2;
-export const BT_OL = 3;
-export const BT_LI = 4;
-export const BT_HR = 5;
-export const BT_H = 6;
-export const BT_CODE = 7;
-export const BT_HTML = 8;
-export const BT_P = 9;
-export const BT_TABLE = 10;
-export const BT_THEAD = 11;
-export const BT_TBODY = 12;
-export const BT_TR = 13;
-export const BT_TH = 14;
-export const BT_TD = 15;
 
-// ---- SpanType ----
-export const SP_EM = 0;
-export const SP_STRONG = 1;
-export const SP_A = 2;
-export const SP_IMG = 3;
-export const SP_CODE = 4;
-export const SP_DEL = 5;
-export const SP_LATEXMATH = 6;
-export const SP_LATEXMATH_DISPLAY = 7;
-export const SP_WIKILINK = 8;
-export const SP_U = 9;
 
-// ---- TextType ----
-export const TX_NORMAL = 0;
-export const TX_NULLCHAR = 1;
-export const TX_BR = 2;
-export const TX_SOFTBR = 3;
-export const TX_ENTITY = 4;
-export const TX_CODE = 5;
-export const TX_HTML = 6;
-export const TX_LATEXMATH = 7;
 
-// ---- Align ----
-export const AL_DEFAULT = 0;
-export const AL_LEFT = 1;
-export const AL_CENTER = 2;
-export const AL_RIGHT = 3;
 
-// ---- Reference: how a link or an image says where it goes ----
-/** `[text](href)`, or an autolink. */
-export const REF_NONE = 0;
-/** `[text][label]` */
-export const REF_FULL = 1;
-/** `[label][]` */
-export const REF_COLLAPSED = 2;
-/** `[label]` */
-export const REF_SHORTCUT = 3;
-/** `[^label]`, with `Options.footnotes`. `href` is the label. */
-export const REF_FOOTNOTE = 4;
 
-// ---- LineType (internal) ----
-export const L_BLANK = 0;
-export const L_HR = 1;
-export const L_ATXHEADER = 2;
-export const L_SETEXTUNDERLINE = 3;
-export const L_INDENTEDCODE = 4;
-export const L_FENCEDCODE = 5;
-export const L_HTML = 6;
-export const L_TEXT = 7;
-export const L_TABLE = 8;
-export const L_TABLEUNDERLINE = 9;
-
-// ---- Block flags ----
-export const BLOCK_CONTAINER_CLOSER = 0x01;
-export const BLOCK_CONTAINER_OPENER = 0x02;
-export const BLOCK_LOOSE_LIST = 0x04;
-export const BLOCK_SETEXT_HEADER = 0x08;
-export const BLOCK_FENCED_CODE = 0x10;
-export const BLOCK_REF_DEF_ONLY = 0x20;
-/** Fenced code with its closing fence, HTML with what ends it. */
-export const BLOCK_CLOSED = 0x40;
-/** HTML that only a certain text ends (`-->`, `</script>` ..), not an empty line. */
-export const BLOCK_HTML_UNTIL_TEXT = 0x80;
-/** Reported as `BT_HTML`: a leaf block of the consumer's own. See `Extensions`. */
-export const BLOCK_EXTENSION = 0x100;
-/** Reported as `BT_QUOTE`: the definition of a footnote, `[^label]:`. */
-export const BLOCK_FOOTNOTE = 0x200;
-/** Reported as `BT_QUOTE`: what is between `:::name` and `:::`. */
-export const BLOCK_DIRECTIVE = 0x400;
-
-export const TABLE_MAXCOLCOUNT = 128;
 
 /** Detail data for span events (links, images, wikilinks). One instance is reused for every event: read it inside `enterSpan`. */
 export class SpanDetail {

@@ -476,28 +476,8 @@ import {
 } from "./ast_nodes.ts";
 import { I32Vec } from "../../sema/vec.ts";
 import { finder } from "./state.ts";
+import { LK_STMT, LK_EXPR, LK_ARRAY_ELEM, LK_PROP, LK_JSX_CHILD, LK_PAT_PROP, LK_PAT_ELEM, LK_CASE, LK_TYPE, LK_TUPLE_ELEM, LK_TYPE_PARAM, LK_PARAM, LK_MEMBER, LK_VAR_DECL, LK_ENUM_MEMBER, LK_IMPORT_SPEC, LK_EXPORT_SPEC } from "./siblings.consts.ts";
 
-// The kinds of the elements of a list, for `listOf`.
-const LK_STMT: number = 0;
-const LK_EXPR: number = 1;
-/** An element of an array literal: a hole is no child. */
-const LK_ARRAY_ELEM: number = 2;
-const LK_PROP: number = 3;
-/** A child of a JSX element: with the braces of `{e}`. */
-const LK_JSX_CHILD: number = 4;
-const LK_PAT_PROP: number = 5;
-/** An element of an array pattern: a hole is no child. */
-const LK_PAT_ELEM: number = 6;
-const LK_CASE: number = 7;
-const LK_TYPE: number = 8;
-const LK_TUPLE_ELEM: number = 9;
-const LK_TYPE_PARAM: number = 10;
-const LK_PARAM: number = 11;
-const LK_MEMBER: number = 12;
-const LK_VAR_DECL: number = 13;
-const LK_ENUM_MEMBER: number = 14;
-const LK_IMPORT_SPEC: number = 15;
-const LK_EXPORT_SPEC: number = 16;
 
 /** The span of an element of a list into `SP`: false if it is no child (a hole). */
 function elemSpan(kind: number, id: number): boolean {

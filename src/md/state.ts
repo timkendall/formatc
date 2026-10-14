@@ -10,32 +10,11 @@ import { LabelSet } from "./labels.ts";
 import { Flags } from "./options.ts";
 import { EMPTY, TABLE_MAXCOLCOUNT, BT_LI, BLOCK_CONTAINER_OPENER, Definition, Renderer, SpanDetail } from "./types.ts";
 import type { Extensions } from "./types.ts";
+import { MARK_OPENER, MARK_CLOSER, MARK_DELIMITER, MARK_HIDES, MARK_EXTENSION, MARK_OTHER, HDR, LINE_W, BIG, MAX_LOOKAHEAD, MAX_INPUT_LEN, ED_W, ED_POS, ED_COUNT, ED_CHAR, ED_CAN_OPEN, ED_CAN_CLOSE, ED_REMAINING, ED_OPEN_COUNT, ED_CLOSE_COUNT, ED_OPEN_NUM, ED_CLOSE_NUM, ED_ACTIVE, ED_OPEN_SIZES, ED_CLOSE_SIZES, MAX_EMPH_MATCHES, HK_CODE, HK_BACKTICKS, HK_HTML, HK_AUTOLINK, HK_FOOTNOTE_REFERENCE, HK_EXTENSION, BR_W, BR_OPEN, BR_CLOSE, BR_LINK_END, BR_IS_IMAGE, LF_W } from "./state.consts.ts";
+export { MARK_OPENER, MARK_CLOSER, MARK_DELIMITER, MARK_HIDES, MARK_EXTENSION, MARK_OTHER, HDR, LINE_W, BIG, MAX_LOOKAHEAD, MAX_INPUT_LEN, ED_W, ED_POS, ED_COUNT, ED_CHAR, ED_CAN_OPEN, ED_CAN_CLOSE, ED_REMAINING, ED_OPEN_COUNT, ED_CLOSE_COUNT, ED_OPEN_NUM, ED_CLOSE_NUM, ED_ACTIVE, ED_OPEN_SIZES, ED_CLOSE_SIZES, MAX_EMPH_MATCHES, HK_CODE, HK_BACKTICKS, HK_HTML, HK_AUTOLINK, HK_FOOTNOTE_REFERENCE, HK_EXTENSION, BR_W, BR_OPEN, BR_CLOSE, BR_LINK_END, BR_IS_IMAGE, LF_W } from "./state.consts.ts";
 
-// What a byte can mean in inline content: `MARK_*`. 0: nothing, and the scans in inlines.ts and links.ts do not look at it.
-/** `[` */
-export const MARK_OPENER = 1 << 0;
-/** `]` */
-export const MARK_CLOSER = 1 << 1;
-/** `*`, `_`, `~` */
-export const MARK_DELIMITER = 1 << 2;
-/** `hiddenAt` can find something at it. */
-export const MARK_HIDES = 1 << 3;
-/** One of `Extensions.spanBytes`. */
-export const MARK_EXTENSION = 1 << 4;
-export const MARK_OTHER = 1 << 5;
 
-/** Words of a block header in `Parser.bb`: block type, flags, data, n_lines. */
-export const HDR = 4;
-/** Words of a line (`VerbatimLine`) in `Parser.bb`: beg, end, indent. */
-export const LINE_W = 3;
 
-/** u32::MAX of Rust for sizes/limits that are compared with, not stored: the largest positive Int32. */
-export const BIG = 0x7fffffff;
-
-/** The longest `OFF`-typed fixed lookahead the parser performs from an in-bounds offset. */
-export const MAX_LOOKAHEAD = 9;
-/** The largest input accepted (the offsets of the parser are u32 in the original). */
-export const MAX_INPUT_LEN = 0x7fffffff - MAX_LOOKAHEAD;
 
 /** Container types: blockquote or list item (`types::Container`). */
 export class Container {
@@ -106,41 +85,8 @@ export class Line {
   }
 }
 
-// Fields of one emphasis delimiter in `Parser.ed` (stride ED_W).
-export const ED_W = 24;
-export const ED_POS = 0;
-export const ED_COUNT = 1;
-export const ED_CHAR = 2;
-export const ED_CAN_OPEN = 3;
-export const ED_CAN_CLOSE = 4;
-export const ED_REMAINING = 5;
-export const ED_OPEN_COUNT = 6;
-export const ED_CLOSE_COUNT = 7;
-export const ED_OPEN_NUM = 8;
-export const ED_CLOSE_NUM = 9;
-export const ED_ACTIVE = 10;
-export const ED_OPEN_SIZES = 11;
-export const ED_CLOSE_SIZES = 17;
-export const MAX_EMPH_MATCHES = 6;
 
-// What hides the markers in the inline content (`Hidden`).
-export const HK_CODE = 0;
-export const HK_BACKTICKS = 1;
-export const HK_HTML = 2;
-export const HK_AUTOLINK = 3;
-export const HK_FOOTNOTE_REFERENCE = 4;
-export const HK_EXTENSION = 5;
 
-// Bracket entries in `Parser.br` (stride BR_W).
-export const BR_W = 4;
-export const BR_OPEN = 0;
-export const BR_CLOSE = 1;
-export const BR_LINK_END = 2;
-export const BR_IS_IMAGE = 3;
-
-// Label-frame entries in `Parser.lf` (stride LF_W): base, end, i, textStart, resolved start, resolved end, delimCursor,
-// leave, closeBeg, closeEnd.
-export const LF_W = 10;
 
 /** Parser context holding all state during parsing. */
 export class Parser {

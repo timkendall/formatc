@@ -32,15 +32,12 @@ import { losesLineBreaks } from "../../utils/tailwindcss.ts";
 import { isNextLineEmpty } from "../program.ts";
 import { typeArguments } from "../type_parameters.ts";
 import { fmtJsxName } from "./mod.ts";
+import { LAYOUT_INLINE, LAYOUT_SINGLE_STRING_ATTRIBUTE, LAYOUT_INDENT_ATTRIBUTES } from "./opening_element.consts.ts";
 
 const LANGLE = token("<");
 const SLASH = token("/");
 const RANGLE = token(">");
 
-// OpeningElementLayout
-const LAYOUT_INLINE: number = 0;
-const LAYOUT_SINGLE_STRING_ATTRIBUTE: number = 1;
-const LAYOUT_INDENT_ATTRIBUTES: number = 2;
 
 /** The value of `a="b"`, or -1. */
 function asStringLiteralAttributeValue(attribute: number): number {

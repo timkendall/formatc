@@ -121,6 +121,8 @@ import { isTestEachPattern } from "../utils/call_expression.ts";
 import { fmtNodeWithoutTrailingComments } from "../utils/format_node_without_trailing_comments.ts";
 import { typeArguments } from "./type_parameters.ts";
 import { EachCell, EachTable, JsGqlTemplate } from "./template_types.ts";
+import { PLACE_UNKNOWN, PLACE_START_OF_LINE, PLACE_AFTER } from "./template.consts.ts";
+import { GRAPHQL_LANGUAGE } from "./template.consts.ts";
 
 const T_DOLLAR_LBRACE = token("${");
 const T_DOLLAR_BRACES = token("${}");
@@ -256,10 +258,6 @@ export function writeTsTemplateLiteralType(ty: number, f: Formatter): void {
 
 // ───────────────────────────── the text and the substitutions ─────────────────────────────
 
-/** Where on its line a `${` is. */
-const PLACE_UNKNOWN: number = 0;
-const PLACE_START_OF_LINE: number = 1;
-const PLACE_AFTER: number = 2;
 
 /** The indentation (in columns) of the last line of `text[a, b)`. If it is all on one line, `previous`. */
 function indentionAfterLastNewLine(text: Uint8Array, a: number, b: number, tabWidth: number, previous: number): number {
@@ -770,8 +768,6 @@ function writeCssTemplate(e: number, f: Formatter): boolean {
 }
 
 // ───────────────────────────── GraphQL ─────────────────────────────
-
-const GRAPHQL_LANGUAGE = " GraphQL ";
 
 /** Whether all of `text[a, b)` is JavaScript white space. */
 function isAllJsWhitespace(text: Uint8Array, a: number, b: number): boolean {

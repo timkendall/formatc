@@ -4,9 +4,8 @@ import { Formatter } from "./ir/formatter.ts";
 import { CURSOR_REGION_END, CURSOR_REGION_START } from "./ir/element.ts";
 import { cxOf } from "./js/context.ts";
 import { I32Vec } from "../sema/vec.ts";
-
-/** `u32::MAX`: "no position". */
-export const NOWHERE: number = 0x7fffffff;
+import { NOWHERE } from "./cursor_region.consts.ts";
+export { NOWHERE } from "./cursor_region.consts.ts";
 
 /** Where a node is. */
 export class Extent {

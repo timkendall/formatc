@@ -28,25 +28,12 @@ import { cxOf } from "../../context.ts";
 import { fmtJsxChild } from "./mod.ts";
 import { hasLineBreak, isJsxWhitespace, isMeaningfulJsxText, isWhitespaceJsxExpression, fmtJsxRawSpace, fmtJsxSpace } from "../../utils/jsx.ts";
 import { writeSuppressedNode } from "../../utils/suppressed.ts";
+import { SEP_JSX_WHITESPACE, SEP_LINE, SEP_SOFT_LINE, SEP_HARD_LINE, ITEM_WORD, ITEM_NODE, PART_CONTENT, PART_SEPARATOR, CHILDREN_FORCE_MULTILINE, CHILDREN_BEST_FITTING, CHILDREN_SINGLE_CHILD, CH_TEXT, CH_NODE } from "./child_list.consts.ts";
+export { CHILDREN_FORCE_MULTILINE, CHILDREN_BEST_FITTING, CHILDREN_SINGLE_CHILD } from "./child_list.consts.ts";
 
-// What can be between two children.
-/** A space. At the end of a line it has to be written as `{" "}`. */
-const SEP_JSX_WHITESPACE: number = 0;
-const SEP_LINE: number = 1;
-const SEP_SOFT_LINE: number = 2;
-const SEP_HARD_LINE: number = 3;
 
-// Items (triples): a word of a text `(ITEM_WORD, start, end)`, an element or something in braces `(ITEM_NODE, expr, capture handle)`.
-const ITEM_WORD: number = 0;
-const ITEM_NODE: number = 1;
 
-// Parts (triples) of Prettier's `children`: `(PART_CONTENT, firstItem, endItem)` or `(PART_SEPARATOR, separator, 0)`.
-const PART_CONTENT: number = 0;
-const PART_SEPARATOR: number = 1;
 
-export const CHILDREN_FORCE_MULTILINE: number = 0;
-export const CHILDREN_BEST_FITTING: number = 1;
-export const CHILDREN_SINGLE_CHILD: number = 2;
 
 /** `FormatChildrenResult`. */
 export class ChildrenResult {
@@ -73,8 +60,6 @@ const KEPT = new I32Vec(192);
 const CH = new I32Vec(96);
 const ROWS = new I32Vec(96);
 
-const CH_TEXT: number = 1;
-const CH_NODE: number = 2;
 
 /** `{" "}` as text. */
 const SPACE_BUF = new Uint8Array([32]);

@@ -113,16 +113,8 @@ import {
   binOpPrecedence,
 } from "../utils/operators.ts";
 import { isLastBinaryOperandComment, unaryArgumentHasComments } from "./expressions.ts";
+import { OPERANDS_ALL, OPERANDS_ALL_BUT_LAST, OPERANDS_LAST, PART_RIGHT, PART_OPERANDS_SHIFT, PART_INSIDE_CONDITION } from "./binary_like_expression.consts.ts";
 
-// `Operands`: which operands of a right side that is a logical expression with the same operator are written.
-const OPERANDS_ALL: number = 0;
-const OPERANDS_ALL_BUT_LAST: number = 1;
-const OPERANDS_LAST: number = 2;
-// The code of a part: bit 0: it is a right side (0: the left side that starts the chain); bits 1-2: `OPERANDS_*`; bit 3: the chain is the
-// condition of an `if`, a `while`, a `do`-`while` or a `switch`.
-const PART_RIGHT: number = 1;
-const PART_OPERANDS_SHIFT: number = 1;
-const PART_INSIDE_CONDITION: number = 8;
 
 /** The operands of the chains that are being written, two ints each. The chain of a call is above the chains of the calls above it. */
 const parts = new I32Vec(64);

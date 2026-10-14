@@ -149,6 +149,8 @@ import { isCallExpression, stripChainElementWrappers } from "../../utils/call_ex
 import { isSimpleArgument, isSimpleArgumentWithDepth } from "../../utils/member_chain/simple_argument.ts";
 import { isCastTarget } from "../../utils/typecast.ts";
 import { isLongCurriedCall } from "../../utils/mod.ts";
+import { HTML_LABEL_NONE, HTML_LABEL_EMBED, HTML_LABEL_EMBED_WITHOUT_HUG } from "./arguments.consts.ts";
+export { HTML_LABEL_NONE, HTML_LABEL_EMBED, HTML_LABEL_EMBED_WITHOUT_HUG } from "./arguments.consts.ts";
 
 /** The handles of what has been formatted ahead of the layout of a call (-1: nothing was written). */
 const av = new I32Vec(64);
@@ -218,9 +220,6 @@ export function hasEmbedLabelOfOtherThanHtml(e: number, f: Formatter): boolean {
   void f;
 }
 
-export const HTML_LABEL_NONE: number = -1;
-export const HTML_LABEL_EMBED: number = 0;
-export const HTML_LABEL_EMBED_WITHOUT_HUG: number = 1;
 /** `html::in_js::label(e, f)`: `HTML_LABEL_*`. TODO(port): html. */
 export function htmlInJsLabel(e: number, f: Formatter): number {
   return HTML_LABEL_NONE;

@@ -95,32 +95,10 @@ import { stmtSpan, stmtWrappedIn } from "./stmt.ts";
 import { typeSpan, tupleElemSpan } from "./ty.ts";
 import { patSpan, patPropSpan, patElemSpan } from "./pat.ts";
 import { listAroundCase } from "./list.ts";
+import { N_FILE, N_EXPR, N_STMT, N_TYPE, N_PAT, N_PAT_PROP, N_PAT_ELEM, N_FUNC, N_PARAM, N_TYPE_PARAM, N_CLASS, N_MEMBER, N_PROP, N_VAR_DECL, N_CASE, N_ENUM_MEMBER, N_IMPORT_SPEC, N_EXPORT_SPEC, N_TUPLE_ELEM, NODE_KIND_SHIFT, NODE_ID_MASK, NODE_FILE } from "./node.consts.ts";
+export { N_FILE, N_EXPR, N_STMT, N_TYPE, N_PAT, N_PAT_PROP, N_PAT_ELEM, N_FUNC, N_PARAM, N_TYPE_PARAM, N_CLASS, N_MEMBER, N_PROP, N_VAR_DECL, N_CASE, N_ENUM_MEMBER, N_IMPORT_SPEC, N_EXPORT_SPEC, N_TUPLE_ELEM, NODE_KIND_SHIFT, NODE_ID_MASK, NODE_FILE } from "./node.consts.ts";
 
-// `Node` kinds
-export const N_FILE: number = 0;
-export const N_EXPR: number = 1;
-export const N_STMT: number = 2;
-export const N_TYPE: number = 3;
-export const N_PAT: number = 4;
-export const N_PAT_PROP: number = 5;
-export const N_PAT_ELEM: number = 6;
-export const N_FUNC: number = 7;
-export const N_PARAM: number = 8;
-export const N_TYPE_PARAM: number = 9;
-export const N_CLASS: number = 10;
-export const N_MEMBER: number = 11;
-export const N_PROP: number = 12;
-export const N_VAR_DECL: number = 13;
-export const N_CASE: number = 14;
-export const N_ENUM_MEMBER: number = 15;
-export const N_IMPORT_SPEC: number = 16;
-export const N_EXPORT_SPEC: number = 17;
-export const N_TUPLE_ELEM: number = 18;
 
-export const NODE_KIND_SHIFT: number = 26;
-export const NODE_ID_MASK: number = 67108863;
-/** `Node::File`. */
-export const NODE_FILE: number = 0;
 
 export function nodeKind(n: number): number {
   return n >> 26;

@@ -827,3 +827,8 @@ src reverted (not applied); patch in /tmp/tables-src.patch. Not tried: strings, 
 tools/codemod/outslots.mjs (idempotent; run then hoist-globals.mjs): module-level `new Int32Array/Float64Array(n<=8)` used only as `X[const]` (also via local `const sp = SP` aliases) become `SlotsN` objects (src/base/slots.ts); reads -> X.sk, stores -> `X.sk = (e) | 0`, compound/++ likewise; arrays in import cycles are skipped by default (scriptc SC1016 with HAS_DASH; `--cycles`, `--skip=A,B` available).
 Converted 13 arrays (SP DEC KEY FLOW LINE FOUND OPTIONAL_TYPE SAVED LEFT_SIDE OFFSETS RANGE TRIM NODE_CONTENT), 1535 mentions, 99 files. Skipped: used as values/non-const index (NAMES, argFrom, ESC_CP...) or in cycles.
 Instructions 150.2G -> 149.2G. Full gate: 0 byte mismatches, 8 threads 1.06s, conformance ok.
+
+### perf R6 consts
+- tools/codemod/leaf-consts.mjs (`node tools/codemod/leaf-consts.mjs src [--strings --bools]`, idempotent, position-based): Tarjan SCCs over src imports/re-exports; in cyclic modules moves constant-initialized module-level `const`s (numeric/bitwise/arith over literals and other moved consts; string/bool with the flags) with their doc comments into import-free `<file>.consts.ts`, original gets `import {..}` + `export {..} from` for exported ones.
+- Moved 578 constants out of 45 modules (ast_nodes 169, md/types 66, md/state 38, format.ts 28, lexer 27, parser/lib 26, ...). `_x25_initialized` symbols 698 -> 350 (remaining: `token("..")`/`KW_*`/`T_*` call initializers ~250, `new Int32Array`/array/object buffers; they need imports so cannot live in a leaf).
+- 1 thread: 145.6G -> 134.3G instructions; 8 threads 1.01s; 0 byte mismatches; conformance ok; no SC1016. Not committed.

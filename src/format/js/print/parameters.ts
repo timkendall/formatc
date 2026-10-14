@@ -115,10 +115,9 @@ import { isAngularTestWrapper, isTestCallExpressionInFlavor } from "../utils/cal
 import { writeSuppressedNode } from "../utils/suppressed.ts";
 import { fmtDecoratorsOfParam } from "./decorators.ts";
 import { isComponent, isShorthandFunctionType, writeParameterStart, writeShorthandParameter } from "./flow.ts";
+import { PARAMETER_LAYOUT_NO_PARAMETERS, PARAMETER_LAYOUT_HUG, PARAMETER_LAYOUT_DEFAULT } from "./parameters.consts.ts";
+export { PARAMETER_LAYOUT_NO_PARAMETERS, PARAMETER_LAYOUT_HUG, PARAMETER_LAYOUT_DEFAULT } from "./parameters.consts.ts";
 
-export const PARAMETER_LAYOUT_NO_PARAMETERS: number = 0;
-export const PARAMETER_LAYOUT_HUG: number = 1;
-export const PARAMETER_LAYOUT_DEFAULT: number = 2;
 
 const T_THIS = token("this");
 const T_PUBLIC = token("public");

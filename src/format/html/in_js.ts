@@ -34,16 +34,12 @@ import {
 import { StringMapper, writeMapped } from "./map_strings.ts";
 import { canBeParsed, optionsOfHost, topLevelCount, writeDocument } from "./mod.ts";
 import { writeString } from "./writer.ts";
+import { LABEL_NONE, LABEL_EMBED, LABEL_EMBED_WITHOUT_HUG } from "./in_js.consts.ts";
+export { LABEL_NONE, LABEL_EMBED, LABEL_EMBED_WITHOUT_HUG } from "./in_js.consts.ts";
+import { PLACEHOLDER_START, PLACEHOLDER_END } from "./in_js.consts.ts";
+export { PLACEHOLDER_START } from "./in_js.consts.ts";
 
-export const PLACEHOLDER_START = "PRETTIER_HTML_PLACEHOLDER_";
-const PLACEHOLDER_END = "_IN_JS";
 
-/** What the label of the document of a template says. */
-export const LABEL_NONE: number = -1;
-/** `{ embed: true }` */
-export const LABEL_EMBED: number = 0;
-/** `{ embed: true, hug: false }` */
-export const LABEL_EMBED_WITHOUT_HUG: number = 1;
 
 const TK_BACKTICK = token("`");
 const TK_SPACE = token(" ");

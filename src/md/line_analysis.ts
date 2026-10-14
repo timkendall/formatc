@@ -16,9 +16,7 @@ import { MAX_LOOKAHEAD } from "./state.ts";
 import type { Container, Parser } from "./state.ts";
 import { AL_CENTER, AL_DEFAULT, AL_LEFT, AL_RIGHT, TABLE_MAXCOLCOUNT } from "./types.ts";
 import { MAX_LINK_LABEL_LEN } from "./ref_defs.ts";
-
-/** `<![CDATA[` without the `<` the caller already matched. */
-const CDATA_OPEN = "![CDATA[";
+import { CDATA_OPEN } from "./line_analysis.consts.ts";
 
 export function isSetextUnderline(p: Parser, off: number): boolean {
   const text = p.text;

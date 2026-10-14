@@ -251,9 +251,7 @@ import { flagArgs } from "./mod.ts";
 import { takeErrorsOfScanner, error } from "./mod.ts";
 import { DK_PARSE } from "../../hir.ts";
 import { errorAtTokenArgs } from "./mod.ts";
-
-/** "no word": a function found nothing to say. Not a node id. */
-const NO_WORD = -2;
+import { NO_WORD } from "./ty.consts.ts";
 
 /** The flags of a member of a type that its name says. `nameToken`: its first token. */
 function flagsOfTypeMemberName(nameToken: number, nameKind: number, keyKind: number): number {

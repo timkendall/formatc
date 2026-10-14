@@ -80,11 +80,8 @@ import {
   TX_NULLCHAR,
   TX_SOFTBR,
 } from "./types.ts";
+import { HSK_COMMENT, HSK_PROCESSING_INSTRUCTION, HSK_DECLARATION, HSK_CDATA, N_WHITESPACE, N_PUNCTUATION, N_OTHER } from "./inlines.consts.ts";
 
-const HSK_COMMENT = 0;
-const HSK_PROCESSING_INSTRUCTION = 1;
-const HSK_DECLARATION = 2;
-const HSK_CDATA = 3;
 
 /**
  * Merge all lines into buffer with \n between them (unmodified), then process inlines on the merged text. Hard/soft
@@ -851,10 +848,6 @@ export function countBackticks(cb: Uint8Array, co: number, cl: number, start: nu
   return pos - start;
 }
 
-// What is next to a delimiter run.
-const N_WHITESPACE = 0;
-const N_PUNCTUATION = 1;
-const N_OTHER = 2;
 
 function neighbor(p: Parser, codepoint: number): number {
   if (codepoint > 0xffff && compat.astralIsALetter(p.flags)) return N_OTHER;

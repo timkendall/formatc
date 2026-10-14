@@ -9,19 +9,9 @@ import { MAX_LINK_LABEL_LEN, lookupRefDef, normalizeLabel } from "./ref_defs.ts"
 import { chargeRefDefOutput } from "./state.ts";
 import { REF_FOOTNOTE, REF_NONE, SP_A, SP_IMG, SP_WIKILINK, TX_NORMAL } from "./types.ts";
 import { at, emitText, hiddenAt, pushHidden } from "./inlines.ts";
+import { MAX_LINK_DEST_PAREN_DEPTH, MAX_WIKI_BRACKET_DEPTH, LL_ALT_TEXT, LL_IMAGE, LL_LINK, LL_WIKILINK, UNMATCHED } from "./links.consts.ts";
+export { LL_ALT_TEXT, LL_IMAGE, LL_LINK, LL_WIKILINK } from "./links.consts.ts";
 
-/** Maximum parenthesis nesting depth inside a bare link destination (quadratic otherwise). */
-const MAX_LINK_DEST_PAREN_DEPTH = 32;
-
-/** Maximum `[`/`]` nesting depth inside a wiki link. */
-const MAX_WIKI_BRACKET_DEPTH = 32;
-
-// Close action matching the span opened by `enterLabelSpan` / `processWikiLink` (`LabelLeave`).
-/** Inside image alt text: no span was opened. */
-export const LL_ALT_TEXT = 0;
-export const LL_IMAGE = 1;
-export const LL_LINK = 2;
-export const LL_WIKILINK = 3;
 
 /**
  * CommonMark §6.3 link destination, shared by inline links, the link lookahead and reference definitions. In
@@ -74,8 +64,6 @@ export function scanLinkDestination(p: Parser, buf: Uint8Array, off: number, len
 }
 
 // ---- brackets: p.br, stride BR_W (open, close, linkEnd, isImage) ----
-
-const UNMATCHED = -1;
 
 /**
  * Of the link, or the image, that the `[` at `open` starts: where its label ends (`p.lkClose`) and where it ends

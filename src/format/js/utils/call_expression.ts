@@ -57,6 +57,7 @@ import {
   formatTrailingCommentsRange,
   writeCommentsBetweenBlocks,
 } from "../trivia.ts";
+import { TEST_CALLEES_PRETTIER, TEST_CALLEES_OXFMT } from "./call_expression.consts.ts";
 
 /** Prettier's `isCallExpression`. For `(a?.b())`, the whole of an optional chain, Babel has an `OptionalCallExpression` and typescript-estree a `ChainExpression`. */
 export function isCallExpression(e: number, f: Formatter): boolean {
@@ -159,9 +160,6 @@ export function typeArgumentsTrailingComments(call: number, end: number, f: Form
   return cm.commentsBeforeCharacter(end, 40);
 }
 
-/** The callees that `isTestCall` takes. 0: Prettier's `testCallCalleePatterns`; 1: oxfmt's, which are more. */
-const TEST_CALLEES_PRETTIER: number = 0;
-const TEST_CALLEES_OXFMT: number = 1;
 
 /**
  * Prettier's `isTestCall`. `e` is a call.

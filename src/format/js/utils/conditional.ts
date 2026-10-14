@@ -73,25 +73,14 @@ import { fmtNodeWithoutTrailingComments } from "./format_node_without_trailing_c
 import { isCastTargetThatHidesItsKind } from "./typecast.ts";
 import { isAngularPipe } from "../print/binary_like_expression.ts";
 import { writeTernary } from "./experimental_ternary.ts";
+import { CONDITIONAL_LIKE_CONDITIONAL_EXPRESSION, CONDITIONAL_LIKE_TS_CONDITIONAL_TYPE, LAYOUT_ROOT, LAYOUT_NESTED_TEST, LAYOUT_NESTED_CONSEQUENT, LAYOUT_NESTED_ALTERNATE, LAYOUT_JSX_CHAIN } from "./conditional.consts.ts";
+export { CONDITIONAL_LIKE_CONDITIONAL_EXPRESSION, CONDITIONAL_LIKE_TS_CONDITIONAL_TYPE } from "./conditional.consts.ts";
 
-export const CONDITIONAL_LIKE_CONDITIONAL_EXPRESSION: number = 0; // h: Expr
-export const CONDITIONAL_LIKE_TS_CONDITIONAL_TYPE: number = 1; // h: Type
 
 const T_QUESTION = token("?");
 const T_COLON = token(":");
 const T_EXTENDS = token("extends");
 
-// `ConditionalLayout`: where a conditional is in another. The code: the kind (bits 0-1) and `JSX_CHAIN`.
-/** It is not in another conditional. */
-const LAYOUT_ROOT: number = 0;
-/** `(a ? b : c) ? d : e` */
-const LAYOUT_NESTED_TEST: number = 1;
-/** `a ? (b ? c : d) : e` */
-const LAYOUT_NESTED_CONSEQUENT: number = 2;
-/** The condition is aligned with what is after the `:` of the parent: `a ? b : c + d ? e : f`. */
-const LAYOUT_NESTED_ALTERNATE: number = 3;
-/** One of the operands of it or of the conditionals in it is a JSX element (of `Root` and `NestedTest`). */
-const LAYOUT_JSX_CHAIN: number = 4;
 
 const pending = new I32Vec(8);
 

@@ -287,13 +287,6 @@ function optionsForPrintedText(p: Printer): FormatOptions | null {
   return o;
 }
 
-// What `write_printed_text` formats.
-const FMT_CSS = 0;
-const FMT_JSON = 1;
-const FMT_YAML = 2;
-const FMT_MARKDOWN = 3;
-const FMT_GRAPHQL = 4;
-const FMT_GLIMMER = 5;
 
 /**
  * Writes what the formatter `fmt` appends to a buffer it is given, without the line breaks at its end. `parser`: the number of the
@@ -612,6 +605,7 @@ function embedText(p: Printer, id: number): boolean {
 
 import { HUG_BARE, writeExpression } from "./js.ts";
 import { writeAngularExpression as writeAngularExpressionBare } from "./angular.ts";
+import { FMT_CSS, FMT_JSON, FMT_YAML, FMT_MARKDOWN, FMT_GRAPHQL, FMT_GLIMMER } from "./embed.consts.ts";
 
 function writeExpressionOf(p: Printer, b: Uint8Array, s: number, e: number, isTypescript: boolean, inHtml: InHtml): boolean {
   return writeExpression(p, b, s, e, isTypescript, inHtml, HUG_BARE);

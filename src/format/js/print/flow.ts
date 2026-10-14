@@ -1515,22 +1515,7 @@ export function importKind(start: number, f: Formatter): string {
 
 // ───────────────────────────── match ─────────────────────────────
 
-// What `formatNodeWith` writes: the body of a `format_node(span, parent, f, |f| ..)` of this file.
-const BK_MATCH_EXPR_CASE = 1;
-const BK_MATCH_STMT_CASE = 2;
-const BK_GUARD = 3;
-const BK_PATTERN_PARTS = 4;
-const BK_OBJECT_PATTERN_PROPERTY = 5;
-const BK_RECORD_PROPERTY = 6;
 
-/** What a pattern is directly in. */
-const PP_CASE = 0;
-/** With that many elements, the rest not counted. */
-const PP_ARRAY = 1;
-const PP_PROPERTY = 2;
-/** It is the left side. */
-const PP_AS = 3;
-const PP_OTHER = 4;
 
 function writeBody(bk: number, bh: number, bp: number, bc: number, f: Formatter): void {
   switch (bk) {
@@ -1744,6 +1729,7 @@ function writeMatchExpressionCase(cs: number, f: Formatter): void {
 }
 
 import { exprFnFn } from "../../../lint/ast/index.ts";
+import { BK_MATCH_EXPR_CASE, BK_MATCH_STMT_CASE, BK_GUARD, BK_PATTERN_PARTS, BK_OBJECT_PATTERN_PROPERTY, BK_RECORD_PROPERTY, PP_CASE, PP_ARRAY, PP_PROPERTY, PP_AS, PP_OTHER } from "./flow.consts.ts";
 function exprFnFnOf(e: number): number {
   return exprFnFn(e);
 }

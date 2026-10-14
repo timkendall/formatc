@@ -89,11 +89,9 @@ import {
 } from "./parameters.ts";
 import { spanThatCommentsLead } from "./sequence_expression.ts";
 import { typeParameters } from "./type_parameters.ts";
+import { GROUPED_CALL_ARGUMENT_LAYOUT_GROUPED_FIRST_ARGUMENT, GROUPED_CALL_ARGUMENT_LAYOUT_GROUPED_LAST_ARGUMENT, FUNCTION_CACHE_MODE_NO_CACHE, FUNCTION_CACHE_MODE_CACHE } from "./arrow_function_expression.consts.ts";
+export { GROUPED_CALL_ARGUMENT_LAYOUT_GROUPED_FIRST_ARGUMENT, GROUPED_CALL_ARGUMENT_LAYOUT_GROUPED_LAST_ARGUMENT, FUNCTION_CACHE_MODE_NO_CACHE, FUNCTION_CACHE_MODE_CACHE } from "./arrow_function_expression.consts.ts";
 
-export const GROUPED_CALL_ARGUMENT_LAYOUT_GROUPED_FIRST_ARGUMENT: number = 0;
-export const GROUPED_CALL_ARGUMENT_LAYOUT_GROUPED_LAST_ARGUMENT: number = 1;
-export const FUNCTION_CACHE_MODE_NO_CACHE: number = 0;
-export const FUNCTION_CACHE_MODE_CACHE: number = 1;
 
 const T_ASYNC = token("async ");
 

@@ -192,6 +192,7 @@ import { fmtStatements } from "./program.ts";
 import { optionalSemicolon, startOfCommentsInDroppedParentheses } from "./semicolon.ts";
 import { writeTsSignature } from "./ts_types.ts";
 import { typeArgumentsWithoutComments, typeParameters, typeParametersWithoutComments } from "./type_parameters.ts";
+import { CK_UNQUOTED, CK_STRING, CK_QUOTED, GAP_ANGLE_BRACKET, GAP_EXTENDS, GAP_IMPLEMENTS, AFTER_NAME, AFTER_TYPE_PARAMETERS, AFTER_SUPER_CLASS, AFTER_SUPER_TYPE_ARGUMENTS } from "./class.consts.ts";
 
 const T_PUBLIC = token("public ");
 const T_PROTECTED = token("protected ");
@@ -365,10 +366,6 @@ function constructorKeepsOverride(f: Formatter): boolean {
   return f.options.flavor === FLAVOR_OXFMT;
 }
 
-/** What `writeConstructorKeyword` writes inside `format_node`. */
-const CK_UNQUOTED: number = 0;
-const CK_STRING: number = 1;
-const CK_QUOTED: number = 2;
 
 /** `format_node(span, || parent, f, write)` for the name of a constructor. `parent`: an `AstNodes`, the parent of the name. */
 function formatConstructorName(what: number, start: number, end: number, parent: number, f: Formatter): void {
@@ -615,14 +612,7 @@ function decoratorsInExportStartALine(f: Formatter): boolean {
 
 // ───────────────────────────── the head of a class ─────────────────────────────
 
-const GAP_ANGLE_BRACKET: number = 0;
-const GAP_EXTENDS: number = 1;
-const GAP_IMPLEMENTS: number = 2;
 
-const AFTER_NAME: number = 0;
-const AFTER_TYPE_PARAMETERS: number = 1;
-const AFTER_SUPER_CLASS: number = 2;
-const AFTER_SUPER_TYPE_ARGUMENTS: number = 3;
 
 /** Between two parts of the head of a class: where the first ends, where the second starts, what the second is (`GAP_*`) and its flag. */
 const G = new Int32Array(4);

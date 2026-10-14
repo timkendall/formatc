@@ -46,10 +46,8 @@ import { JOIN_SOFT_LINE, joinNodesSeparator, writeSeparatorAfter } from "../buil
 import { fmtPatProp, fmtProp } from "../format.ts";
 import { DANGLING_SOFT, formatDanglingComments } from "../trivia.ts";
 import { shouldHugFunctionParameters } from "./parameters.ts";
+import { LAYOUT_GROUP, LAYOUT_EMPTY, LAYOUT_INLINE } from "./object_pattern_like.consts.ts";
 
-const LAYOUT_GROUP: number = 0;
-const LAYOUT_EMPTY: number = 1;
-const LAYOUT_INLINE: number = 2;
 
 /** `kind`: 0 a pattern (`h`: the Pat, the list is PatProps), 1 the target of an assignment (`h`: the Expr, the list is Props). */
 function parentOf(kind: number, h: number): number {

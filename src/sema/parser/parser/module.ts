@@ -102,9 +102,7 @@ import { assignmentExpression, expression, isFollowedByWordOnSameLine, isParenth
 import { jsError } from "./js_syntax.ts";
 import { finishStmt, takeModifiers } from "./stmt.ts";
 import { error } from "./mod.ts";
-
-/** "no word": a function found nothing to say. Not an atom. */
-const NO_WORD = -2;
+import { NO_WORD } from "./module.consts.ts";
 
 /** Whether the text is read as acorn or Babel read it: what TypeScript's parser leaves to the checker is an error of their parsers. */
 function isReadAsByOtherParsers(): boolean {

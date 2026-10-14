@@ -66,6 +66,8 @@ import { N_EXPR, N_PROP, N_STMT, nodeAsExpr, nodeKind, nodeId, nodeOfExpr, exprP
 import { classStartPos, funcStartOfParams } from "./decl.ts";
 import { unescapeJsx } from "./entities.ts";
 import { stmtAsExpr } from "./stmt.ts";
+import { JC_EXPR, JC_WHITESPACE } from "./expr.consts.ts";
+export { JC_EXPR, JC_WHITESPACE } from "./expr.consts.ts";
 
 
 /** The raw expression `e` is in range. */
@@ -1227,9 +1229,6 @@ export function jsxClosingSpan(e: number): boolean {
   return true;
 }
 
-/** Kinds of the rows `jsxChildrenWithWhitespace` appends. */
-export const JC_EXPR: number = 1;
-export const JC_WHITESPACE: number = 2;
 
 /**
  * `Jsx::children_with_whitespace`: the children, and the whitespace between them that is not among `jsxChildren`: all that ESLint has
