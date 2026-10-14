@@ -43,17 +43,21 @@ threads.
 | 0 · baseline | the port, plus a first perf pass that a usage limit paused | 32 × Sonnet 5.5 (high) + Opus 5.5 orchestrator | 5,179 | 2.23 B | ~$560–570 | 170.6 G | 1.25 s (2.85×) | output identical to `bun fmt` |
 | 1 · hot spots | `buildUnicodeEscapes`, `parents.ts fill()`, width scans, printer `DataView` | 2 × Haiku 5.5, 2 × Sonnet 5.5 (medium) | 52 | 2.8 M | ~$0.40 | 163.8 G (−4.0%) | 1.25 s¹ | 4 of 4 (one redone by the orchestrator) |
 | 2 · worker-mode state | read thread-local singletons once in the lexer, IR writer/printer and tree handles; one fused byte scan | 3 × Haiku 5.5, 2 × Sonnet 5.5 (medium) | 101 | 6.8 M | ~$0.55 | 161.9 G (−1.2%) | 1.15 s (2.67×) | 1 of 5 |
-| orchestrator, rounds 1–2 | planning, merging, gating, profiling, docs | Opus 5.5 | ~60 | ~6 M | ~$3.5 | | | |
+| 3 · less work per node (PERFORMANCE.md §4 C) | comment lookups on the quiet path, newline queries, unchanged string literals, span accessors | 4 × Sonnet 5.5 (high) | 126 | 9.3 M | ~$2.9 | 157.8 G (−2.5%) | 1.14 s (2.59×) | 3 of 4 |
+| orchestrator, rounds 1–3 | planning, probes, merging, gating, profiling, docs | Opus 5.5 | ~90 | ~12 M | ~$6.5 | | | |
 
 ¹ Measured while other agents were running; the idle 8-thread time after round 2 is in the table below.
 
-Rounds 1–2 cost about $4.5 in total, against ~$560 for round 0. Each agent ran in its own git worktree and stopped after one
+Rounds 1–3 cost about $10.5 in total, against ~$560 for round 0. Together they took instructions from 170.6 G to 157.8 G
+(−7.5%) and the 8-thread time from 1.25 s to 1.14 s. Each agent ran in its own git worktree and stopped after one
 target (after the gate passed, after two failed attempts, or at ~60 tool calls). None was resumed, so no agent re-read a long
-context. Haiku agents cost $0.02–0.11 each and Sonnet agents ~$0.18. Per-agent numbers come from `python3 -I tools/agent-cost.py
+context. Haiku agents cost $0.02–0.11 each, Sonnet agents at medium effort ~$0.18, and Sonnet agents at high effort $0.32–1.20. Per-agent numbers come from `python3 -I tools/agent-cost.py
 <session-id>`. Sub-agent transcripts record only the first streaming count of output tokens, so output is estimated from the
 text and tool inputs the agents wrote. Their hidden thinking is not recorded and may add a few tenths of a dollar. What failed
 and why is logged in [docs/STATUS.md](docs/STATUS.md). For example, hoisting fields that are read once per call adds
-instructions in worker mode, and reading 4 bytes at a time does not beat a byte loop.
+instructions in worker mode, reading 4 bytes at a time does not beat a byte loop, and a per-file line-break table costs
+more than the short scans it replaces. Before round 3 the orchestrator measured Prettier's refusal checks at ~1.2 G (0.8%)
+by switching them off in a scratch build, so it gave that target no agent.
 
 A TypeScript port of [Bun's formatter](https://bun.com/docs/format) (`bun fmt`, Rust), compiled to a native executable with
 [scriptc](https://scriptc.dev) and parallelized with `node:worker_threads` + [`@scriptc/threads`](https://scriptc.dev/docs/threads).
@@ -66,14 +70,15 @@ measurements, where the time goes, and the ways we see to close the gap.
 
 ## Results
 
-`--check` over bench/vscode (18,080 files, 238 MB, 193 MB of it TypeScript), Apple M5 Pro, idle machine, Bun canary 1.4.4, min
-of 3 interleaved runs, after swarm round 2:
+`--check` over bench/vscode (18,080 files, 238 MB, 193 MB of it TypeScript), Apple M5 Pro, Bun canary 1.4.4, after swarm round
+3. Interleaved runs, min of 3 (min of 5 at 8 threads), with a background load average of ~7, so both tools are a little slower
+than on an idle machine:
 
 | threads | formatc | `bun fmt` | gap |
 | ------- | ------- | --------- | --- |
-| 1       | 7.75 s  | 2.39 s    | 3.2× |
-| 8 (Bun's published benchmark) | 1.15 s | 0.43 s | 2.67× |
-| 18      | 0.70 s  | 0.30 s    | 2.3× |
+| 1       | 7.56 s  | 2.44 s    | 3.1× |
+| 8 (Bun's published benchmark) | 1.14 s | 0.44 s | 2.59× |
+| 18      | 0.74 s  | 0.31 s    | 2.4× |
 
 Correctness against `bun fmt` on the same tree (`bin/fmt --check --compare-to=../vscode-fmt`):
 
