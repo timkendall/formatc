@@ -18,3 +18,5 @@ in the order they apply. To make one: copy this directory (`cp -c -R`), edit the
 They target worker-mode code generation, which every program that imports `Worker` gets (see `docs/PERFORMANCE.md` §3.2).
 They are validated only against this program: `tools/perf/gate.sh` (byte-identical output on bench/vscode and Prettier
 conformance). scriptc's own test suite is not run.
+
+Patch 97 (`97-no-stack-guard.patch`): setting `SCRIPTC_NO_STACK_GUARD=1` omits the stack-overflow guard entirely (default keeps it); the parser and dispatcher already bound nesting, and the guard cost 3.7% of instructions even after patch 40.

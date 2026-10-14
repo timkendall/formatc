@@ -936,3 +936,10 @@ Post-call exception checks, measured with `--check --threads=1` on the vscode co
 - V1 (exc-V1.patch): no post-call checks except lexically inside try regions (a fully check-free binary hangs in `fsx.readText`, whose catch needs them). `scr_exc_pending` call sites 25,145 -> 532 (alert loads 72). 77.3 G instr (-4.4 G, -5.4%), 26.3 G cycles (min of 3, -3%). 0 mismatches vs ../vscode-fmt.
 - V2 (exc-V2.patch): no checks after `sc_f__*`/`sc_bf__*` calls (found by scanning the last emitted call), runtime checks kept. Sites 2,746 (alert loads 2,286). 77.5 G instr (-4.2 G, -5.1%), 25.4 G cycles (min of 3). 0 mismatches.
 - Conclusion: ~4.3 G instructions (~5%) is the ceiling for removing exception checks; almost all of it is recoverable by a precise "user function cannot throw" analysis (V2 ~ V1). Cycle gain is within noise, ~0-3%.
+
+### perf C stack
+- Patch 97 `SCRIPTC_NO_STACK_GUARD=1` disables stackChecks at the decision point in the emitter (no marked functions, no init call, no RangeError edges); gate.sh exports it.
+- IR (grep -c) guard_get/overflow/stacksave/guard_init: with var 0/0/0/0; default 284/284/284/2 (default unchanged).
+- bench/vscode --check 1 thread, min of 3: instructions 83.19 G (main032) -> 80.16 G (-3.6%); cycles noisy (20.8-25.6 G cstack vs 21.4-22.3 G main032, other agents loading the machine).
+- Gate: 0 byte mismatches, conformance ok, no GATE FAILED.
+- Deep nesting: 2,000 parens gives identical output/exit 1 in both; 20,000 and 200,000 give "The code is nested too deeply", exit 2 in both. The parser limit protects the guardless build.
