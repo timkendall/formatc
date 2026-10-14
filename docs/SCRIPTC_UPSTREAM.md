@@ -128,6 +128,21 @@ patches together take it to 92.9 G (−30%) and the 8-thread wall time from 0.90
   - `fs.openSync` has no mode argument, and `Stats` has no `mode`.
   - `spawnSync` lacks `cwd`, `input` and `env`.
 
+### 12. One possibly-undefined argument boxes a parameter for every caller
+- **Symptom:** `arr[i] as number`, `stack.pop() as number` and bare `arr[i]` arguments are treated as possibly `undefined`.
+  The `as number` cast does not narrow.
+- **How it spreads:** the optional-binding fixpoint carries `number | undefined` through loop-carried locals
+  (`let cur = e; cur = next(cur)`) and through returns into the parameters of the functions they reach. Those functions then
+  get a union calling convention: `ptr` parameters, `scr_union_new_f64` boxing at every call site and `scr_union_destroy`
+  after it.
+- **In formatc:** five such expressions in cold code (import sorting, cursor handling) boxed the parameters of eight of the
+  hottest functions (`exprTag`, `fmtExpr`, `parentOfExpr`, …). That made 429 boxing call sites.
+- **Workaround:** `| 0` at those five sites cut the boxing sites to 121 and saved 3.7 G instructions (−4.2%).
+- **Suggested fixes:**
+  - Trust `as number`, or at least make it a cheap NaN check rather than a widening.
+  - Report when a `number` parameter is widened to a union, with the call site that caused it.
+  - Specialize hot callees on the plain-number ABI; `numeric-call-specialization` only does this for some callers today.
+
 ## Checked and fine
 
 - **Exception checks after calls:** already inline in worker mode. Each is one load of the process-wide alert word and a
@@ -146,4 +161,6 @@ patches together take it to 92.9 G (−30%) and the 8-thread wall time from 0.90
 | 2 | bug: inline DataView disabled for workers | patch 85 | 2.8 G |
 | 1 | bug: `sanitize_address` in normal builds | patch 30 | 1.9 G (with invariant header loads) |
 | 5 | bug: `Int32` locals stay double | patch 90 | 1.1 G |
-| 9, 10 | perf: retain/release on aliases, per-thread immutable data | not patched | ~3 G, unknown |
+| 12 | perf: union ABI from one possibly-undefined argument | source `| 0` at 5 sites | 3.7 G |
+| 9 | perf: retain/release on typed-array aliases | patch 95 | 1.6 G |
+| 10 | perf: per-thread immutable data | not patched | unknown |

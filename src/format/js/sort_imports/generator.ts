@@ -337,7 +337,7 @@ export class Printer {
 
   printJoin(nodes: number[], join: number, trailingCommentsLineOffset: number): void {
     for (let index = 0; index < nodes.length; index++) {
-      const node = nodes[index] as number;
+      const node = (nodes[index] as number) | 0;
       if (join === JOIN_SEQUENCE && index === 0 && this.hasContent()) this.newline(1);
       this.print(node, false, trailingCommentsLineOffset);
       if (join === JOIN_LIST) {

@@ -1042,7 +1042,7 @@ class Organizer {
         if ((this.cEnd[mid] as number) < at) lo = mid + 1;
         else hi = mid;
       }
-      if (lo < this.cEnd.length && this.cEnd[lo] === at) at = this.cStart[lo] as number;
+      if (lo < this.cEnd.length && this.cEnd[lo] === at) at = (this.cStart[lo] as number) | 0;
       else return at;
     }
   }

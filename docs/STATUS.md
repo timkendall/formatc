@@ -897,3 +897,19 @@ Files: src/format/ir/formatter.ts, src/format/ir/width.ts.
 - 96-bounds-i32-calls.patch (emitter.js, expr-calls.js, bytes-bounds.js, integer-ranges.js): internal functions whose params/returns are proven int32 at every call site get an i32 signature (double-ABI adapter kept for closures/vtables/runtime); bounds checks elided for fixed-length module tables with proven index ranges. Ablation: all integer-index bounds checks ≈ 5G (most hot reads are `this.src[pos]`, not provable without a `len <= src.length` invariant). −3.2G.
 - setup.sh now restores the pristine compiler and applies every patch in order with no fuzz (the old "already applied" check re-applied a patch and left a .rej).
 - With the IR-writer change (no per-file markOddBlocks pass; tokens check their own bytes): 88.7G instructions, 20.5G cycles, 0.73s @8 threads; full gate clean.
+
+### perf P1 unions
+- No source-level `number | undefined` / `x?: number` / `Map.get` unions exist in the target functions (grep of src/format/js + lexer: none); no edits made.
+- The 428 `scr_union_new_f64` sites are call-site boxing of native numbers into functions whose `number` params compile to a union ABI (`sc_bf__*.i(ptr ...)`, e.g. exprTag, exprAsFn, exprNonNullExpr, parentOfExpr, mkAn id, fmtExpr, shouldWrapFunctionForExportDefault) beside a `_nativeNumber` clone; root cause (which call site makes the param `f64|undefined`) not found in IR; likely a compiler-side inference issue.
+- instructions: unchanged (no change made); gate not run.
+
+### perf P1 widen
+Cause: `arr[i] as number` / `stack.pop() as number` / bare `arr[i]` call args are treated as possibly-undefined; the optional-binding fixpoint then spreads `number|undefined` through locals (`let current = e`), returns (`fullStartOf`, `leftEdgeEnd`) and params, giving exprTag/exprAsFn/exprNonNullExpr/mkAn/fmtExpr... a union ABI.
+Fix (source only, `| 0`): cursor.ts operandsInRightSide (`stack.pop()`, `operands[count-1/-2]`), print/flow.ts:1978 `copy[i]`, sort_imports/organize.ts:1045 fullStartOf, sort_imports/generator.ts:340.
+`scr_union_new_f64` sites 429 -> 121 (rest are cold driver/string params); instructions 88.7G -> 85.0G; full gate: 0 vscode mismatches, no GATE FAILED.
+
+### perf P1 jsfast
+- Counts (8.4M fmtExpr calls, vscode): idents 2.9M (2.4M reached the parens check, 3.3k needed them); calls 1.3M, member 0.9M, strings 0.83M; mayNeedParentheses true for non-idents is rare (<1%). keepsArgumentsOnOneLine 1.3M calls: 0.62M callee not a name, 0.24M name not require-like (ran 10 nameIs each), 0.25M string/template first arg. fmtArguments 1.4M: 0.95M plain layout, 0.30M can-be-grouped. fmtStatements 1.66M statements, 1.17M isNextLineEmptyAfter; those paths were already fast.
+- Kept: identifier fast path in fmtExpr (skips needsParentheses/mayNeedParentheses/exprParent for names that cannot need parens; exact same predicate via identMayNeedParentheses), byte-compare isNameThatMayNeedParentheses, length/first-letter filter before the 10 nameIs in keepsArgumentsOnOneLine. Other candidates (exprParent shortcuts, fmtArguments simple path) measured at <0.1% each by count: not done.
+- Instructions (1 thread, min of 4 alternating runs; run-to-run noise ~0.7G): 88.6G -> 88.4G median-ish gain ~0.3G (0.3%); gate run 89.9G. Full gate: 0 vscode mismatches, no GATE FAILED, conformance ok, 0.75s @8.
+- Files: src/format/js/format.ts, src/format/js/parentheses/expression.ts, src/format/js/print/call_like_expression/mod.ts.

@@ -35,6 +35,9 @@ import {
   exprTag,
   listAt,
   nameIs,
+  nameBuf,
+  nameLen,
+  nameStart,
 } from "../../../../lint/ast/index.ts";
 import {
   AN_EXPRESSION_STATEMENT,
@@ -162,6 +165,11 @@ function keepsArgumentsOnOneLine(e: number, call: number, f: Formatter): boolean
     if (exprTag(callee) !== EXPR_IDENT) return false;
     const name = exprIdentName(callee);
     let known = false;
+    // They are 5 to 12 letters, and start with one of seven.
+    const nameLength = nameLen(name);
+    if (nameLength < 5 || nameLength > 12) return false;
+    const c0 = nameBuf(name)[nameStart(name)] | 0;
+    if (!(c0 === 114 || c0 === 100 || c0 === 97 || c0 === 105 || c0 === 102 || c0 === 119 || c0 === 98)) return false;
     for (let i = 0; i < REQUIRE_LIKE_NAMES.length; i++) {
       if (nameIs(name, REQUIRE_LIKE_NAMES[i])) {
         known = true;

@@ -820,7 +820,7 @@ function operandsInRightSide(e: number): number[] {
   const stack: number[] = [];
   stack.push(right);
   while (stack.length > 0) {
-    const at = stack.pop() as number;
+    const at = (stack.pop() as number) | 0;
     if (isSameOp(at, op)) {
       stack.push(exprBinaryRight(at));
       stack.push(exprBinaryLeft(at));
@@ -838,9 +838,9 @@ function logicalParts(e: number, operands: number[], count: number, out: Item[])
   if (exprTag(e) !== EXPR_BINARY || count < 1 || count - 1 >= operands.length) return;
   const op = exprBinaryOp(e);
   const left = exprBinaryLeft(e);
-  const last = operands[count - 1];
+  const last = operands[count - 1] | 0;
   if (count >= 2) {
-    const beforeLast = operands[count - 2];
+    const beforeLast = operands[count - 2] | 0;
     const s = exprStart(left);
     out.push(itemOf(s, exprEnd(beforeLast), K_LOGICAL, e, count - 1, -1));
   } else out.push(leftOperand(op, left));

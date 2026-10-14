@@ -249,20 +249,38 @@ export function needsParentheses(e: number, f: Formatter): boolean {
 }
 
 function isNameThatMayNeedParentheses(buf: Uint8Array, start: number, len: number): boolean {
+  // The names are told apart by their length and their first letter before any is compared.
+  const c = buf[start] | 0;
   switch (len) {
     case 3:
-      return eqLit(buf, start, "let");
+      return c === 108 && (buf[start + 1] | 0) === 101 && (buf[start + 2] | 0) === 116;
     case 4:
-      return eqLit(buf, start, "hook") || eqLit(buf, start, "type");
+      if (c === 104) return (buf[start + 1] | 0) === 111 && (buf[start + 2] | 0) === 111 && (buf[start + 3] | 0) === 107;
+      if (c === 116) return (buf[start + 1] | 0) === 121 && (buf[start + 2] | 0) === 112 && (buf[start + 3] | 0) === 101;
+      return false;
     case 5:
-      return eqLit(buf, start, "async") || eqLit(buf, start, "await") || eqLit(buf, start, "using") || eqLit(buf, start, "yield");
+      if (c === 97) return eqLit(buf, start, "async") || eqLit(buf, start, "await");
+      if (c === 117) return eqLit(buf, start, "using");
+      if (c === 121) return eqLit(buf, start, "yield");
+      return false;
     case 6:
-      return eqLit(buf, start, "module");
+      return c === 109 && eqLit(buf, start, "module");
     case 9:
-      return eqLit(buf, start, "interface") || eqLit(buf, start, "component");
+      if (c === 105) return eqLit(buf, start, "interface");
+      if (c === 99) return eqLit(buf, start, "component");
+      return false;
     default:
       return false;
   }
+}
+
+/** The test of `mayNeedParentheses` for a name written at `[start, start + len)`. */
+export function identMayNeedParentheses(text: Uint8Array, start: number, len: number): boolean {
+  if (isNameThatMayNeedParentheses(text, start, len)) return true;
+  if (len >= 8) {
+    for (let i = start; i < start + len; i++) if ((text[i] | 0) === 92) return true;
+  }
+  return len >= 35 && eqLit(text, start, "PRETTIER_");
 }
 
 function eqLit(buf: Uint8Array, start: number, lit: string): boolean {
@@ -283,14 +301,8 @@ function mayNeedParentheses(e: number): boolean {
     case EXPR_SPREAD:
       return false;
     case EXPR_IDENT: {
-      const text = hir.text;
       const start = exprStart(e);
-      const len = exprEnd(e) - start;
-      if (isNameThatMayNeedParentheses(text, start, len)) return true;
-      if (len >= 8) {
-        for (let i = start; i < start + len; i++) if ((text[i] | 0) === 92) return true;
-      }
-      return len >= 35 && eqLit(text, start, "PRETTIER_");
+      return identMayNeedParentheses(hir.text, start, exprEnd(e) - start);
     }
     case EXPR_BINARY: {
       const op = exprBinaryOpOf(e);

@@ -1975,7 +1975,7 @@ function writeAlternatives(base: number, end: number, f: Formatter): void {
       f.token(T_PIPE_SPACE);
     }
     f.startAlign(2);
-    writeMatchPattern(copy[i], PP_OTHER, 0, f);
+    writeMatchPattern(copy[i] | 0, PP_OTHER, 0, f);
     f.endAlign(2);
   }
 }

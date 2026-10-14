@@ -341,7 +341,7 @@ import {
   formatTrailingComments,
   formatTrailingCommentsRange,
 } from "./trivia.ts";
-import { needsParentheses as exprNeedsParentheses, chainExpressionNeedsParentheses } from "./parentheses/expression.ts";
+import { needsParentheses as exprNeedsParentheses, identMayNeedParentheses, chainExpressionNeedsParentheses } from "./parentheses/expression.ts";
 import { needsParentheses as typeNeedsParentheses } from "./parentheses/ts_type.ts";
 import { writeSuppressedNode } from "./utils/suppressed.ts";
 import { enterNode, extendNode } from "../cursor_region.ts";
@@ -1139,7 +1139,7 @@ export function fmtExpr(e: number, f: Formatter): void {
     const end = SP$.s1 | 0;
     const len = end - start;
     const mayNeedParentheses = len >= 3 && (len <= 9 || len >= 35 || !f.isPlainSource(start, end));
-    if (mayNeedParentheses && exprNeedsParentheses(e, f)) fmtExprFull(e, EO_NONE, false, f);
+    if (mayNeedParentheses && identMayNeedParentheses(hir.text, start, len) && exprNeedsParentheses(e, f)) fmtExprFull(e, EO_NONE, false, f);
     else f.sourceText(start, end);
     return;
   }
