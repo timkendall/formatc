@@ -1,3 +1,5 @@
+Filed as https://github.com/vercel-labs/scriptc/issues/985 (2026-10-14).
+
 ## Summary
 
 `arr[i] as number`, `stack.pop() as number` and a bare `arr[i]` passed as an argument are treated as possibly `undefined`; the `as number` cast does not narrow. The optional-binding fixpoint then carries `number | undefined` through loop-carried locals and return values into the parameters of every function they reach, and those functions get a union calling convention: `ptr` parameters, `scr_union_new_f64` boxing at every call site and `scr_union_destroy` after it. In our 183k-line program five such expressions in cold code (import sorting, cursor handling) boxed the parameters of eight of the hottest functions, 429 boxing call sites in all. Writing `| 0` at those five sites cut them to 121 and saved 3.7 G instructions (−4.2% of the whole run). Still reproduces on **0.3.2** (0.3.2 adds an `.i32` native clone, but the union ABI and the boxing remain).
