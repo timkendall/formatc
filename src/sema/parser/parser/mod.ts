@@ -409,8 +409,9 @@ export function next(): void {
 
 /** `nextTokenWithoutCheck`: goes on from a word that is taken as a name. */
 export function nextAfterName(): void {
-  if (lx.hasEscape && p.recovers) forgetEscapedKeyword();
-  lx.next();
+  const lx$ = lx;
+  if (lx$.hasEscape && p.recovers) forgetEscapedKeyword();
+  lx$.next();
 }
 
 /** The token, a word, is taken as a name. */
@@ -420,8 +421,9 @@ export function takeAsName(): void {
 
 /** The token, a word with an escape, is taken as a name: as a keyword it would be an error. */
 export function forgetEscapedKeyword(): void {
-  const at = lx.start | 0;
-  if (!lx.forgetEscapedKeyword()) removeDiagnostics(1260, at);
+  const lx$ = lx;
+  const at = lx$.start | 0;
+  if (!lx$.forgetEscapedKeyword()) removeDiagnostics(1260, at);
 }
 
 /** `diagnostics.retain(|it| it.code != code || it.start != start)` */
@@ -467,28 +469,33 @@ export const debug: DebugHook = new DebugHook();
 /** A token that the grammar does not allow here. */
 export function fail(): void {
   // Where going on is not written yet. A speculative parse would go on too.
-  if (p.recovers) {
-    if (debug.on) debug.fire();
+  const p$ = p;
+  const debug$ = debug;
+  if (p$.recovers) {
+    if (debug$.on) debug$.fire();
     return refuse(R_UNSUPPORTED);
   }
-  if (lx.refusal === 0) {
-    p.failedTok = lx.token;
-    p.failedPos = lx.start;
+  const lx$ = lx;
+  if (lx$.refusal === 0) {
+    p$.failedTok = lx$.token;
+    p$.failedPos = lx$.start;
   }
-  lx.refuse(R_SYNTAX);
+  lx$.refuse(R_SYNTAX);
 }
 
 /** Gives up on the file, in a speculative parse too. */
 export function refuse(why: number): void {
   // It replaces the reason that only ends a speculation.
-  if (lx.refusal === R_SYNTAX) lx.refusal = 0;
-  lx.refuse(why);
+  const lx$ = lx;
+  if (lx$.refusal === R_SYNTAX) lx$.refusal = 0;
+  lx$.refuse(why);
 }
 
 /** TypeScript reports an error here and goes on. So does a speculative parse, whose errors do not count if it is abandoned. */
 export function report(): void {
-  if (p.speculations === 0) refuse(R_REPORTED);
-  else p.hasReported = true;
+  const p$ = p;
+  if (p$.speculations === 0) refuse(R_REPORTED);
+  else p$.hasReported = true;
 }
 
 /**
@@ -520,8 +527,9 @@ export function hasFailed(): boolean {
 
 /** `parseOptional` */
 export function eat(tok: number): boolean {
-  if (lx.token === tok) {
-    lx.next();
+  const lx$ = lx;
+  if (lx$.token === tok) {
+    lx$.next();
     return true;
   }
   return false;
@@ -529,8 +537,9 @@ export function eat(tok: number): boolean {
 
 /** `parseExpected` */
 export function expect(tok: number): boolean {
-  if (lx.token === tok) {
-    lx.next();
+  const lx$ = lx;
+  if (lx$.token === tok) {
+    lx$.next();
     return true;
   }
   expected(tok);
@@ -539,21 +548,24 @@ export function expect(tok: number): boolean {
 
 /** `parseExpectedMatchingBrackets`. `openAt`: where `open` is, or -1 if it is not there. */
 export function expectMatching(open: number, close: number, openAt: number): void {
-  if (lx.token === close) lx.next();
+  const lx$ = lx;
+  if (lx$.token === close) lx$.next();
   else unmatched(open, close, openAt);
 }
 
 /** `canParseSemicolon` */
 export function canParseSemicolon(): boolean {
-  const t = lx.token;
-  return t === T_SEMICOLON || t === T_CLOSE_BRACE || t === T_EOF || lx.newlineBefore;
+  const lx$ = lx;
+  const t = lx$.token;
+  return t === T_SEMICOLON || t === T_CLOSE_BRACE || t === T_EOF || lx$.newlineBefore;
 }
 
 /** `parseSemicolon` */
 export function semicolon(): void {
-  const t = lx.token;
-  if (t === T_SEMICOLON) lx.next();
-  else if (!(t === T_CLOSE_BRACE || t === T_EOF || lx.newlineBefore)) expected(T_SEMICOLON);
+  const lx$ = lx;
+  const t = lx$.token;
+  if (t === T_SEMICOLON) lx$.next();
+  else if (!(t === T_CLOSE_BRACE || t === T_EOF || lx$.newlineBefore)) expected(T_SEMICOLON);
 }
 
 /** Whether a list that `close` ends goes on. */
@@ -569,17 +581,19 @@ export function isInList(close: number): boolean {
  * `leaveDepth`. Every successful `enterDepth` is paired with one `leaveDepth` on every path out.
  */
 export function enterDepth(): boolean {
-  const d = p.depth;
-  if (d >= p.depthLimit) {
+  const p$ = p;
+  const d = p$.depth;
+  if (d >= p$.depthLimit) {
     refuse(R_TOO_DEEP);
     return false;
   }
-  p.depth = (d + 1) | 0;
+  p$.depth = (d + 1) | 0;
   return true;
 }
 
 export function leaveDepth(): void {
-  p.depth = (p.depth - 1) | 0;
+  const p$ = p;
+  p$.depth = (p$.depth - 1) | 0;
 }
 
 // ───────────────────────────── context ─────────────────────────────
@@ -590,8 +604,9 @@ export function hasContext(flag_: number): boolean {
 
 /** Sets the bits `set` and clears the bits `clear`. Returns the context to restore (`p.context = saved`). */
 export function enterContext(set: number, clear: number): number {
-  const saved = p.context;
-  p.context = (saved & ~clear) | set;
+  const p$ = p;
+  const saved = p$.context;
+  p$.context = (saved & ~clear) | set;
   return saved;
 }
 
@@ -605,16 +620,18 @@ export function ambient(): number {
 /** The end of `lookAhead` for a test that only reads tokens: `const m = lx.mark(); const had = lx.refusal | 0; ... lookAheadEnd(m, had)`. */
 export function lookAheadEnd(m: number, had: number): void {
   // What the scanner refuses ahead it refuses again when the parser gets there.
-  lx.refusal = had;
-  lx.reset(m);
+  const lx$ = lx;
+  lx$.refusal = had;
+  lx$.reset(m);
 }
 
 /** Whether `text` (ASCII) is written right after the token. */
 export function isBefore(text: string): boolean {
   const n = text.length;
-  let at = lx.end;
-  if (at + n > lx.len) return false;
-  const src = lx.src;
+  const lx$ = lx;
+  let at = lx$.end;
+  if (at + n > lx$.len) return false;
+  const src = lx$.src;
   for (let i = 0; i < n; i++) {
     if ((src[at] | 0) !== text.charCodeAt(i)) return false;
     at = (at + 1) | 0;
@@ -624,12 +641,13 @@ export function isBefore(text: string): boolean {
 
 /** The kind of the token after this one. */
 export function peek(): number {
-  const m = lx.mark();
-  const had = lx.refusal | 0;
-  lx.next();
-  const t = lx.token | 0;
-  lx.refusal = had;
-  lx.reset(m);
+  const lx$ = lx;
+  const m = lx$.mark();
+  const had = lx$.refusal | 0;
+  lx$.next();
+  const t = lx$.token | 0;
+  lx$.refusal = had;
+  lx$.reset(m);
   return t;
 }
 
@@ -723,7 +741,8 @@ let cpTop = 0;
 /** Starts a speculation: returns the checkpoint (a row offset). */
 export function checkpoint(): number {
   // What is taken after this would be forgotten by `rollback`, and it is not scanned again.
-  if (lx.errors.len !== 0) takeErrorsOfScanner();
+  const lx$ = lx;
+  if (lx$.errors.len !== 0) takeErrorsOfScanner();
   const cp = cpTop;
   if (cp + CP_STRIDE > cps.length) {
     const n = new Int32Array(cps.length * 2);
@@ -731,15 +750,16 @@ export function checkpoint(): number {
     cps = n;
   }
   const c = cps;
-  c[cp + CP_LEX] = lx.mark();
-  c[cp + CP_CONTEXT] = p.context | 0;
-  c[cp + CP_LISTS] = p.lists | 0;
-  c[cp + CP_CLASSES_AROUND] = p.classesAround | 0;
-  c[cp + CP_HAS_TOP_LEVEL_AWAIT] = p.hasTopLevelAwait ? 1 : 0;
-  c[cp + CP_UNCLAIMED] = p.unclaimedNullableTypes | 0;
-  c[cp + CP_HAD_REPORTED] = p.hasReported ? 1 : 0;
-  c[cp + CP_DEPTH] = p.depth | 0;
-  c[cp + CP_PRIVATE_NAMES] = p.declaredPrivateNames.len | 0;
+  c[cp + CP_LEX] = lx$.mark();
+  const p$ = p;
+  c[cp + CP_CONTEXT] = p$.context | 0;
+  c[cp + CP_LISTS] = p$.lists | 0;
+  c[cp + CP_CLASSES_AROUND] = p$.classesAround | 0;
+  c[cp + CP_HAS_TOP_LEVEL_AWAIT] = p$.hasTopLevelAwait ? 1 : 0;
+  c[cp + CP_UNCLAIMED] = p$.unclaimedNullableTypes | 0;
+  c[cp + CP_HAD_REPORTED] = p$.hasReported ? 1 : 0;
+  c[cp + CP_DEPTH] = p$.depth | 0;
+  c[cp + CP_PRIVATE_NAMES] = p$.declaredPrivateNames.len | 0;
   const h = hir;
   c[cp + CP_IDS] = h.idsLen | 0;
   c[cp + CP_NUMBERS] = h.numbersLen | 0;
@@ -882,13 +902,14 @@ export function rollback(cp: number): void {
   st.names.len = c[cp + CP_S_NAMES] | 0;
   st.decorators.len = c[cp + CP_S_DECORATORS] | 0;
   st.strayDecorators.len = c[cp + CP_S_STRAY_DECORATORS] | 0;
-  p.context = c[cp + CP_CONTEXT] | 0;
-  p.lists = c[cp + CP_LISTS] | 0;
-  p.classesAround = c[cp + CP_CLASSES_AROUND] | 0;
-  p.hasTopLevelAwait = (c[cp + CP_HAS_TOP_LEVEL_AWAIT] | 0) !== 0;
-  p.unclaimedNullableTypes = c[cp + CP_UNCLAIMED] | 0;
-  p.depth = c[cp + CP_DEPTH] | 0;
-  p.declaredPrivateNames.len = c[cp + CP_PRIVATE_NAMES] | 0;
+  const p$ = p;
+  p$.context = c[cp + CP_CONTEXT] | 0;
+  p$.lists = c[cp + CP_LISTS] | 0;
+  p$.classesAround = c[cp + CP_CLASSES_AROUND] | 0;
+  p$.hasTopLevelAwait = (c[cp + CP_HAS_TOP_LEVEL_AWAIT] | 0) !== 0;
+  p$.unclaimedNullableTypes = c[cp + CP_UNCLAIMED] | 0;
+  p$.depth = c[cp + CP_DEPTH] | 0;
+  p$.declaredPrivateNames.len = c[cp + CP_PRIVATE_NAMES] | 0;
   cpTop = cp;
 }
 
@@ -912,35 +933,38 @@ function abandonCheckpoint(cp: number): void {
 export function tryParseBegin(): number {
   if (lx.refusal !== 0) return -1;
   const cp = checkpoint();
-  p.speculations = (p.speculations + 1) | 0;
+  const p$ = p;
+  p$.speculations = (p$.speculations + 1) | 0;
   return cp;
 }
 
 export function tryParseEnd(cp: number, ok: boolean): boolean {
-  p.speculations = (p.speculations - 1) | 0;
-  const r = lx.refusal | 0;
+  const p$ = p;
+  p$.speculations = (p$.speculations - 1) | 0;
+  const lx$ = lx;
+  const r = lx$.refusal | 0;
   if (r === 0) {
     if (ok) {
       // What it reported counts.
-      if (p.hasReported && p.speculations === 0) {
-        p.hasReported = false;
+      if (p$.hasReported && p$.speculations === 0) {
+        p$.hasReported = false;
         refuse(R_REPORTED);
       }
       commit(cp);
       return true;
     }
-    p.wasAbandoned = false;
+    p$.wasAbandoned = false;
   } else if (r === R_SYNTAX) {
-    lx.refusal = 0;
-    p.wasAbandoned = true;
-    p.wasAbandonedTok = p.failedTok;
-    p.wasAbandonedPos = p.failedPos;
+    lx$.refusal = 0;
+    p$.wasAbandoned = true;
+    p$.wasAbandonedTok = p$.failedTok;
+    p$.wasAbandonedPos = p$.failedPos;
   } else {
     // The file is given up.
     abandonCheckpoint(cp);
     return false;
   }
-  p.hasReported = (cps[cp + CP_HAD_REPORTED] | 0) !== 0;
+  p$.hasReported = (cps[cp + CP_HAD_REPORTED] | 0) !== 0;
   rollback(cp);
   return false;
 }
@@ -954,12 +978,14 @@ export function lookAheadParsingBegin(): number {
 }
 
 export function lookAheadParsingEnd(cp: number, result: boolean): boolean {
-  p.speculations = (p.speculations - 1) | 0;
-  p.hasReported = (cps[cp + CP_HAD_REPORTED] | 0) !== 0;
-  const r = lx.refusal | 0;
+  const p$ = p;
+  p$.speculations = (p$.speculations - 1) | 0;
+  p$.hasReported = (cps[cp + CP_HAD_REPORTED] | 0) !== 0;
+  const lx$ = lx;
+  const r = lx$.refusal | 0;
   if (r !== 0) {
     if (r === R_SYNTAX) {
-      lx.refusal = 0;
+      lx$.refusal = 0;
       result = false;
     } else {
       abandonCheckpoint(cp);
@@ -995,7 +1021,8 @@ export function isIdentifierInContext(): boolean {
   if (t <= T_WITH) return false;
   // "If we have a 'yield' keyword, and we're in the [yield] context, then 'yield' is considered a keyword and is not an
   // identifier."
-  return !((t === T_YIELD && (p.context & CTX_YIELD) !== 0) || (t === T_AWAIT && (p.context & CTX_AWAIT) !== 0));
+  const p$ = p;
+  return !((t === T_YIELD && (p$.context & CTX_YIELD) !== 0) || (t === T_AWAIT && (p$.context & CTX_AWAIT) !== 0));
 }
 
 /** `isBindingIdentifier` */
@@ -1007,8 +1034,9 @@ export function isBindingIdentifier(): boolean {
 /** `parseIdentifier`: the name; its position is `p.outPos`. */
 export function identifier(): number {
   if (!isIdentifier()) return missingIdentifier(0, 0);
-  const atom = lx.atom | 0;
-  const at = lx.start | 0;
+  const lx$ = lx;
+  const atom = lx$.atom | 0;
+  const at = lx$.start | 0;
   noteIdentifier(atom, at);
   nextAfterName();
   p.outPos = at;
@@ -1017,17 +1045,19 @@ export function identifier(): number {
 
 /** `parseIdentifierName`: any word. A private name is one for `tokenIsIdentifierOrKeyword`. The position is `p.outPos`. */
 export function identifierName(): number {
-  const t = lx.token;
+  const lx$ = lx;
+  const t = lx$.token;
   if (!isIdentifierOrKeyword(t)) return missingIdentifier(0, 0);
-  if (t === T_PRIVATE_IDENTIFIER && !p.recovers) {
+  const p$ = p;
+  if (t === T_PRIVATE_IDENTIFIER && !p$.recovers) {
     fail();
-    p.outPos = lx.start;
+    p$.outPos = lx$.start;
     return ATOM_NONE;
   }
-  const atom = lx.atom | 0;
-  const at = lx.start | 0;
+  const atom = lx$.atom | 0;
+  const at = lx$.start | 0;
   nextAfterName();
-  p.outPos = at;
+  p$.outPos = at;
   return atom;
 }
 
@@ -1071,22 +1101,25 @@ const scannerRows: I32Vec = new I32Vec(16);
 
 /** The text `src[start, end)` as a string (error messages only). */
 export function srcText(start: number, end: number): string {
-  const e = end > lx.len ? lx.len : end;
+  const lx$ = lx;
+  const e = end > lx$.len ? lx$.len : end;
   if (e <= start) return "";
-  const src = lx.src;
+  const src = lx$.src;
   return Buffer.from(src.buffer, src.byteOffset + start, e - start).toString("utf8");
 }
 
 /** `Lexer::text`: the text of the token as written. */
 export function tokenSrcText(): string {
-  return srcText(lx.start | 0, lx.end | 0);
+  const lx$ = lx;
+  return srcText(lx$.start | 0, lx$.end | 0);
 }
 
 /** The text of the name `atom`. */
 export function atomText(atom: number): string {
-  const buf = lx.names.textBuf(atom);
-  const at = lx.names.textStart(atom);
-  const n = lx.names.textLen(atom);
+  const lx$ = lx;
+  const buf = lx$.names.textBuf(atom);
+  const at = lx$.names.textStart(atom);
+  const n = lx$.names.textLen(atom);
   if (n === 0) return "";
   return Buffer.from(buf.buffer, buf.byteOffset + at, n).toString("utf8");
 }
@@ -1107,15 +1140,16 @@ function addError(code: number, start: number, end: number, args: string[]): voi
 
 /** `scanError`: what the scanner has reported goes where the errors of the parser go, before the next of them. */
 export function takeErrorsOfScanner(): void {
-  if (lx.errors.len === 0) return;
+  const lx$ = lx;
+  if (lx$.errors.len === 0) return;
   const rows = scannerRows;
   rows.reset();
-  const n = lx.takeErrors(rows);
+  const n = lx$.takeErrors(rows);
   for (let i = 0; i < n; i++) {
     const code = rows.data[i * 3] | 0;
     const start = rows.data[i * 3 + 1] | 0;
     if (code === 1487 || code === 1488 || code === 1121) {
-      const arg = lx.argOf(code, start);
+      const arg = lx$.argOf(code, start);
       addError(code, start, rows.data[i * 3 + 2] | 0, arg === "" ? NO_ARGS : [arg]);
     } else addError(code, start, rows.data[i * 3 + 2] | 0, NO_ARGS);
   }
@@ -1123,18 +1157,20 @@ export function takeErrorsOfScanner(): void {
 
 /** `parseErrorAtRange`, with the arguments of the message. `end`: -1 = an empty range at `start`, 0 = the end of the token at `start`. */
 export function errorArgs(code: number, start: number, end: number, args: string[]): void {
-  if (!p.recovers) {
+  const p$ = p;
+  if (!p$.recovers) {
     fail();
     return;
   }
   // A loop that is not written for recovery yet can stay at a token for ever. What is nested and not closed reports an error at
   // one token for each level.
-  if (p.errorsAtPos === lx.start) p.errorsAtCount = (p.errorsAtCount + 1) | 0;
+  const lx$ = lx;
+  if (p$.errorsAtPos === lx$.start) p$.errorsAtCount = (p$.errorsAtCount + 1) | 0;
   else {
-    p.errorsAtPos = lx.start | 0;
-    p.errorsAtCount = 0;
+    p$.errorsAtPos = lx$.start | 0;
+    p$.errorsAtCount = 0;
   }
-  if (p.errorsAtCount > 1 << 17) {
+  if (p$.errorsAtCount > 1 << 17) {
     refuse(R_UNSUPPORTED);
     return;
   }
@@ -1149,12 +1185,14 @@ export function error(code: number, start: number, end: number): void {
 
 /** `parseErrorAtCurrentToken`, with the arguments of the message. */
 export function errorAtTokenArgs(code: number, args: string[]): void {
-  errorArgs(code, lx.start | 0, lx.start === lx.end ? -1 : lx.end | 0, args);
+  const lx$ = lx;
+  errorArgs(code, lx$.start | 0, lx$.start === lx$.end ? -1 : lx$.end | 0, args);
 }
 
 /** `parseErrorAtCurrentToken` */
 export function errorAtToken(code: number): void {
-  errorArgs(code, lx.start | 0, lx.start === lx.end ? -1 : lx.end | 0, NO_ARGS);
+  const lx$ = lx;
+  errorArgs(code, lx$.start | 0, lx$.start === lx$.end ? -1 : lx$.end | 0, NO_ARGS);
 }
 
 /** `parseExpected`, at another token. */
@@ -1194,24 +1232,26 @@ export function errorAndGoOnArgs(code: number, start: number, end: number, args:
 
 /** `createIdentifierWithDiagnostic`, at a token that is no identifier for the caller. Without recovery: `fail`; the name is NONE. */
 export function missingIdentifier(code: number, codeOfPrivateName: number): number {
-  if (!p.recovers) {
+  const p$ = p;
+  const lx$ = lx;
+  if (!p$.recovers) {
     fail();
-    p.outPos = lx.start;
+    p$.outPos = lx$.start;
     return ATOM_NONE;
   }
-  if (lx.token === T_PRIVATE_IDENTIFIER) {
+  if (lx$.token === T_PRIVATE_IDENTIFIER) {
     errorAtToken(codeOfPrivateName === 0 ? 18016 : codeOfPrivateName);
-    const name = lx.atom | 0;
-    const at = lx.start | 0;
-    lx.next();
-    p.outPos = at;
+    const name = lx$.atom | 0;
+    const at = lx$.start | 0;
+    lx$.next();
+    p$.outPos = at;
     return name;
   }
   // "Only for end of file because the error gets reported incorrectly on embedded script tags."
-  if (lx.token === T_EOF) errorArgs(code === 0 ? 1003 : code, lx.fullStart, -1, NO_ARGS);
-  else if (code === 0 && isReservedWord(lx.token)) errorAtTokenArgs(1359, [tokenSrcText()]);
+  if (lx$.token === T_EOF) errorArgs(code === 0 ? 1003 : code, lx$.fullStart, -1, NO_ARGS);
+  else if (code === 0 && isReservedWord(lx$.token)) errorAtTokenArgs(1359, [tokenSrcText()]);
   else errorAtToken(code === 0 ? 1003 : code);
-  p.outPos = lx.start;
+  p$.outPos = lx$.start;
   return A_empty;
 }
 
@@ -1226,42 +1266,46 @@ export function missingName(): number {
 /** `parseIdentifierWithDiagnostic(code)` as an expression, at a token that is no identifier. Without recovery: NONE. */
 export function missingExpression(code: number): number {
   missingIdentifier(code, 0);
-  if (p.recovers) return pushExprMissing(lx.start, lx.fullStart);
+  const lx$ = lx;
+  if (p.recovers) return pushExprMissing(lx$.start, lx$.fullStart);
   return NONE;
 }
 
 /** `TokenValue()`. `previous`: the one of the token before, which a punctuator leaves. */
 function tokenValue(previous: string): string {
-  const t = lx.token;
-  if (t === T_NUMBER) return numberToString(lx.number);
-  if (t === T_STRING || t === T_NO_SUBSTITUTION_TEMPLATE || t === T_TEMPLATE_HEAD) return atomText(lx.atom);
-  if (isIdentifierOrKeyword(t)) return atomText(lx.atom);
+  const lx$ = lx;
+  const t = lx$.token;
+  if (t === T_NUMBER) return numberToString(lx$.number);
+  if (t === T_STRING || t === T_NO_SUBSTITUTION_TEMPLATE || t === T_TEMPLATE_HEAD) return atomText(lx$.atom);
+  if (isIdentifierOrKeyword(t)) return atomText(lx$.atom);
   return previous;
 }
 
 /** `Parser::is_parenthesized`: the last parenthesis pushed is about `e`. */
 function exprIsParenthesized(e: number): boolean {
-  const n = hir.nParens;
-  return n > 0 && (hir.parenExpr[n - 1] | 0) === e;
+  const hir$ = hir;
+  const n = hir$.nParens;
+  return n > 0 && (hir$.parenExpr[n - 1] | 0) === e;
 }
 
 /** `parseErrorForMissingSemicolonAfter` */
 export function missingSemicolonAfter(expression: number): void {
-  if (expression < 0 || expression >= hir.nExprs) {
+  const hir$ = hir;
+  if (expression < 0 || expression >= hir$.nExprs) {
     expected(T_SEMICOLON);
     return;
   }
-  const tag = hir.exprTag[expression] | 0;
-  const pos_ = hir.exprPos[expression] | 0;
-  const end = hir.exprEnd[expression] | 0;
+  const tag = hir$.exprTag[expression] | 0;
+  const pos_ = hir$.exprPos[expression] | 0;
+  const end = hir$.exprEnd[expression] | 0;
   const isParenthesized = exprIsParenthesized(expression);
   if (tag === EXPR_TAGGED_TEMPLATE && !isParenthesized) {
-    const call = hir.exprA[expression] | 0;
-    const template = hir.callTemplate[call] | 0;
-    const from = template >= 0 && template < hir.nExprs ? hir.exprPos[template] | 0 : pos_;
+    const call = hir$.exprA[expression] | 0;
+    const template = hir$.callTemplate[call] | 0;
+    const from = template >= 0 && template < hir$.nExprs ? hir$.exprPos[template] | 0 : pos_;
     error(1443, from, end);
   } else if (tag === EXPR_IDENT && !isParenthesized) {
-    missingSemicolonAfterIdentifier(hir.exprA[expression] | 0, pos_, end);
+    missingSemicolonAfterIdentifier(hir$.exprA[expression] | 0, pos_, end);
   } else {
     expected(T_SEMICOLON);
   }
@@ -1270,9 +1314,10 @@ export function missingSemicolonAfter(expression: number): void {
 /** `parseErrorForMissingSemicolonAfter`, of the identifier `name` from `pos` to `end`. */
 function missingSemicolonAfterIdentifier(name: number, pos_: number, end: number): void {
   const word = atomText(name);
-  const token = lx.token | 0;
-  const hereStart = lx.start | 0;
-  const hereEnd = lx.start === lx.end ? -1 : lx.end | 0;
+  const lx$ = lx;
+  const token = lx$.token | 0;
+  const hereStart = lx$.start | 0;
+  const hereEnd = lx$.start === lx$.end ? -1 : lx$.end | 0;
   let suggestion: string | null = null;
   let at0 = hereStart;
   let at1 = hereEnd;
@@ -1291,7 +1336,7 @@ function missingSemicolonAfterIdentifier(name: number, pos_: number, end: number
     code = token === T_OPEN_BRACE ? 1438 : 2427;
   } else if (word === "is") {
     at0 = pos_;
-    at1 = lx.start | 0;
+    at1 = lx$.start | 0;
     code = 1228;
   } else if (word === "module" || word === "namespace") {
     code = token === T_OPEN_BRACE ? 1437 : 2819;
@@ -1326,13 +1371,14 @@ export function missingSemicolonAfterProperty(name: number, nameStart: number, n
     fail();
     return;
   }
-  if (lx.token === T_AT && !lx.newlineBefore) {
+  const lx$ = lx;
+  if (lx$.token === T_AT && !lx$.newlineBefore) {
     errorAtToken(1436);
     return;
   }
-  if (lx.token === T_OPEN_PAREN) {
+  if (lx$.token === T_OPEN_PAREN) {
     errorAtToken(1441);
-    lx.next();
+    lx$.next();
     return;
   }
   if (hasInitializer) expected(T_SEMICOLON);
@@ -1343,8 +1389,9 @@ export function missingSemicolonAfterProperty(name: number, nameStart: number, n
 
 /** A list of `kind` is open from here on. Returns `lists` as the caller restores it after the list. */
 export function enterList(kind: number): number {
-  const saved = p.lists | 0;
-  p.lists = saved | (1 << kind);
+  const p$ = p;
+  const saved = p$.lists | 0;
+  p$.lists = saved | (1 << kind);
   return saved;
 }
 
@@ -1355,8 +1402,9 @@ export function leaveList(lists: number): void {
 
 /** `TokenRange()`, as the range of a diagnostic: the start; the end is `p.outLen` (NO_LENGTH = -1 for an empty token). */
 export function rangeOfToken(): number {
-  p.outLen = lx.start === lx.end ? -1 : lx.end;
-  return lx.start;
+  const lx$ = lx;
+  p.outLen = lx$.start === lx$.end ? -1 : lx$.end;
+  return lx$.start;
 }
 
 /**
@@ -1364,10 +1412,11 @@ export function rangeOfToken(): number {
  * was just pushed (`pushStmtX(startPos, ...)`). Returns the id.
  */
 export function finishStmt(stmt: number, startFull: number, modStart: number, modLen: number): number {
-  hir.stmtLocPos[stmt] = startFull;
-  hir.stmtLocEnd[stmt] = lx.fullStart;
-  hir.stmtModStart[stmt] = modStart;
-  hir.stmtModLen[stmt] = modLen;
+  const hir$ = hir;
+  hir$.stmtLocPos[stmt] = startFull;
+  hir$.stmtLocEnd[stmt] = lx.fullStart;
+  hir$.stmtModStart[stmt] = modStart;
+  hir$.stmtModLen[stmt] = modLen;
   return stmt;
 }
 
@@ -1386,8 +1435,9 @@ export function addMissingExpr(pos_: number, end: number): number {
 // Small predicates on the kinds that several files ask.
 export function isPlainTarget(e: number): boolean {
   if (e < 0) return false;
-  const t = hir.exprTag[e] | 0;
+  const hir$ = hir;
+  const t = hir$.exprTag[e] | 0;
   if (t === EXPR_IDENT) return true;
-  if (t === EXPR_DOT || t === EXPR_INDEX) return (hir.exprAux[e] | 0) === CHAIN_NO;
+  if (t === EXPR_DOT || t === EXPR_INDEX) return (hir$.exprAux[e] | 0) === CHAIN_NO;
   return false;
 }

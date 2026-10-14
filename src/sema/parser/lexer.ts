@@ -272,9 +272,10 @@ export class Lexer {
     this.len = 0;
     this.names = names;
     this.privateNames = new I32Vec(16);
-    this.commentDirectives = hir.commentDirectives;
+    const hir$ = hir;
+    this.commentDirectives = hir$.commentDirectives;
     this.leadingComments = new I32Vec(16);
-    this.comments = hir.comments;
+    this.comments = hir$.comments;
     this.flagged = new I32Vec(16);
     this.errors = new I32Vec(16);
     this.origins = new I32Vec(16);

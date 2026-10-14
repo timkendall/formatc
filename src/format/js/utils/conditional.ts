@@ -223,11 +223,12 @@ function formatOperandTrailingComments(gapStart: number, gapEnd: number, operato
 
 /** Whether there is a JSX element among the operands of `e`, a conditional expression, or of the conditionals in it. */
 function isJsxConditionalChain(e: number): boolean {
-  const base = pending.len;
-  pending.push(e);
+  const pending$ = pending;
+  const base = pending$.len;
+  pending$.push(e);
   let result = false;
-  while (pending.len > base && !result) {
-    const current = pending.pop();
+  while (pending$.len > base && !result) {
+    const current = pending$.pop();
     if (exprTag(current) !== EXPR_COND) continue;
     const test = exprCondTest(current);
     const yes = exprCondYes(current);
@@ -239,10 +240,10 @@ function isJsxConditionalChain(e: number): boolean {
         result = true;
         break;
       }
-      if (t === EXPR_COND) pending.push(operand);
+      if (t === EXPR_COND) pending$.push(operand);
     }
   }
-  pending.len = base;
+  pending$.len = base;
   return result;
 }
 

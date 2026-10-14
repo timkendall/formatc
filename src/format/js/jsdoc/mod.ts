@@ -57,7 +57,8 @@ export function setJsdocReparse(reparse: ((text: Uint8Array) => boolean) | null)
  */
 export function prepareJsdoc(text: Uint8Array, options: FormatOptions): Uint8Array {
   if (options.jsdoc === null) return text;
-  state.results.clear();
+  const state$ = state;
+  state$.results.clear();
   const jsdocOptions = options.jsdoc;
   let hasDoc = false;
   for (let i = 0; i + 2 < text.length; i++) {
@@ -69,7 +70,7 @@ export function prepareJsdoc(text: Uint8Array, options: FormatOptions): Uint8Arr
   if (!hasDoc) return text;
   const copy = text.slice();
   const root = options.inHtml.root;
-  const cm = state.comments;
+  const cm = state$.comments;
   collectComments(cm, copy, options.flavor, fileIsJavascript() || (root !== HTML_ROOT_NONE && root !== HTML_ROOT_PROGRAM));
   // The comments are copied: the nested formats replace them.
   const starts: number[] = [];
@@ -79,16 +80,17 @@ export function prepareJsdoc(text: Uint8Array, options: FormatOptions): Uint8Arr
     starts.push(cm.spanStart[i] | 0);
     ends.push(cm.spanEnd[i] | 0);
   }
-  const reparse = state.reparse;
+  const reparse = state$.reparse;
   if (reparse === null) return text;
-  nested.restore = (): boolean => reparse(copy);
-  nested.dirty = false;
+  const nested$ = nested;
+  nested$.restore = (): boolean => reparse(copy);
+  nested$.dirty = false;
   for (let k = 0; k < starts.length; k++) {
     const result = formatComment(copy, starts[k], ends[k], options, jsdocOptions);
-    if (result !== null) state.results.set(starts[k], result);
+    if (result !== null) state$.results.set(starts[k], result);
   }
-  nested.restore = null;
-  return nested.dirty ? copy : text;
+  nested$.restore = null;
+  return nested$.dirty ? copy : text;
 }
 
 /** `write_formatted` without the writing. */
@@ -156,9 +158,10 @@ function writeLines(lines: string, f: Formatter): void {
 
 /** Writes the comment `commentIndex` formatted as JSDoc, if the option is on and it is one. Returns whether it has. */
 export function writeComment(commentIndex: number, f: Formatter): boolean {
-  if (f.options.jsdoc === null || state.results.size === 0) return false;
+  const state$ = state;
+  if (f.options.jsdoc === null || state$.results.size === 0) return false;
   const cx = cxOf(f);
-  const result = state.results.get(cx.comments.spanStart[commentIndex] | 0);
+  const result = state$.results.get(cx.comments.spanStart[commentIndex] | 0);
   if (result === undefined) return false;
   if (result.ranOut) cx.ranOutOfStack = true;
   if (result.kind === 1) return true;

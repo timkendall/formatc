@@ -164,11 +164,12 @@ function jsonFormat(path: string, src: Uint8Array, len: number, parser: number, 
   const o = formatOptionsOf(set);
   let text = src;
   let n = len;
+  const sortedPackageJson$ = sortedPackageJson;
   if (o.sortPackageJson && (path === "package.json" || path.endsWith("/package.json"))) {
-    sortedPackageJson.reset();
-    if (sortPackageJson(src, len, o.sortPackageJsonSortScripts, sortedPackageJson)) {
-      text = sortedPackageJson.data;
-      n = sortedPackageJson.len;
+    sortedPackageJson$.reset();
+    if (sortPackageJson(src, len, o.sortPackageJsonSortScripts, sortedPackageJson$)) {
+      text = sortedPackageJson$.data;
+      n = sortedPackageJson$.len;
     }
   }
   const r = formatJson(text, n, parser, o, out);

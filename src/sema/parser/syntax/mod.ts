@@ -22,20 +22,23 @@ export class Refusal {
 export const refusal: Refusal = new Refusal();
 
 function refuseWith(message: string, at: number): boolean {
-  refusal.message = message;
-  refusal.at = at;
+  const refusal$ = refusal;
+  refusal$.message = message;
+  refusal$.at = at;
   return true;
 }
 
 /** The message of the diagnostic at row `i` of `hir.diagnostics` (`bun_sema::messages::format`). */
 export function messageOfRow(i: number): string {
-  const code = hir.diagnostics[i + 3] | 0;
-  const id = hir.diagnostics[i + 4] | 0;
-  return diagnosticMessage(code, id >= 0 ? hir.diagArgs[id] : []);
+  const hir$ = hir;
+  const code = hir$.diagnostics[i + 3] | 0;
+  const id = hir$.diagnostics[i + 4] | 0;
+  return diagnosticMessage(code, id >= 0 ? hir$.diagArgs[id] : []);
 }
 
 function ofCheck(): boolean {
-  return check.has ? refuseWith(check.message, check.at) : false;
+  const check$ = check;
+  return check$.has ? refuseWith(check$.message, check$.at) : false;
 }
 
 /**
@@ -43,23 +46,24 @@ function ofCheck(): boolean {
  * `flow`, `babel-flow`, `typescript` or `babel-ts` (`TypesInJavaScript::Tolerated`), else `babel` throws at the syntax of TypeScript.
  */
 export function refusalOfPrettier(src: Uint8Array, len: number, path: string, typesTolerated: boolean, isScript: boolean): boolean {
-  const n = hir.diagnosticsLen;
-  if (hir.hasErrors || hir.hasParseDiagnostics) {
+  const hir$ = hir;
+  const n = hir$.diagnosticsLen;
+  if (hir$.hasErrors || hir$.hasParseDiagnostics) {
     // `import a from "a" assert { .. }` passes. `typescript` accepts it. `babel` does not, but Prettier's own tests have such JavaScript
     // files formatted, by other parsers, and nobody is served by a refusal.
     let anyParse = false;
     for (let i = 0; i < n; i += 5) {
-      if ((hir.diagnostics[i] | 0) !== DK_PARSE) continue;
+      if ((hir$.diagnostics[i] | 0) !== DK_PARSE) continue;
       anyParse = true;
-      if ((hir.diagnostics[i + 3] | 0) !== 2880) return refuseWith(messageOfRow(i), hir.diagnostics[i + 1] | 0);
+      if ((hir$.diagnostics[i + 3] | 0) !== 2880) return refuseWith(messageOfRow(i), hir$.diagnostics[i + 1] | 0);
     }
     if (!anyParse) return refuseWith("Unexpected token", 0);
   }
-  if (!hir.isJs) {
+  if (!hir$.isJs) {
     typescriptEstreeFirstError(true);
     return ofCheck();
   }
-  if (hir.isFlow || goesToFlow(src, len, path)) {
+  if (hir$.isFlow || goesToFlow(src, len, path)) {
     refusalOfBabel(isScript);
     return ofCheck();
   }
@@ -68,13 +72,13 @@ export function refusalOfPrettier(src: Uint8Array, len: number, path: string, ty
   let bestRow = -1;
   let bestAt = 0;
   for (let i = 0; i < n; i += 5) {
-    const kind = hir.diagnostics[i] | 0;
-    const code = hir.diagnostics[i + 3] | 0;
+    const kind = hir$.diagnostics[i] | 0;
+    const code = hir$.diagnostics[i + 3] | 0;
     const isIt =
       (isStrict && kind === DK_JS) ||
       ((kind === DK_JS || kind === DK_GRAMMAR) && (code === 1206 || code === 8008 || code === 8013 || code === 8017 || code === 8038));
     if (!isIt) continue;
-    const start = hir.diagnostics[i + 1] | 0;
+    const start = hir$.diagnostics[i + 1] | 0;
     if (bestRow < 0 || start < bestAt) {
       bestRow = i;
       bestAt = start;
@@ -85,13 +89,13 @@ export function refusalOfPrettier(src: Uint8Array, len: number, path: string, ty
   let declMessage = "";
   let declAt = -1;
   if (isStrict) {
-    const body = hir.bodyStart | 0;
-    const count = hir.bodyLen | 0;
+    const body = hir$.bodyStart | 0;
+    const count = hir$.bodyLen | 0;
     for (let k = 0; k < count; k++) {
-      const stmt = hir.ids[body + k] | 0;
-      const tag = hir.stmtTag[stmt] | 0;
+      const stmt = hir$.ids[body + k] | 0;
+      const tag = hir$.stmtTag[stmt] | 0;
       if (tag !== STMT_MODULE && tag !== STMT_EXPORT_AS_NAMESPACE) continue;
-      const start = hir.stmtStart[stmt] | 0;
+      const start = hir$.stmtStart[stmt] | 0;
       const afterFirstToken = start + tokenLen(src, len, start);
       if (tag === STMT_MODULE) {
         declMessage = "Missing semicolon.";

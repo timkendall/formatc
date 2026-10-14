@@ -171,7 +171,8 @@ function kinds(path: string): number {
 
 /** `fileBegin` of the handle layer, for a file without errors (the checks of the refusal read it). Always true. */
 function readFileBegins(path: string, isScript: boolean): boolean {
-  if (hir.hasErrors || hir.hasParseDiagnostics) return true;
+  const hir$ = hir;
+  if (hir$.hasErrors || hir$.hasParseDiagnostics) return true;
   const isTypescript = path.endsWith(".ts") || path.endsWith(".tsx") || path.endsWith(".mts") || path.endsWith(".cts");
   fileBegin(names, isTypescript, !isScript);
   return true;
@@ -198,8 +199,9 @@ export function prepareScriptText(src: Uint8Array, len: number, path: string, is
       textLen = uncommentedLen;
     }
   }
-  scriptText.src = text;
-  scriptText.len = textLen;
+  const scriptText$ = scriptText;
+  scriptText$.src = text;
+  scriptText$.len = textLen;
 }
 
 /**
@@ -209,17 +211,20 @@ export function prepareScriptText(src: Uint8Array, len: number, path: string, is
  */
 export function parseAttempt(isScript: boolean, path: string, isFlow: boolean, goesToBabel: boolean, typesTolerated: boolean): number {
   const dialect = isFlow ? (goesToBabel ? dialectFlow(isScript) : dialectFlowParser(isScript)) : dialectBabel(isScript);
-  const src = scriptText.src;
-  const len = scriptText.len | 0;
+  const scriptText$ = scriptText;
+  const src = scriptText$.src;
+  const len = scriptText$.len | 0;
   const status = readFile(src, len, path, dialect);
+  const scriptError$ = scriptError;
   if (status === READ_TOO_DEEP) {
-    scriptError.message = NESTED_TOO_DEEPLY;
-    scriptError.at = -1;
+    scriptError$.message = NESTED_TOO_DEEPLY;
+    scriptError$.at = -1;
     return PS_SYNTAX;
   }
+  const refusal$ = refusal;
   if (readFileBegins(path, isScript) && refusalOfPrettier(src, len, path, typesTolerated, isScript)) {
-    scriptError.message = refusal.message;
-    scriptError.at = refusal.at;
+    scriptError$.message = refusal$.message;
+    scriptError$.at = refusal$.at;
     return PS_SYNTAX;
   }
   void READ_PARSED;
@@ -244,17 +249,18 @@ export function parseScript(
   let first = false;
   let firstMessage = "";
   let firstAt = -1;
+  const scriptError$ = scriptError;
   for (let attempt = 0; attempt < 2; attempt++) {
     const isScript = attempt === 1;
     if (isScript ? (ks & 2) === 0 : (ks & 1) === 0) continue;
     if (parseAttempt(isScript, path, isFlow, goesToBabel, typesTolerated) === PS_OK) return PS_OK;
     if (!first) {
       first = true;
-      firstMessage = scriptError.message;
-      firstAt = scriptError.at;
+      firstMessage = scriptError$.message;
+      firstAt = scriptError$.at;
     }
   }
-  scriptError.message = firstMessage;
-  scriptError.at = firstAt;
+  scriptError$.message = firstMessage;
+  scriptError$.at = firstAt;
   return PS_SYNTAX;
 }

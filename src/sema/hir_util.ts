@@ -83,10 +83,11 @@ export function getOut1(): number {
 
 /** Starts a file: forgets the previous one, remembers the source (`src[0, len)`, positions are byte offsets into it). */
 export function beginFile(src: Uint8Array, len: number): void {
-  hir.reset();
-  hir.text = src;
-  hir.sourceLen = len | 0;
-  hir.reserveFor(len);
+  const hir$ = hir;
+  hir$.reset();
+  hir$.text = src;
+  hir$.sourceLen = len | 0;
+  hir$.reserveFor(len);
 }
 
 /**
@@ -95,10 +96,11 @@ export function beginFile(src: Uint8Array, len: number): void {
  * The parser produces them almost sorted, so this is an insertion sort.
  */
 export function finishHir(): void {
-  sortRows3(hir.parenExpr, hir.parenStart, hir.parenEnd, hir.nParens);
-  sortRows3(hir.jsxExpressionExpr, hir.jsxExpressionStart, hir.jsxExpressionEnd, hir.nJsxExpressions);
-  sortRows2(hir.nonNullEndExpr, hir.nonNullEndEnd, hir.nNonNullEnds);
-  sortRows2(hir.bodyStartPos, hir.bodyStartFn, hir.nBodyStarts);
+  const hir$ = hir;
+  sortRows3(hir$.parenExpr, hir$.parenStart, hir$.parenEnd, hir$.nParens);
+  sortRows3(hir$.jsxExpressionExpr, hir$.jsxExpressionStart, hir$.jsxExpressionEnd, hir$.nJsxExpressions);
+  sortRows2(hir$.nonNullEndExpr, hir$.nonNullEndEnd, hir$.nNonNullEnds);
+  sortRows2(hir$.bodyStartPos, hir$.bodyStartFn, hir$.nBodyStarts);
 }
 
 function sortRows3(k: Int32Array, b: Int32Array, c: Int32Array, n: number): void {
@@ -151,21 +153,24 @@ export function templateTextsStart(exprsStart: number, exprsLen: number): number
 
 /** `Func::this_ty`: the type annotation of the `this` parameter, or NONE. */
 export function fnThisTy(f: number): number {
-  const p = hir.fnThisParam[f] | 0;
-  return p < 0 ? NONE : hir.paramTy[p] | 0;
+  const hir$ = hir;
+  const p = hir$.fnThisParam[f] | 0;
+  return p < 0 ? NONE : hir$.paramTy[p] | 0;
 }
 
 /** `Func::accessor_this_parameter`: the `this` parameter of an accessor that has, with it, as many parameters as its kind takes. */
 export function fnAccessorThisParameter(f: number): number {
-  const want = (hir.fnKind[f] | 0) !== FN_GETTER ? 1 : 0;
-  return (hir.fnParamsLen[f] | 0) === want ? hir.fnThisParam[f] | 0 : NONE;
+  const hir$ = hir;
+  const want = (hir$.fnKind[f] | 0) !== FN_GETTER ? 1 : 0;
+  return (hir$.fnParamsLen[f] | 0) === want ? hir$.fnThisParam[f] | 0 : NONE;
 }
 
 /** `Func::set_accessor_value_parameter`: the first parameter, which can be the `this` parameter. NONE: there is no parameter. */
 export function fnSetAccessorValueParameter(f: number): number {
-  const len = hir.fnParamsLen[f] | 0;
-  const thisParam = hir.fnThisParam[f] | 0;
-  if (len > 0 && (thisParam < 0 || len === 1)) return hir.ids[hir.fnParamsStart[f] | 0] | 0;
+  const hir$ = hir;
+  const len = hir$.fnParamsLen[f] | 0;
+  const thisParam = hir$.fnThisParam[f] | 0;
+  if (len > 0 && (thisParam < 0 || len === 1)) return hir$.ids[hir$.fnParamsStart[f] | 0] | 0;
   return thisParam;
 }
 
@@ -180,10 +185,11 @@ export function fnEffectiveSetAccessorTypeAnnotationNode(f: number): number {
  * `getOut0()/getOut1()` are the rest of the list (start + 1, len - 1); otherwise returns NONE and the rest is the whole list.
  */
 export function splitThisParameter(start: number, len: number): number {
+  const hir$ = hir;
   if (len > 0) {
-    const first = hir.ids[start] | 0;
-    const pat = hir.paramPat[first] | 0;
-    if (pat >= 0 && (hir.patTag[pat] | 0) === PAT_IDENT && (hir.patA[pat] | 0) === A_this) {
+    const first = hir$.ids[start] | 0;
+    const pat = hir$.paramPat[first] | 0;
+    if (pat >= 0 && (hir$.patTag[pat] | 0) === PAT_IDENT && (hir$.patA[pat] | 0) === A_this) {
       out0 = (start + 1) | 0;
       out1 = (len - 1) | 0;
       return first;
@@ -208,18 +214,20 @@ export function fnHasBodyNode(f: number): boolean {
 /** `File::modifiers_to_flags`: the FLAG_* bits of the keyword modifiers in the list (`start`, `len`). */
 export function modifiersToFlags(start: number, len: number): number {
   let flags = 0;
+  const hir$ = hir;
   for (let i = 0; i < len; i++) {
-    const m = hir.ids[(start + i) | 0] | 0;
-    if ((hir.modifierKind[m] | 0) === MODK_KEYWORD) flags = flags | (hir.modifierValue[m] | 0);
+    const m = hir$.ids[(start + i) | 0] | 0;
+    if ((hir$.modifierKind[m] | 0) === MODK_KEYWORD) flags = flags | (hir$.modifierValue[m] | 0);
   }
   return flags | 0;
 }
 
 /** `File::find_modifier`: the position of the first keyword modifier `flag` in the list, or -1. */
 export function findModifier(start: number, len: number, flag: number): number {
+  const hir$ = hir;
   for (let i = 0; i < len; i++) {
-    const m = hir.ids[(start + i) | 0] | 0;
-    if ((hir.modifierKind[m] | 0) === MODK_KEYWORD && (hir.modifierValue[m] | 0) === flag) return hir.modifierPos[m] | 0;
+    const m = hir$.ids[(start + i) | 0] | 0;
+    if ((hir$.modifierKind[m] | 0) === MODK_KEYWORD && (hir$.modifierValue[m] | 0) === flag) return hir$.modifierPos[m] | 0;
   }
   return -1;
 }
@@ -228,18 +236,20 @@ export function findModifier(start: number, len: number, flag: number): number {
 
 /** `File::has_parse_or_grammar_diagnostics` */
 export function hasParseOrGrammarDiagnostics(): boolean {
-  const n = hir.diagnosticsLen;
+  const hir$ = hir;
+  const n = hir$.diagnosticsLen;
   for (let i = 0; i < n; i += 5) {
-    const k = hir.diagnostics[i] | 0;
+    const k = hir$.diagnostics[i] | 0;
     if (k === DK_PARSE || k === DK_GRAMMAR) return true;
   }
   return false;
 }
 /** `File::has_diagnostic` */
 export function hasDiagnostic(start: number, code: number): boolean {
-  const n = hir.diagnosticsLen;
+  const hir$ = hir;
+  const n = hir$.diagnosticsLen;
   for (let i = 0; i < n; i += 5) {
-    if ((hir.diagnostics[i + 1] | 0) === start && (hir.diagnostics[i + 3] | 0) === code) return true;
+    if ((hir$.diagnostics[i + 1] | 0) === start && (hir$.diagnostics[i + 3] | 0) === code) return true;
   }
   return false;
 }
@@ -248,9 +258,10 @@ export function hasDiagnostic(start: number, code: number): boolean {
 
 /** `File::is_in_with`: the node at `pos` is in the statement of a `with`. */
 export function isInWith(pos: number): boolean {
-  const n = hir.withBodiesLen;
+  const hir$ = hir;
+  const n = hir$.withBodiesLen;
   for (let i = 0; i < n; i += 2) {
-    if (pos >= (hir.withBodies[i] | 0) && pos < (hir.withBodies[i + 1] | 0)) return true;
+    if (pos >= (hir$.withBodies[i] | 0) && pos < (hir$.withBodies[i + 1] | 0)) return true;
   }
   return false;
 }
@@ -258,10 +269,11 @@ export function isInWith(pos: number): boolean {
 /** First row of `parens` whose expression is `e` (the table is sorted by expression), or `nParens` if none. */
 export function parenFirst(e: number): number {
   let lo = 0;
-  let hi = hir.nParens;
+  const hir$ = hir;
+  let hi = hir$.nParens;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
-    if ((hir.parenExpr[mid] | 0) < e) lo = mid + 1;
+    if ((hir$.parenExpr[mid] | 0) < e) lo = mid + 1;
     else hi = mid;
   }
   return lo;
@@ -270,7 +282,8 @@ export function parenFirst(e: number): number {
 export function parenCount(e: number): number {
   const first = parenFirst(e);
   let n = 0;
-  while (first + n < hir.nParens && (hir.parenExpr[(first + n) | 0] | 0) === e) n = (n + 1) | 0;
+  const hir$ = hir;
+  while (first + n < hir$.nParens && (hir$.parenExpr[(first + n) | 0] | 0) === e) n = (n + 1) | 0;
   return n;
 }
 /** `hir::open_parenthesis`: the start of the outermost parentheses around `e`, or -1. */
@@ -278,32 +291,36 @@ export function openParenthesis(e: number): number {
   const first = parenFirst(e);
   let last = -1;
   let i = first;
-  while (i < hir.nParens && (hir.parenExpr[i] | 0) === e) {
+  const hir$ = hir;
+  while (i < hir$.nParens && (hir$.parenExpr[i] | 0) === e) {
     last = i;
     i = (i + 1) | 0;
   }
-  return last < 0 ? -1 : hir.parenStart[last] | 0;
+  return last < 0 ? -1 : hir$.parenStart[last] | 0;
 }
 /** `hir::is_parenthesized`: `IsParenthesizedExpression` for the immediate parent of `e`. */
 export function isParenthesized(e: number): boolean {
   const first = parenFirst(e);
-  return first < hir.nParens && (hir.parenExpr[first] | 0) === e;
+  const hir$ = hir;
+  return first < hir$.nParens && (hir$.parenExpr[first] | 0) === e;
 }
 /** `hir::end_of_expr`: `node.End()` of `e`, including enclosing parentheses. */
 export function endOfExpr(e: number): number {
   const first = parenFirst(e);
   let last = -1;
   let i = first;
-  while (i < hir.nParens && (hir.parenExpr[i] | 0) === e) {
+  const hir$ = hir;
+  while (i < hir$.nParens && (hir$.parenExpr[i] | 0) === e) {
     last = i;
     i = (i + 1) | 0;
   }
-  return last < 0 ? hir.exprEnd[e] | 0 : hir.parenEnd[last] | 0;
+  return last < 0 ? hir$.exprEnd[e] | 0 : hir$.parenEnd[last] | 0;
 }
 /** `hir::start_inside_parentheses` (`GetTokenPosOfNode`): the start of `e`, excluding parentheses around the whole of it. */
 export function startInsideParentheses(e: number): number {
-  if ((hir.exprTag[e] | 0) === EXPR_CLASS) return hir.classStart[hir.exprA[e] | 0] | 0;
-  return hir.exprPos[e] | 0;
+  const hir$ = hir;
+  if ((hir$.exprTag[e] | 0) === EXPR_CLASS) return hir$.classStart[hir$.exprA[e] | 0] | 0;
+  return hir$.exprPos[e] | 0;
 }
 /** `hir::start_of`: the start of `e`, including enclosing parentheses. */
 export function startOf(e: number): number {
@@ -313,10 +330,11 @@ export function startOf(e: number): number {
 /** `non_null_ends_in`: first row of `nonNullEnds` for `e` (sorted by expr), or `nNonNullEnds`. Rows follow while the expr is `e`. */
 export function nonNullEndsFirst(e: number): number {
   let lo = 0;
-  let hi = hir.nNonNullEnds;
+  const hir$ = hir;
+  let hi = hir$.nNonNullEnds;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
-    if ((hir.nonNullEndExpr[mid] | 0) < e) lo = mid + 1;
+    if ((hir$.nonNullEndExpr[mid] | 0) < e) lo = mid + 1;
     else hi = mid;
   }
   return lo;
@@ -324,20 +342,22 @@ export function nonNullEndsFirst(e: number): number {
 /** `jsx_expression_around`: the row of `jsxExpressions` whose entire content is `e`, or -1. */
 export function jsxExpressionAround(e: number): number {
   let lo = 0;
-  let hi = hir.nJsxExpressions;
+  const hir$ = hir;
+  let hi = hir$.nJsxExpressions;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
-    if ((hir.jsxExpressionExpr[mid] | 0) < e) lo = mid + 1;
+    if ((hir$.jsxExpressionExpr[mid] | 0) < e) lo = mid + 1;
     else hi = mid;
   }
-  return lo < hir.nJsxExpressions && (hir.jsxExpressionExpr[lo] | 0) === e ? lo : -1;
+  return lo < hir$.nJsxExpressions && (hir$.jsxExpressionExpr[lo] | 0) === e ? lo : -1;
 }
 
 /** `File::type_args_of_import_call`: the row of `importCallTypeArgs` for the import call whose first argument (the specifier) is `spec`, or -1. */
 export function importCallTypeArgsRow(spec: number): number {
-  const n = hir.importCallTypeArgsLen;
+  const hir$ = hir;
+  const n = hir$.importCallTypeArgsLen;
   for (let i = 0; i < n; i += 3) {
-    if ((hir.importCallTypeArgs[i] | 0) === spec) return i;
+    if ((hir$.importCallTypeArgs[i] | 0) === spec) return i;
   }
   return -1;
 }
@@ -347,17 +367,18 @@ export function importCallTypeArgsRow(spec: number): number {
  * after its argument. NONE if it has none.
  */
 export function attributesOfImportType(t: number): number {
-  if ((hir.typeTag[t] | 0) !== TYPE_IMPORT) return NONE;
-  const attributes = ((hir.typeAux[t] | 0) >> 3) & 3;
+  const hir$ = hir;
+  if ((hir$.typeTag[t] | 0) !== TYPE_IMPORT) return NONE;
+  const attributes = ((hir$.typeAux[t] | 0) >> 3) & 3;
   if (attributes === 0) return NONE;
-  const spec = hir.typeA[t] | 0;
-  const argsStart = hir.typeD[t] | 0;
-  const argsLen = hir.typeE[t] | 0;
-  let argumentEnd = hir.typePos[t] | 0;
-  if (spec < 0 && argsLen > 0) argumentEnd = hir.exprEnd[hir.ids[argsStart] | 0] | 0;
-  const n = hir.importAttributesLen;
+  const spec = hir$.typeA[t] | 0;
+  const argsStart = hir$.typeD[t] | 0;
+  const argsLen = hir$.typeE[t] | 0;
+  let argumentEnd = hir$.typePos[t] | 0;
+  if (spec < 0 && argsLen > 0) argumentEnd = hir$.exprEnd[hir$.ids[argsStart] | 0] | 0;
+  const n = hir$.importAttributesLen;
   for (let i = 0; i < n; i += 2) {
-    if ((hir.importAttributes[i] | 0) > argumentEnd) return hir.importAttributes[i + 1] | 0;
+    if ((hir$.importAttributes[i] | 0) > argumentEnd) return hir$.importAttributes[i + 1] | 0;
   }
   return NONE;
 }
@@ -366,13 +387,15 @@ export function attributesOfImportType(t: number): number {
 
 /** `hir::is_private_name_at`: `IsPrivateIdentifier` for the name at `pos`. */
 export function isPrivateNameAt(pos: number): boolean {
-  return pos < hir.sourceLen && (hir.text[pos] | 0) === 35;
+  const hir$ = hir;
+  return pos < hir$.sourceLen && (hir$.text[pos] | 0) === 35;
 }
 
 /** `hir::is_bigint_literal_at`: `IsBigIntLiteral` for the token at `pos`: a number that ends in `n`. */
 export function isBigintLiteralAt(pos: number): boolean {
-  const t = hir.text;
-  const n = hir.sourceLen;
+  const hir$ = hir;
+  const t = hir$.text;
+  const n = hir$.sourceLen;
   if (pos >= n) return false;
   const c0 = t[pos] | 0;
   if (c0 < 48 || c0 > 57) return false;
@@ -389,7 +412,8 @@ export function isBigintLiteralAt(pos: number): boolean {
 /** `hir::first_identifier`: `a` of `a.b.c`. */
 export function firstIdentifier(e0: number): number {
   let e = e0;
-  while ((hir.exprTag[e] | 0) === EXPR_DOT) e = hir.exprA[e] | 0;
+  const hir$ = hir;
+  while ((hir$.exprTag[e] | 0) === EXPR_DOT) e = hir$.exprA[e] | 0;
   return e;
 }
 
@@ -401,8 +425,9 @@ export function isEntityNameExpression(e: number): boolean {
 }
 /** `hir::is_property_access_entity_name_expression` for `e` itself, ignoring enclosing parentheses. */
 export function isPropertyAccessEntityNameExpression(e: number): boolean {
-  if ((hir.exprTag[e] | 0) !== EXPR_DOT) return false;
-  return !isPrivateNameAt(hir.exprC[e] | 0) && isEntityNameExpression(hir.exprA[e] | 0);
+  const hir$ = hir;
+  if ((hir$.exprTag[e] | 0) !== EXPR_DOT) return false;
+  return !isPrivateNameAt(hir$.exprC[e] | 0) && isEntityNameExpression(hir$.exprA[e] | 0);
 }
 /** `hir::expression_is_alias` */
 export function expressionIsAlias(e: number): boolean {
@@ -411,13 +436,15 @@ export function expressionIsAlias(e: number): boolean {
 /** `hir::is_string_literal_like` */
 export function isStringLiteralLike(e: number): boolean {
   if (isParenthesized(e)) return false;
-  const tag = hir.exprTag[e] | 0;
-  return tag === EXPR_STRING || (tag === EXPR_TEMPLATE && (hir.exprB[e] | 0) === 0);
+  const hir$ = hir;
+  const tag = hir$.exprTag[e] | 0;
+  return tag === EXPR_STRING || (tag === EXPR_TEMPLATE && (hir$.exprB[e] | 0) === 0);
 }
 /** `hir::is_string_or_numeric_literal_like_in_parentheses`: `IsStringOrNumericLiteralLike(SkipParentheses(e))` */
 export function isStringOrNumericLiteralLikeInParentheses(e: number): boolean {
-  const tag = hir.exprTag[e] | 0;
-  return tag === EXPR_STRING || tag === EXPR_NUMBER || (tag === EXPR_TEMPLATE && (hir.exprB[e] | 0) === 0);
+  const hir$ = hir;
+  const tag = hir$.exprTag[e] | 0;
+  return tag === EXPR_STRING || tag === EXPR_NUMBER || (tag === EXPR_TEMPLATE && (hir$.exprB[e] | 0) === 0);
 }
 /** `hir::is_string_or_numeric_literal_like` */
 export function isStringOrNumericLiteralLike(e: number): boolean {
@@ -425,11 +452,12 @@ export function isStringOrNumericLiteralLike(e: number): boolean {
 }
 /** `hir::is_signed_numeric_literal` */
 export function isSignedNumericLiteral(e: number): boolean {
-  if (isParenthesized(e) || (hir.exprTag[e] | 0) !== EXPR_UNARY) return false;
-  const op = hir.exprAux[e] | 0;
+  const hir$ = hir;
+  if (isParenthesized(e) || (hir$.exprTag[e] | 0) !== EXPR_UNARY) return false;
+  const op = hir$.exprAux[e] | 0;
   if (op !== UN_PLUS && op !== UN_MINUS) return false;
-  const operand = hir.exprA[e] | 0;
-  return (hir.exprTag[operand] | 0) === EXPR_NUMBER && !isParenthesized(operand);
+  const operand = hir$.exprA[e] | 0;
+  return (hir$.exprTag[operand] | 0) === EXPR_NUMBER && !isParenthesized(operand);
 }
 /** `hir::is_dynamic_name` for the name `[e]` */
 export function isDynamicName(e: number): boolean {
@@ -437,16 +465,18 @@ export function isDynamicName(e: number): boolean {
 }
 /** `hir::is_dotted_name` */
 export function isDottedName(e: number): boolean {
-  const tag = hir.exprTag[e] | 0;
+  const hir$ = hir;
+  const tag = hir$.exprTag[e] | 0;
   if (tag === EXPR_IDENT || tag === EXPR_THIS || tag === EXPR_SUPER || tag === EXPR_NEW_TARGET || tag === EXPR_IMPORT_META) return true;
-  if (tag === EXPR_DOT) return isDottedName(hir.exprA[e] | 0);
+  if (tag === EXPR_DOT) return isDottedName(hir$.exprA[e] | 0);
   return false;
 }
 /** `hir::is_left_hand_side_expression` */
 export function isLeftHandSideExpression(e: number): boolean {
   if (isParenthesized(e)) return true;
-  const tag = hir.exprTag[e] | 0;
-  if (tag === EXPR_FN) return (hir.fnKind[hir.exprA[e] | 0] | 0) !== FN_ARROW;
+  const hir$ = hir;
+  const tag = hir$.exprTag[e] | 0;
+  if (tag === EXPR_FN) return (hir$.fnKind[hir$.exprA[e] | 0] | 0) !== FN_ARROW;
   switch (tag) {
     case EXPR_UNARY:
     case EXPR_BINARY:
@@ -466,41 +496,43 @@ export function isLeftHandSideExpression(e: number): boolean {
 /** `hir::is_narrowable_reference` (`isNarrowableReference`) */
 export function isNarrowableReference(e0: number): boolean {
   let e = e0;
+  const hir$ = hir;
   while (true) {
-    const tag = hir.exprTag[e] | 0;
+    const tag = hir$.exprTag[e] | 0;
     if (tag === EXPR_IDENT || tag === EXPR_THIS || tag === EXPR_SUPER || tag === EXPR_NEW_TARGET || tag === EXPR_IMPORT_META) return true;
     if (tag === EXPR_DOT) {
-      e = hir.exprA[e] | 0;
+      e = hir$.exprA[e] | 0;
       continue;
     }
     if (tag === EXPR_NON_NULL) {
-      e = hir.exprA[e] | 0;
+      e = hir$.exprA[e] | 0;
       continue;
     }
     if (tag === EXPR_INDEX) {
-      const index = hir.exprB[e] | 0;
+      const index = hir$.exprB[e] | 0;
       // With a literal key the object is not checked.
       if (isStringOrNumericLiteralLike(index)) return true;
       if (isEntityNameExpression(index)) {
-        e = hir.exprA[e] | 0;
+        e = hir$.exprA[e] | 0;
         continue;
       }
       return false;
     }
-    if (tag === EXPR_BINARY && (hir.exprAux[e] | 0) === BIN_COMMA) {
-      e = hir.exprB[e] | 0;
+    if (tag === EXPR_BINARY && (hir$.exprAux[e] | 0) === BIN_COMMA) {
+      e = hir$.exprB[e] | 0;
       continue;
     }
-    if (tag === EXPR_ASSIGN) return isLeftHandSideExpression(hir.exprA[e] | 0);
+    if (tag === EXPR_ASSIGN) return isLeftHandSideExpression(hir$.exprA[e] | 0);
     return false;
   }
 }
 
 /** `hir::has_export_declarations`: whether the statement list (`start`, `len` in ids) has an export declaration. */
 export function hasExportDeclarations(start: number, len: number): boolean {
+  const hir$ = hir;
   for (let i = 0; i < len; i++) {
-    const s = hir.ids[(start + i) | 0] | 0;
-    const t = hir.stmtTag[s] | 0;
+    const s = hir$.ids[(start + i) | 0] | 0;
+    const t = hir$.stmtTag[s] | 0;
     if (t === STMT_EXPORT_NAMED || t === STMT_EXPORT_STAR || t === STMT_EXPORT_ASSIGN || t === STMT_EXPORT_DEFAULT) return true;
   }
   return false;
@@ -508,25 +540,27 @@ export function hasExportDeclarations(start: number, len: number): boolean {
 
 /** `hir::names_bound_by`: appends (atom, PatId) pairs of the names `pat` binds to `into` (2 ints per name). */
 export function namesBoundBy(pat: number, into: I32Vec): void {
-  const tag = hir.patTag[pat] | 0;
+  const hir$ = hir;
+  const tag = hir$.patTag[pat] | 0;
   if (tag === PAT_IDENT) {
-    into.push2(hir.patA[pat] | 0, pat);
+    into.push2(hir$.patA[pat] | 0, pat);
   } else if (tag === PAT_OBJECT) {
-    const start = hir.patA[pat] | 0;
-    const len = hir.patB[pat] | 0;
-    for (let i = 0; i < len; i++) namesBoundBy(hir.patPropValue[hir.ids[(start + i) | 0] | 0] | 0, into);
+    const start = hir$.patA[pat] | 0;
+    const len = hir$.patB[pat] | 0;
+    for (let i = 0; i < len; i++) namesBoundBy(hir$.patPropValue[hir$.ids[(start + i) | 0] | 0] | 0, into);
   } else if (tag === PAT_ARRAY) {
-    const start = hir.patA[pat] | 0;
-    const len = hir.patB[pat] | 0;
-    for (let i = 0; i < len; i++) namesBoundBy(hir.patElemPat[hir.ids[(start + i) | 0] | 0] | 0, into);
+    const start = hir$.patA[pat] | 0;
+    const len = hir$.patB[pat] | 0;
+    for (let i = 0; i < len; i++) namesBoundBy(hir$.patElemPat[hir$.ids[(start + i) | 0] | 0] | 0, into);
   }
 }
 
 /** `hir::is_nested_namespace`: the statement `s` is the `B` of `namespace A.B`. It starts with its name. */
 export function isNestedNamespace(s: number): boolean {
-  if ((hir.stmtTag[s] | 0) !== STMT_MODULE) return false;
-  const m = hir.stmtA[s] | 0;
-  return (hir.stmtStart[s] | 0) === (hir.moduleNamePos[m] | 0);
+  const hir$ = hir;
+  if ((hir$.stmtTag[s] | 0) !== STMT_MODULE) return false;
+  const m = hir$.stmtA[s] | 0;
+  return (hir$.stmtStart[s] | 0) === (hir$.moduleNamePos[m] | 0);
 }
 
 /** `hir::is_intrinsic_jsx_name` for the bytes `buf[start, end)` (a JSX tag name): starts with a lowercase letter or has a `-`. */
@@ -563,15 +597,17 @@ export function keywordText(k: number): string {
 
 /** `Mapped::readonly_text` for the mapped type `m`. */
 export function mappedReadonlyText(m: number): string {
-  const r = hir.mappedReadonly[m] | 0;
-  if (r === MM_ADD) return (hir.mappedIsReadonlyWithPlus[m] | 0) !== 0 ? "+readonly " : "readonly ";
+  const hir$ = hir;
+  const r = hir$.mappedReadonly[m] | 0;
+  if (r === MM_ADD) return (hir$.mappedIsReadonlyWithPlus[m] | 0) !== 0 ? "+readonly " : "readonly ";
   if (r === MM_REMOVE) return "-readonly ";
   return "";
 }
 /** `Mapped::question_text` for the mapped type `m`. */
 export function mappedQuestionText(m: number): string {
-  const r = hir.mappedOptional[m] | 0;
-  if (r === MM_ADD) return (hir.mappedIsOptionalWithPlus[m] | 0) !== 0 ? "+?" : "?";
+  const hir$ = hir;
+  const r = hir$.mappedOptional[m] | 0;
+  if (r === MM_ADD) return (hir$.mappedIsOptionalWithPlus[m] | 0) !== 0 ? "+?" : "?";
   if (r === MM_REMOVE) return "-?";
   return "";
 }
@@ -617,9 +653,10 @@ export function modifierText(modifier: number): string {
 /** A diagnostic with the arguments of its message (`{0}`, `{1}`, ...). */
 export function pushDiagnosticArgs(kind: number, start: number, end: number, code: number, args: string[]): void {
   let id = -1;
+  const hir$ = hir;
   if (args.length > 0) {
-    id = hir.diagArgs.length;
-    hir.diagArgs.push(args);
+    id = hir$.diagArgs.length;
+    hir$.diagArgs.push(args);
   }
-  hir.pushDiagnostics(kind, start, end, code, id);
+  hir$.pushDiagnostics(kind, start, end, code, id);
 }

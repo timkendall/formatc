@@ -153,13 +153,14 @@ const templateChildSlot = new Int32Array(1);
 
 function layoutOf(e: number): number {
   const isFragment = jsxIsFragment(e);
-  ROWS.len = 0;
-  jsxChildrenWithWhitespace(e, ROWS);
-  const rows = (ROWS.len / 3) | 0;
+  const ROWS$ = ROWS;
+  ROWS$.len = 0;
+  jsxChildrenWithWhitespace(e, ROWS$);
+  const rows = (ROWS$.len / 3) | 0;
   if (rows === 0 && !isFragment) return LAYOUT_NO_CHILDREN;
-  if (rows === 1 && !isFragment && (ROWS.data[0] | 0) !== JC_EXPR) return LAYOUT_NO_CHILDREN;
-  if (rows === 1 && (ROWS.data[0] | 0) === JC_EXPR) {
-    const child = ROWS.data[1] | 0;
+  if (rows === 1 && !isFragment && (ROWS$.data[0] | 0) !== JC_EXPR) return LAYOUT_NO_CHILDREN;
+  if (rows === 1 && (ROWS$.data[0] | 0) === JC_EXPR) {
+    const child = ROWS$.data[1] | 0;
     if (exprJsxContainerSpan(child)) {
       const tag = exprTag(child);
       if (tag === EXPR_TEMPLATE || tag === EXPR_TAGGED_TEMPLATE) {

@@ -10,8 +10,9 @@ import { CM_CALL_MIDDLE, cmExpr, cmKind, fmtChainMember } from "./chain_member.t
 export function shouldInsertEmptyLineAfter(e: number, f: Formatter): boolean {
   const end = exprEnd(e);
   const src = cxOf(f).src;
-  const next = skipTrivia(hir.text, hir.sourceLen | 0, end);
-  if (next < (hir.sourceLen | 0) && src.byteAt(next) === 41) return isNextLineEmpty(src, next + 1);
+  const hir$ = hir;
+  const next = skipTrivia(hir$.text, hir$.sourceLen | 0, end);
+  if (next < (hir$.sourceLen | 0) && src.byteAt(next) === 41) return isNextLineEmpty(src, next + 1);
   return isNextLineEmpty(src, end);
 }
 

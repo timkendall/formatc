@@ -306,11 +306,12 @@ export class Builder {
 
   /** Whether a comment of `owner` passes `mode`. */
   hasComment(owner: number, mode: number): boolean {
-    attached.find(owner);
-    const s = attached.sorted;
+    const attached$ = attached;
+    attached$.find(owner);
+    const s = attached$.sorted;
     const cm = this.comments;
     const text = this.text;
-    for (let i = attached.from; i < attached.to; i++) {
+    for (let i = attached$.from; i < attached$.to; i++) {
       const placement = s[(i << 2) + A_PLACEMENT] | 0;
       const c = s[(i << 2) + A_COMMENT] | 0;
       const b = c << 3;
@@ -361,11 +362,12 @@ export class Builder {
 
   /** Prettier's `printLeadingComments`. `ignStart`, `ignEnd`: the span of the owner if it is written as it is in the source (-1: not). */
   leading(owner: number, ignStart: number, ignEnd: number): void {
-    attached.find(owner);
-    const s = attached.sorted;
+    const attached$ = attached;
+    attached$.find(owner);
+    const s = attached$.sorted;
     const cm = this.comments;
     const text = this.text;
-    for (let i = attached.from; i < attached.to; i++) {
+    for (let i = attached$.from; i < attached$.to; i++) {
       if ((s[(i << 2) + A_PLACEMENT] | 0) !== P_LEADING) continue;
       const c = s[(i << 2) + A_COMMENT] | 0;
       const b = c << 3;
@@ -383,16 +385,17 @@ export class Builder {
 
   /** Prettier's `printTrailingComments` */
   trailing(owner: number, ignStart: number, ignEnd: number): void {
-    attached.find(owner);
-    const s = attached.sorted;
+    const attached$ = attached;
+    attached$.find(owner);
+    const s = attached$.sorted;
     const cm = this.comments;
     const text = this.text;
     // Of the previous one: whether it is at the end of the line, and whether it is a block. -1: none.
     let hasPrevious = false;
     let prevLineSuffix = false;
     let prevBlock = false;
-    const to = attached.to;
-    for (let i = attached.from; i < to; i++) {
+    const to = attached$.to;
+    for (let i = attached$.from; i < to; i++) {
       if ((s[(i << 2) + A_PLACEMENT] | 0) !== P_TRAILING) continue;
       const c = s[(i << 2) + A_COMMENT] | 0;
       const b = c << 3;
@@ -439,10 +442,11 @@ export class Builder {
 
   /** Prettier's `printDanglingComments` */
   dangling(owner: number): void {
-    attached.find(owner);
-    const s = attached.sorted;
+    const attached$ = attached;
+    attached$.find(owner);
+    const s = attached$.sorted;
     let isFirst = true;
-    for (let i = attached.from; i < attached.to; i++) {
+    for (let i = attached$.from; i < attached$.to; i++) {
       if ((s[(i << 2) + A_PLACEMENT] | 0) !== P_DANGLING) continue;
       if (!isFirst) this.line(LM_HARD);
       isFirst = false;

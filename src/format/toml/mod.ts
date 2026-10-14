@@ -65,5 +65,6 @@ export function formatToml(src: Uint8Array, len: number, options: FormatOptions,
     out.push(0xbb);
     out.push(0xbf);
   }
-  return printToml(text, len, tomlTree.el, tomlTree.count, options, out);
+  const tomlTree$ = tomlTree;
+  return printToml(text, len, tomlTree$.el, tomlTree$.count, options, out);
 }

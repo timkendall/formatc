@@ -355,8 +355,9 @@ class OrderedInfo {
 export const oi: OrderedInfo = new OrderedInfo();
 
 export function orderedItemInfo(text: Uint8Array, tree: Tree, item: number): void {
-  oi.number = 0;
-  oi.spaces = 0;
+  const oi$ = oi;
+  oi$.number = 0;
+  oi$.spaces = 0;
   if (item < 0 || item >= tree.n) return;
   const first = tree.firstChild[item] | 0;
   const end = first >= 0 ? tree.start[first] | 0 : tree.end[item] | 0;
@@ -370,9 +371,9 @@ export function orderedItemInfo(text: Uint8Array, tree: Tree, item: number): voi
     digits = digits + 1;
   }
   const afterStart = start + digits + 1;
-  oi.number = number;
+  oi$.number = number;
   if (afterStart <= end) {
-    oi.spaces = trimJsWhitespaceStart(text, afterStart, end) - afterStart;
+    oi$.spaces = trimJsWhitespaceStart(text, afterStart, end) - afterStart;
   }
 }
 
@@ -625,13 +626,14 @@ export class Preprocessor {
     let ts = tree.start[id] | 0;
     let te = tree.end[id] | 0;
     let copied = false;
+    const pre1$ = pre1;
     if (paragraph >= 0 && (around & AR_PARAGRAPH_IN_BLOCKQUOTE) !== 0 && containsByte(buf, ts, te, 10)) {
-      pre1.reset();
+      pre1$.reset();
       tree.resolve(tree.value[id] | 0);
-      blockquoteRawText(buf, ts, te, tree.rBuf, tree.rStart, tree.rEnd, pre1);
-      buf = pre1.data;
+      blockquoteRawText(buf, ts, te, tree.rBuf, tree.rStart, tree.rEnd, pre1$);
+      buf = pre1$.data;
       ts = 0;
-      te = pre1.len;
+      te = pre1$.len;
       copied = true;
     }
     if (paragraph >= 0 && tree.kindOf(tree.parent[id] | 0) === K_PARAGRAPH) {
@@ -645,27 +647,28 @@ export class Preprocessor {
 
     // remark-parse 8 gives the characters that are meant, and Prettier's `restoreUnescapedCharacter` puts back how they are
     // written, except for `*` and `_`, which are escaped anew where they are written.
+    const pre2$ = pre2;
     if (this.isMdx && (containsStr(buf, ts, te, "\\*") || containsStr(buf, ts, te, "\\_"))) {
-      pre2.reset();
+      pre2$.reset();
       let index = ts;
       while (index < te) {
         const byte = buf[index] | 0;
         const next = index + 1 < te ? buf[index + 1] | 0 : -1;
         if (byte === 92 && (next === 42 || next === 95)) {
-          pre2.push(next);
+          pre2$.push(next);
           index = index + 2;
         } else if (byte === 92 && next >= 0 && isAsciiPunct(next)) {
-          pre2.push(byte);
-          pre2.push(next);
+          pre2$.push(byte);
+          pre2$.push(next);
           index = index + 2;
         } else {
-          pre2.push(byte);
+          pre2$.push(byte);
           index = index + 1;
         }
       }
-      buf = pre2.data;
+      buf = pre2$.data;
       ts = 0;
-      te = pre2.len;
+      te = pre2$.len;
       copied = true;
     }
 

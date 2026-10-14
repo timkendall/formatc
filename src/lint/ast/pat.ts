@@ -27,10 +27,11 @@ export function patSpan(p: number): void {
     SP[1] = 0;
     return;
   }
-  const pos = hir.patPos[p] | 0;
-  const end = hir.patEnd[p] | 0;
+  const hir$ = hir;
+  const pos = hir$.patPos[p] | 0;
+  const end = hir$.patEnd[p] | 0;
   SP[0] = pos;
-  SP[1] = (hir.patTag[p] | 0) === PAT_IDENT ? fileEndOfIdentifier(pos, end) : end;
+  SP[1] = (hir$.patTag[p] | 0) === PAT_IDENT ? fileEndOfIdentifier(pos, end) : end;
 }
 export function patStart(p: number): number {
   return inRange(p) ? hir.patPos[p] | 0 : 0;
@@ -42,7 +43,8 @@ export function patEnd(p: number): number {
 
 /** `Pat::as_ident`: the atom of the name if it is an identifier, else -1. */
 export function patAsIdent(p: number): number {
-  return inRange(p) && (hir.patTag[p] | 0) === PAT_IDENT ? hir.patA[p] | 0 : -1;
+  const hir$ = hir;
+  return inRange(p) && (hir$.patTag[p] | 0) === PAT_IDENT ? hir$.patA[p] | 0 : -1;
 }
 
 /** `Pat::parent`: a `VarDecl`, a `Param`, a `PatProp` or a `PatElem` (a Node). */
@@ -59,20 +61,21 @@ export function patBindings(p: number, out: I32Vec): void {
   // The next is the last. Not by recursion, which a pattern can be too deep for.
   const pending = new I32Vec(16);
   pending.push(p);
+  const hir$ = hir;
   while (pending.len > 0) {
     const pat = pending.pop();
     const t = patTag(pat);
     if (t === PAT_IDENT) {
       out.push(pat);
     } else if (t === PAT_OBJECT) {
-      const s = hir.patA[pat] | 0;
-      const n = hir.patB[pat] | 0;
-      for (let i = n - 1; i >= 0; i--) pending.push(hir.patPropValue[hir.ids[(s + i) | 0] | 0] | 0);
+      const s = hir$.patA[pat] | 0;
+      const n = hir$.patB[pat] | 0;
+      for (let i = n - 1; i >= 0; i--) pending.push(hir$.patPropValue[hir$.ids[(s + i) | 0] | 0] | 0);
     } else if (t === PAT_ARRAY) {
-      const s = hir.patA[pat] | 0;
-      const n = hir.patB[pat] | 0;
+      const s = hir$.patA[pat] | 0;
+      const n = hir$.patB[pat] | 0;
       for (let i = n - 1; i >= 0; i--) {
-        const inner = hir.patElemPat[hir.ids[(s + i) | 0] | 0] | 0;
+        const inner = hir$.patElemPat[hir$.ids[(s + i) | 0] | 0] | 0;
         if (patTag(inner) !== PAT_MISSING && inner >= 0) pending.push(inner);
       }
     }
@@ -84,15 +87,17 @@ export function patBindings(p: number, out: I32Vec): void {
 
 /** `PatProp::has_computed_key` */
 export function patPropHasComputedKey(p: number): boolean {
-  if ((hir.patPropIsRest[p] | 0) !== 0) return false;
-  const k = hir.patPropKeyKind[p] | 0;
+  const hir$ = hir;
+  if ((hir$.patPropIsRest[p] | 0) !== 0) return false;
+  const k = hir$.patPropKeyKind[p] | 0;
   if (k === PK_COMPUTED) return true;
-  const nk = hir.patPropNameKind[p] | 0;
+  const nk = hir$.patPropNameKind[p] | 0;
   return k === 1 && (nk === 3 || nk === 4);
 }
 /** `PatProp::computed_key`: the `e` of a key that is `KEY_COMPUTED` (ExprId or -1). */
 export function patPropComputedKey(p: number): number {
-  return (hir.patPropIsRest[p] | 0) === 0 && (hir.patPropKeyKind[p] | 0) === PK_COMPUTED ? hir.patPropKeyVal[p] | 0 : -1;
+  const hir$ = hir;
+  return (hir$.patPropIsRest[p] | 0) === 0 && (hir$.patPropKeyKind[p] | 0) === PK_COMPUTED ? hir$.patPropKeyVal[p] | 0 : -1;
 }
 /** The bound pattern (PatId). */
 export function patPropValue(p: number): number {
@@ -107,14 +112,16 @@ export function patPropIsRest(p: number): boolean {
 }
 /** `PatProp::is_shorthand`: `{ a }`, `{ a = 1 }`: the name is both the key and what is bound. */
 export function patPropIsShorthand(p: number): boolean {
-  if ((hir.patPropIsRest[p] | 0) !== 0) return false;
-  return (hir.patPropKeyPos[p] | 0) === patStart(hir.patPropValue[p] | 0);
+  const hir$ = hir;
+  if ((hir$.patPropIsRest[p] | 0) !== 0) return false;
+  return (hir$.patPropKeyPos[p] | 0) === patStart(hir$.patPropValue[p] | 0);
 }
 export function patPropSpan(p: number): void {
   // The HIR has the end of a name that is written with an escape too early.
-  const end = hir.patPropEnd[p] | 0;
-  const ve = patEnd(hir.patPropValue[p] | 0);
-  SP[0] = hir.patPropPos[p] | 0;
+  const hir$ = hir;
+  const end = hir$.patPropEnd[p] | 0;
+  const ve = patEnd(hir$.patPropValue[p] | 0);
+  SP[0] = hir$.patPropPos[p] | 0;
   SP[1] = end > ve ? end : ve;
 }
 /** `PatProp::parent`: the object pattern (a Node). */
@@ -123,9 +130,10 @@ export function patPropParent(p: number): number {
 }
 
 function ownerPattern(inner: number): number {
+  const bound$ = bound;
   if (inner >= 0) {
-    const t = bound.patParentTag[inner] | 0;
-    if (t === PP_PROP || t === PP_ELEM) return nodeOfPat(bound.patParentB[inner] | 0);
+    const t = bound$.patParentTag[inner] | 0;
+    if (t === PP_PROP || t === PP_ELEM) return nodeOfPat(bound$.patParentB[inner] | 0);
   }
   return 0;
 }
@@ -145,8 +153,9 @@ export function patElemIsRest(e: number): boolean {
   return (hir.patElemIsRest[e] | 0) !== 0;
 }
 export function patElemSpan(e: number): void {
-  SP[0] = hir.patElemStart[e] | 0;
-  SP[1] = hir.patElemEnd[e] | 0;
+  const hir$ = hir;
+  SP[0] = hir$.patElemStart[e] | 0;
+  SP[1] = hir$.patElemEnd[e] | 0;
 }
 /** `PatElem::parent`: the array pattern (a Node). */
 export function patElemParent(e: number): number {

@@ -646,7 +646,8 @@ function textLen(): number {
 
 /** Prettier's `__contentEnd`: `end`, or if a `;` is before it, where what is before that ends. */
 function contentEnd(end: number): number {
-  if (end >= 1 && end - 1 < textLen() && (hir.text[end - 1] | 0) === 59) return skipTriviaBack(hir.text, textLen(), end - 1);
+  const hir$ = hir;
+  if (end >= 1 && end - 1 < textLen() && (hir$.text[end - 1] | 0) === 59) return skipTriviaBack(hir$.text, textLen(), end - 1);
   return end;
 }
 
@@ -2457,17 +2458,19 @@ function resolve(
   if (cursor > oldTextLen) cursor = oldTextLen;
 
   // Prettier compares with the text that it parses, in which every line break is `\n`.
-  oldUnits.reset();
-  pushUnits(source, oldStart, oldStart + cursor, true, oldUnits);
-  let unitsBefore = oldUnits.len + (offset.isInCharacter ? 1 : 0);
-  pushUnits(source, oldStart + cursor, oldEnd, true, oldUnits);
-  if (unitsBefore > oldUnits.len) unitsBefore = oldUnits.len;
-  newUnits.reset();
-  pushUnits(formatted, fStart + newStart0, fStart + newEnd0, false, newUnits);
-  if (oldUnits.len === newUnits.len) {
+  const oldUnits$ = oldUnits;
+  oldUnits$.reset();
+  pushUnits(source, oldStart, oldStart + cursor, true, oldUnits$);
+  let unitsBefore = oldUnits$.len + (offset.isInCharacter ? 1 : 0);
+  pushUnits(source, oldStart + cursor, oldEnd, true, oldUnits$);
+  if (unitsBefore > oldUnits$.len) unitsBefore = oldUnits$.len;
+  const newUnits$ = newUnits;
+  newUnits$.reset();
+  pushUnits(formatted, fStart + newStart0, fStart + newEnd0, false, newUnits$);
+  if (oldUnits$.len === newUnits$.len) {
     let same = true;
-    for (let i = 0; i < oldUnits.len; i++) {
-      if ((oldUnits.data[i] | 0) !== (newUnits.data[i] | 0)) {
+    for (let i = 0; i < oldUnits$.len; i++) {
+      if ((oldUnits$.data[i] | 0) !== (newUnits$.data[i] | 0)) {
         same = false;
         break;
       }
@@ -2475,12 +2478,12 @@ function resolve(
     if (same) return newStart + unitsBefore;
   }
   // old_units.insert(units_before, CURSOR)
-  const n = oldUnits.len;
+  const n = oldUnits$.len;
   const withCursor = new Int32Array(n + 1);
-  for (let i = 0; i < unitsBefore; i++) withCursor[i] = oldUnits.data[i] | 0;
+  for (let i = 0; i < unitsBefore; i++) withCursor[i] = oldUnits$.data[i] | 0;
   withCursor[unitsBefore] = CURSOR;
-  for (let i = unitsBefore; i < n; i++) withCursor[i + 1] = oldUnits.data[i] | 0;
-  return newStart + unitsBeforeCursor(withCursor, n + 1, newUnits.data, newUnits.len);
+  for (let i = unitsBefore; i < n; i++) withCursor[i + 1] = oldUnits$.data[i] | 0;
+  return newStart + unitsBeforeCursor(withCursor, n + 1, newUnits$.data, newUnits$.len);
 }
 
 /** The byte offset of the UTF-16 index `units` in `text`: the start of the character that it is in. */
@@ -2517,10 +2520,11 @@ function offsetIn(source: Uint8Array, options: FormatOptions): boolean {
   if (units > utf16Len(source, 0, source.length)) return false;
   if (units === 0 && source.length >= 3 && (source[0] | 0) === 0xef && (source[1] | 0) === 0xbb && (source[2] | 0) === 0xbf) return false;
   const offset = offsetOfUtf16Index(source, units);
-  OFFSET.isInCharacter = utf16Len(source, 0, offset) < units;
+  const OFFSET$ = OFFSET;
+  OFFSET$.isInCharacter = utf16Len(source, 0, offset) < units;
   // After `\r\n` has become `\n`, an offset between the two is behind it.
   const isInLineBreak = offset > 0 && offset < source.length && (source[offset - 1] | 0) === 13 && (source[offset] | 0) === 10;
-  OFFSET.bytes = offset + (isInLineBreak ? 1 : 0);
+  OFFSET$.bytes = offset + (isInLineBreak ? 1 : 0);
   return true;
 }
 
@@ -2548,34 +2552,37 @@ export const noCursor = new CursorRegion();
  * `alignment`: the document is indented by so many columns more (`formatDocument`).
  */
 export function formatWith(text: Uint8Array, options: FormatOptions, out: ByteBuf, alignment: number): number {
-  cursorResult.value = -1;
+  const cursorResult$ = cursorResult;
+  cursorResult$.value = -1;
   const hasOffset = offsetIn(text, options) && !isBlank(text);
   if (!hasOffset) return formatDocument(text, options, out, alignment, noCursor);
   const offset = new Offset();
-  offset.bytes = OFFSET.bytes;
-  offset.isInCharacter = OFFSET.isInCharacter;
+  const OFFSET$ = OFFSET;
+  offset.bytes = OFFSET$.bytes;
+  offset.isInCharacter = OFFSET$.isInCharacter;
   const items = locateItems(offset.bytes);
   const region = pendingCursor;
   fillRegion(region, offset.bytes, items);
 
   const start = out.len;
-  trimInfo.leading = 0;
-  trimInfo.end = -1;
+  const trimInfo$ = trimInfo;
+  trimInfo$.leading = 0;
+  trimInfo$.end = -1;
   const code = formatDocument(text, options, out, alignment, region);
   region.clear();
   if (code !== FORMAT_OK) return code;
   let first = marksStart();
   let second = marksEnd();
   // Without a node on one side, the region goes to that end of the document. (`trimInfo`: the blanks of an aligned document are already gone.)
-  const aligned = alignment > 0 && trimInfo.end >= 0;
+  const aligned = alignment > 0 && trimInfo$.end >= 0;
   if (aligned) {
-    const leading = trimInfo.leading;
-    const end = trimInfo.end;
+    const leading = trimInfo$.leading;
+    const end = trimInfo$.end;
     if (first >= 0) first = (first < leading ? leading : first > end ? end : first) - leading;
     if (second >= 0) second = (second < leading ? leading : second > end ? end : second) - leading;
   }
   if (items.first === null && items.second !== null) first = 0;
-  else if (items.first !== null && items.second === null && !items.isNode) second = aligned ? trimInfo.end - trimInfo.leading : out.len - start;
+  else if (items.first !== null && items.second === null && !items.isNode) second = aligned ? trimInfo$.end - trimInfo$.leading : out.len - start;
   const names0 = items.first !== null && items.first.kind === K_NAME;
   const names1 = items.second !== null && items.second.kind === K_NAME;
   let m0 = first;
@@ -2584,7 +2591,7 @@ export function formatWith(text: Uint8Array, options: FormatOptions, out: ByteBu
     m0 = -1;
     m1 = -1;
   }
-  cursorResult.value = resolve(text, offset, regionOf(items), names0, names1, out.data, start, out.len, m0, m1);
+  cursorResult$.value = resolve(text, offset, regionOf(items), names0, names1, out.data, start, out.len, m0, m1);
   return FORMAT_OK;
 }
 

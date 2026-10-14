@@ -20,15 +20,18 @@ import {
 const outline = new Outline();
 
 function ensureOutline(): void {
-  if (F.jsdocBuilt) return;
-  F.jsdocBuilt = true;
-  outlineRead(hir.text, hir.comments.data, (hir.comments.len / 2) | 0, outline);
+  const F$ = F;
+  if (F$.jsdocBuilt) return;
+  F$.jsdocBuilt = true;
+  const hir$ = hir;
+  outlineRead(hir$.text, hir$.comments.data, (hir$.comments.len / 2) | 0, outline);
 }
 
 /** `File::slice(start, end)` as a string; empty if it is not in the text. */
 export function sourceSlice(start: number, end: number): string {
-  if (start < 0 || end > (hir.sourceLen | 0) || start >= end) return "";
-  return decodeBytes(hir.text, start, end);
+  const hir$ = hir;
+  if (start < 0 || end > (hir$.sourceLen | 0) || start >= end) return "";
+  return decodeBytes(hir$.text, start, end);
 }
 
 /** `file.jsdoc().at(start)`: the comment whose `/**` is at `start`, or -1. */
@@ -58,7 +61,8 @@ export function jsdocSpanEnd(d: number): number {
 export function jsdocIsAllAsterisks(d: number): boolean {
   const s = jsdocSpanStart(d);
   const e = jsdocSpanEnd(d);
-  for (let i = s; i < e; i++) if ((hir.text[i] | 0) !== 42) return false;
+  const hir$ = hir;
+  for (let i = s; i < e; i++) if ((hir$.text[i] | 0) !== 42) return false;
   return true;
 }
 
@@ -76,7 +80,8 @@ export function jsdocCommentPartStart(d: number): number {
   return jsdocSpanStart(d);
 }
 export function jsdocCommentPartEnd(d: number): number {
-  if ((outline.tagCount.data[d] | 0) > 0) return outline.tags.data[(outline.firstTag.data[d] | 0) * TAG_STRIDE + TG_AT] | 0;
+  const outline$ = outline;
+  if ((outline$.tagCount.data[d] | 0) > 0) return outline$.tags.data[(outline$.firstTag.data[d] | 0) * TAG_STRIDE + TG_AT] | 0;
   return jsdocSpanEnd(d);
 }
 
@@ -167,7 +172,8 @@ export function tagNameParsed(t: number): string {
 /** `@kind{type}`. The formatter's own. */
 export function tagHasNoSpaceBeforeType(t: number): boolean {
   const at = col(t, TG_NAME_END);
-  return at < (hir.sourceLen | 0) && (hir.text[at] | 0) === 123;
+  const hir$ = hir;
+  return at < (hir$.sourceLen | 0) && (hir$.text[at] | 0) === 123;
 }
 
 /** `*word*` at the start of a line is emphasis, not the `*` that starts a line of the comment. Returns what follows the `*`, or null. */

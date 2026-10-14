@@ -174,26 +174,27 @@ export const UTF8 = new Utf8Len();
  * length is in `UTF8.len`.
  */
 export function decodeUtf8(buf: Uint8Array, base: number, size: number, off: number): number {
+  const UTF8$ = UTF8;
   if (off >= size) {
-    UTF8.len = 1;
+    UTF8$.len = 1;
     return 0;
   }
   const b0 = buf[base + off] | 0;
   if (b0 < 0x80) {
-    UTF8.len = 1;
+    UTF8$.len = 1;
     return b0;
   }
   // utf8_byte_sequence_length
   const seqLen = (b0 & 0xe0) === 0xc0 ? 2 : (b0 & 0xf0) === 0xe0 ? 3 : (b0 & 0xf8) === 0xf0 ? 4 : 0;
   if (seqLen === 0) {
-    UTF8.len = 1;
+    UTF8$.len = 1;
     return 0xfffd;
   }
   if (size - off < seqLen) {
-    UTF8.len = 1;
+    UTF8$.len = 1;
     return 0xfffd;
   }
-  UTF8.len = seqLen;
+  UTF8$.len = seqLen;
   // decode_wtf8_rune_t(buf, seq_len, 0xFFFD)
   const s1 = buf[base + off + 1] | 0;
   if ((s1 & 0xc0) !== 0x80) return 0xfffd;
@@ -215,13 +216,14 @@ export function decodeUtf8(buf: Uint8Array, base: number, size: number, off: num
 
 /** Decodes the codepoint ending just before `off`: the codepoint whose last byte is at `off - 1`. */
 export function decodeUtf8Backward(buf: Uint8Array, base: number, size: number, off: number): number {
+  const UTF8$ = UTF8;
   if (off === 0 || off > size) {
-    UTF8.len = 1;
+    UTF8$.len = 1;
     return 0;
   }
   const last = buf[base + off - 1] | 0;
   if (last < 0x80) {
-    UTF8.len = 1;
+    UTF8$.len = 1;
     return last;
   }
   // Walk back over continuation bytes (10xxxxxx)

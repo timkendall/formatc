@@ -88,7 +88,8 @@ function isShortPattern(start: number, end: number, oxfmt: boolean): boolean {
 function isSimple(e0: number, depth: number, oxfmt: boolean): boolean {
   if (depth >= 2) return false;
   // What is left to look at. All of it is as deep as `e`: a chain of accesses and calls can be long, and so can `a[b[c[..]]]`.
-  const base = pending.len;
+  const pending$ = pending;
+  const base = pending$.len;
   let next = e0;
   let result = true;
   while (next >= 0) {
@@ -153,7 +154,7 @@ function isSimple(e0: number, depth: number, oxfmt: boolean): boolean {
         continue;
       }
       if (t === EXPR_INDEX) {
-        pending.push(exprIndexObj(e));
+        pending$.push(exprIndexObj(e));
         e = exprIndexIndex(e);
         continue;
       }
@@ -175,9 +176,9 @@ function isSimple(e0: number, depth: number, oxfmt: boolean): boolean {
       break;
     }
     if (!result) break;
-    next = pending.len > base ? pending.pop() : -1;
+    next = pending$.len > base ? pending$.pop() : -1;
   }
-  pending.len = base;
+  pending$.len = base;
   return result;
 }
 

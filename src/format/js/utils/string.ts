@@ -149,13 +149,14 @@ function containsByte(text: Uint8Array, start: number, end: number, b: number): 
 /** Appends `text[cs, ce)` with `\r\n` and `\r` as `\n`. */
 function pushCrlfAsLf(text: Uint8Array, cs: number, ce: number): void {
   let i = cs;
+  const CLEAN$ = CLEAN;
   while (i < ce) {
     const b = text[i] | 0;
     if (b === 13) {
-      CLEAN.push(10);
+      CLEAN$.push(10);
       i = i + (i + 1 < ce && (text[i + 1] | 0) === 10 ? 2 : 1);
     } else {
-      CLEAN.push(b);
+      CLEAN$.push(b);
       i = i + 1;
     }
   }
@@ -166,11 +167,12 @@ function normalizeDirective(text: Uint8Array, start: number, end: number, cs: nu
   const current = info & 1;
   const quote = (info & 4) !== 0 ? current : (info >> 1) & 1;
   if (quote === current && !containsByte(text, cs, ce, 13)) return false;
-  CLEAN.reset();
+  const CLEAN$ = CLEAN;
+  CLEAN$.reset();
   const q = quoteStyleAsByte(quote);
-  CLEAN.push(q);
+  CLEAN$.push(q);
   pushCrlfAsLf(text, cs, ce);
-  CLEAN.push(q);
+  CLEAN$.push(q);
   void start;
   void end;
   return true;
@@ -183,8 +185,9 @@ function normalizeStringLiteral(text: Uint8Array, cs: number, ce: number, info: 
   if (!quotesWillChange && !containsByte(text, cs, ce, 13)) return false;
   const preferredQuote = quoteStyleAsByte(preferred);
   const alternateQuote = quoteStyleAsByte(quoteStyleOther(preferred));
-  CLEAN.reset();
-  CLEAN.push(preferredQuote);
+  const CLEAN$ = CLEAN;
+  CLEAN$.reset();
+  CLEAN$.push(preferredQuote);
   let i = cs;
   while (i < ce) {
     const b = text[i] | 0;
@@ -195,30 +198,30 @@ function normalizeStringLiteral(text: Uint8Array, cs: number, ce: number, info: 
           // It does not have to be escaped any more.
           i = i + 1;
         } else if (escaped === 13) {
-          CLEAN.push(92);
+          CLEAN$.push(92);
           i = i + 1;
         } else {
-          CLEAN.push(92);
-          CLEAN.push(escaped);
+          CLEAN$.push(92);
+          CLEAN$.push(escaped);
           i = i + 2;
         }
       } else {
-        CLEAN.push(92);
+        CLEAN$.push(92);
         i = i + 1;
       }
     } else if (b === 13) {
       i = i + (i + 1 < ce && (text[i + 1] | 0) === 10 ? 2 : 1);
-      CLEAN.push(10);
+      CLEAN$.push(10);
     } else if (b === preferredQuote) {
-      CLEAN.push(92);
-      CLEAN.push(b);
+      CLEAN$.push(92);
+      CLEAN$.push(b);
       i = i + 1;
     } else {
-      CLEAN.push(b);
+      CLEAN$.push(b);
       i = i + 1;
     }
   }
-  CLEAN.push(preferredQuote);
+  CLEAN$.push(preferredQuote);
   return true;
 }
 
@@ -269,9 +272,10 @@ function normalizeJsxAttribute(text: Uint8Array, start: number, cs: number, ce: 
   if (singleCount === 0 && doubleCount === 0 && (currentQuote < 0 ? QUOTE_DOUBLE : currentQuote) === chosenQuote && !containsByte(text, cs, ce, 13)) {
     return false;
   }
-  CLEAN.reset();
+  const CLEAN$ = CLEAN;
+  CLEAN$.reset();
   const q = quoteStyleAsByte(chosenQuote);
-  CLEAN.push(q);
+  CLEAN$.push(q);
   let i = cs;
   while (i < ce) {
     const b = text[i] | 0;
@@ -289,20 +293,20 @@ function normalizeJsxAttribute(text: Uint8Array, start: number, cs: number, ce: 
     } else if (b === 39) quote = 1;
     else if (b === 34) quote = 2;
     if (quote === 1) {
-      if (chosenQuote === QUOTE_SINGLE) CLEAN.appendAscii("&apos;");
-      else CLEAN.push(39);
+      if (chosenQuote === QUOTE_SINGLE) CLEAN$.appendAscii("&apos;");
+      else CLEAN$.push(39);
     } else if (quote === 2) {
-      if (chosenQuote === QUOTE_DOUBLE) CLEAN.appendAscii("&quot;");
-      else CLEAN.push(34);
+      if (chosenQuote === QUOTE_DOUBLE) CLEAN$.appendAscii("&quot;");
+      else CLEAN$.push(34);
     } else if (b === 13) {
-      CLEAN.push(10);
+      CLEAN$.push(10);
       if (i + 1 < ce && (text[i + 1] | 0) === 10) len = 2;
     } else {
-      CLEAN.push(b);
+      CLEAN$.push(b);
     }
     i = i + len;
   }
-  CLEAN.push(q);
+  CLEAN$.push(q);
   return true;
 }
 
@@ -321,6 +325,7 @@ export function cleanStringLiteralText(start: number, end: number, jsx: boolean,
     return normalizeJsxAttribute(text, start, cs, ce, chosenQuoteStyle);
   }
   const isInHtmlAttribute = options.inHtml.isInAttribute;
+  const CLEAN$ = CLEAN;
   if (!isInHtmlAttribute && parentKind === STRING_LITERAL_PARENT_KIND_EXPRESSION && end - start >= 2) {
     // One scan of the content for the quote counts, the backslashes and the `\r`s.
     const chosen = quoteStyleAsByte(chosenQuoteStyle);
@@ -342,10 +347,10 @@ export function cleanStringLiteralText(start: number, end: number, jsx: boolean,
       if (preferred === current) return false;
       if (!backslash && (preferred === chosenQuoteStyle ? chosenCount : alternateCount) === 0) {
         const q = quoteStyleAsByte(preferred);
-        CLEAN.reset();
-        CLEAN.push(q);
-        CLEAN.append(text, cs, ce);
-        CLEAN.push(q);
+        CLEAN$.reset();
+        CLEAN$.push(q);
+        CLEAN$.append(text, cs, ce);
+        CLEAN$.push(q);
         return true;
       }
     }
@@ -361,8 +366,8 @@ export function cleanStringLiteralText(start: number, end: number, jsx: boolean,
   const qp = options.quoteProperties;
   const isQuoteNeeded = qp === QUOTE_PROPS_AS_NEEDED ? false : qp === QUOTE_PROPS_PRESERVE ? true : cxOf(f).isQuoteNeeded();
   if (!isQuoteNeeded && isNameWithoutQuotes(text, cs, ce, options.flavor)) {
-    CLEAN.reset();
-    CLEAN.append(text, cs, ce);
+    CLEAN$.reset();
+    CLEAN$.append(text, cs, ce);
     return true;
   }
   return normalizeStringLiteral(text, cs, ce, info);
@@ -370,7 +375,8 @@ export function cleanStringLiteralText(start: number, end: number, jsx: boolean,
 
 /** The number of columns that the text `cleanStringLiteralText` made takes; `isSource`: it returned false, the text is `f.source[start, end)`. */
 export function cleanedStringLiteralWidth(start: number, end: number, isSource: boolean, f: Formatter): number {
-  return isSource ? f.stringWidth(f.source, start, end) : f.stringWidth(CLEAN.data, 0, CLEAN.len);
+  const CLEAN$ = CLEAN;
+  return isSource ? f.stringWidth(f.source, start, end) : f.stringWidth(CLEAN$.data, 0, CLEAN$.len);
 }
 
 /** Whether `text[start, end)` is printable ASCII without `quote`. */
@@ -388,6 +394,7 @@ function isPrintableAsciiWithout(text: Uint8Array, start: number, end: number, q
  */
 export function fmtLiteralStringToken(start: number, end: number, jsx: boolean, parentKind: number, f: Formatter): void {
   const text = f.source;
+  const CLEAN$ = CLEAN;
   if (!jsx && parentKind === STRING_LITERAL_PARENT_KIND_EXPRESSION && end - start >= 2 && !f.options.inHtml.isInAttribute) {
     // One scan of the content decides: as it is written, or only the quotes swapped, or the general way.
     const chosenQuote = f.options.quoteStyle;
@@ -418,12 +425,12 @@ export function fmtLiteralStringToken(start: number, end: number, jsx: boolean, 
       }
       if (!backslash && (preferred === chosenQuote ? chosenCount : alternateCount) === 0) {
         const q = quoteStyleAsByte(preferred);
-        CLEAN.reset();
-        CLEAN.push(q);
-        CLEAN.append(text, start + 1, end - 1);
-        CLEAN.push(q);
-        if (odd) f.textBytes(CLEAN.data, 0, CLEAN.len);
-        else f.textBytesWithWidth(CLEAN.data, 0, CLEAN.len, twSingle(CLEAN.len));
+        CLEAN$.reset();
+        CLEAN$.push(q);
+        CLEAN$.append(text, start + 1, end - 1);
+        CLEAN$.push(q);
+        if (odd) f.textBytes(CLEAN$.data, 0, CLEAN$.len);
+        else f.textBytesWithWidth(CLEAN$.data, 0, CLEAN$.len, twSingle(CLEAN$.len));
         return;
       }
     }
@@ -435,5 +442,5 @@ export function fmtLiteralStringToken(start: number, end: number, jsx: boolean, 
     }
   }
   if (!cleanStringLiteralText(start, end, jsx, parentKind, f)) f.textSource(start, end);
-  else f.textBytes(CLEAN.data, 0, CLEAN.len);
+  else f.textBytes(CLEAN$.data, 0, CLEAN$.len);
 }

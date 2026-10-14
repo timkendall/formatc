@@ -46,12 +46,14 @@ const registry = new Registry();
 
 /** The handle of `how` (what `FormatOptions.sortImports` holds). */
 export function registerSortImports(how: SortImports): number {
-  registry.items.push(how);
-  return registry.items.length - 1;
+  const registry$ = registry;
+  registry$.items.push(how);
+  return registry$.items.length - 1;
 }
 
 /** null for -1. */
 export function sortImportsOf(handle: number): SortImports | null {
-  if (handle < 0 || handle >= registry.items.length) return null;
-  return registry.items[handle] as SortImports;
+  const registry$ = registry;
+  if (handle < 0 || handle >= registry$.items.length) return null;
+  return registry$.items[handle] as SortImports;
 }

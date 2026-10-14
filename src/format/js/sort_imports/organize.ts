@@ -1572,7 +1572,8 @@ function sliceEqualsAscii(text: Uint8Array, at: number, lit: string): boolean {
 
 /** The text that the plugin hands to Prettier in place of the file. null: the same text, or one that is formatted the same. */
 export function preprocess(options: OrganizeOptions, endOfLine: string): Uint8Array | null {
-  const text = hir.text.subarray(0, hir.sourceLen | 0);
+  const hir$ = hir;
+  const text = hir$.text.subarray(0, hir$.sourceLen | 0);
   if (containsAscii(text, 0, text.length, "// organize-imports-ignore") || containsAscii(text, 0, text.length, "// tslint:disable:ordered-imports")) return null;
   const n = fileBodyLen();
   const bs = fileBodyStart();
@@ -1617,8 +1618,8 @@ export function preprocess(options: OrganizeOptions, endOfLine: string): Uint8Ar
 
   let hasJsx = false;
   if (options.jsxNeedsImport) {
-    for (let e = 0; e < hir.nExprs; e++) {
-      if ((hir.exprTag[e] | 0) === EXPR_JSX) {
+    for (let e = 0; e < hir$.nExprs; e++) {
+      if ((hir$.exprTag[e] | 0) === EXPR_JSX) {
         hasJsx = true;
         break;
       }

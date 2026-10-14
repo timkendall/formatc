@@ -207,13 +207,15 @@ function isEmptyNode(node: number): boolean {
 
 /** `shouldPrintEndComments` */
 function shouldPrintEndComments(node: number): boolean {
-  if ((T.d[(node << 5) + F_EN_LEN] | 0) === 0) return false;
-  const k = T.d[(node << 5) + F_KIND] | 0;
+  const T$ = T;
+  if ((T$.d[(node << 5) + F_EN_LEN] | 0) === 0) return false;
+  const k = T$.d[(node << 5) + F_KIND] | 0;
   return k !== K_DOCUMENT_HEAD && k !== K_DOCUMENT_BODY && k !== K_FLOW_MAPPING && k !== K_FLOW_SEQUENCE;
 }
 
 function firstChild(node: number): number {
-  return (T.d[(node << 5) + F_CH_LEN] | 0) > 0 ? T.d[(node << 5) + F_CH_FIRST] | 0 : -1;
+  const T$ = T;
+  return (T$.d[(node << 5) + F_CH_LEN] | 0) > 0 ? T$.d[(node << 5) + F_CH_FIRST] | 0 : -1;
 }
 
 function parentOf(node: number): number {
@@ -223,7 +225,8 @@ function parentOf(node: number): number {
 /** `getLastDescendantNode` */
 function lastDescendant(nodeIn: number): number {
   let node = nodeIn;
-  while ((T.d[(node << 5) + F_CH_LEN] | 0) > 0) node = T.d[(node << 5) + F_CH_LAST] | 0;
+  const T$ = T;
+  while ((T$.d[(node << 5) + F_CH_LEN] | 0) > 0) node = T$.d[(node << 5) + F_CH_LAST] | 0;
   return node;
 }
 
@@ -251,23 +254,25 @@ function printLineBreakBefore(next: number): void {
 /** `join(hardline, path.map(print, ..))`, for comments. */
 function printComments(first: number, count: number): void {
   let c = first;
+  const T$ = T;
   for (let index = 0; index < count; index++) {
     if (index > 0) out.hardLine();
     // Of a comment, nobody asks whether it is the last.
     print(c, false);
-    c = T.d[(c << 5) + F_NEXT] | 0;
+    c = T$.d[(c << 5) + F_NEXT] | 0;
   }
 }
 
 /** `join(hardline, path.map(print, "children"))` */
 function printChildren(node: number, isLastDescendant: boolean): void {
-  const n = T.d[(node << 5) + F_CH_LEN] | 0;
-  const last = T.d[(node << 5) + F_CH_LAST] | 0;
-  let c = T.d[(node << 5) + F_CH_FIRST] | 0;
+  const T$ = T;
+  const n = T$.d[(node << 5) + F_CH_LEN] | 0;
+  const last = T$.d[(node << 5) + F_CH_LAST] | 0;
+  let c = T$.d[(node << 5) + F_CH_FIRST] | 0;
   for (let index = 0; index < n; index++) {
     if (index > 0) out.hardLine();
     print(c, isLastDescendant && last === c);
-    c = T.d[(c << 5) + F_NEXT] | 0;
+    c = T$.d[(c << 5) + F_NEXT] | 0;
   }
 }
 
@@ -300,8 +305,9 @@ function hasNextEmptyLine(node: number): boolean {
 
 /** The text of a comment is `prettier-ignore` (or `oxfmt-ignore`) */
 function isIgnoreComment(comment: number): boolean {
-  const s = trimJsWhitespaceStart(text, T.d[(comment << 5) + F_V_START] | 0, T.d[(comment << 5) + F_V_END] | 0);
-  const e = trimJsWhitespaceEnd(text, s, T.d[(comment << 5) + F_V_END] | 0);
+  const T$ = T;
+  const s = trimJsWhitespaceStart(text, T$.d[(comment << 5) + F_V_START] | 0, T$.d[(comment << 5) + F_V_END] | 0);
+  const e = trimJsWhitespaceEnd(text, s, T$.d[(comment << 5) + F_V_END] | 0);
   if (matchesAscii(s, e, "prettier-ignore")) return true;
   return matchesAscii(s, e, "oxfmt-ignore") && isOxfmt;
 }
@@ -318,14 +324,15 @@ function matchesAscii(s: number, e: number, lit: string): boolean {
 /** `hasPrettierIgnore` */
 function hasPrettierIgnore(node: number): boolean {
   let last = -1;
-  if ((T.d[(node << 5) + F_KIND] | 0) === K_DOCUMENT_BODY) {
+  const T$ = T;
+  if ((T$.d[(node << 5) + F_KIND] | 0) === K_DOCUMENT_BODY) {
     const document = parentOf(node);
     if (document < 0) return false;
     const head = firstChild(document);
     if (head < 0) return false;
-    if ((T.d[(head << 5) + F_EN_LEN] | 0) > 0) last = T.d[(head << 5) + F_EN_LAST] | 0;
-  } else if ((T.d[(node << 5) + F_LD_LEN] | 0) > 0) {
-    last = T.d[(node << 5) + F_LD_LAST] | 0;
+    if ((T$.d[(head << 5) + F_EN_LEN] | 0) > 0) last = T$.d[(head << 5) + F_EN_LAST] | 0;
+  } else if ((T$.d[(node << 5) + F_LD_LEN] | 0) > 0) {
+    last = T$.d[(node << 5) + F_LD_LAST] | 0;
   }
   return last >= 0 && isIgnoreComment(last);
 }
@@ -351,19 +358,20 @@ function writeText(buf: Uint8Array, start: number, end: number): void {
 function printsText(node: number): boolean {
   if (!isBare(node)) return false;
   let scalar = node;
-  const k = T.d[(node << 5) + F_KIND] | 0;
+  const T$ = T;
+  const k = T$.d[(node << 5) + F_KIND] | 0;
   if (k === K_MAPPING_KEY || k === K_MAPPING_VALUE || k === K_FLOW_SEQUENCE_ITEM) {
     const content = firstChild(node);
     if (content < 0 || !isBare(content)) return false;
     scalar = content;
   }
-  const sk = T.d[(scalar << 5) + F_KIND] | 0;
+  const sk = T$.d[(scalar << 5) + F_KIND] | 0;
   if (sk === K_ALIAS) {
     // fall through to the write
   } else if (
     (sk === K_PLAIN || sk === K_QUOTE_DOUBLE || sk === K_QUOTE_SINGLE) &&
     proseWrap === PROSE_WRAP_PRESERVE &&
-    (T.d[(scalar << 5) + F_S_LINE] | 0) === (T.d[(scalar << 5) + F_E_LINE] | 0)
+    (T$.d[(scalar << 5) + F_S_LINE] | 0) === (T$.d[(scalar << 5) + F_E_LINE] | 0)
   ) {
     // fall through to the write
   } else {
@@ -379,15 +387,17 @@ function printsText(node: number): boolean {
 /** `genericPrint`. `isLastDescendant`: `isLastDescendantNode(path)`, for what is not a comment, a tag or an anchor. */
 export function print(id: number, isLastDescendant: boolean): void {
   if (printsText(id)) return;
-  if (!treeStack.enter()) return;
+  const treeStack$ = treeStack;
+  if (!treeStack$.enter()) return;
   printInner(id, isLastDescendant);
-  treeStack.leave();
+  treeStack$.leave();
 }
 
 function printInner(node: number, isLastDescendant: boolean): void {
-  const kind = T.d[(node << 5) + F_KIND] | 0;
+  const T$ = T;
+  const kind = T$.d[(node << 5) + F_KIND] | 0;
   // Nothing around it: no comment, tag or anchor (the comment of a document body is in its head)
-  if (((T.d[(node << 5) + F_FLAGS] | 0) & (F_HAS_COMMENTS | F_HAS_PROPS)) === 0 && kind !== K_DOCUMENT_BODY) {
+  if (((T$.d[(node << 5) + F_FLAGS] | 0) & (F_HAS_COMMENTS | F_HAS_PROPS)) === 0 && kind !== K_DOCUMENT_BODY) {
     let hasNextEmptyLine1 = false;
     if (
       (kind === K_MAPPING || kind === K_SEQUENCE || kind === K_COMMENT || kind === K_DIRECTIVE || kind === K_MAPPING_ITEM || kind === K_SEQUENCE_ITEM) &&
@@ -415,13 +425,13 @@ function printInner(node: number, isLastDescendant: boolean): void {
     if (hasNextEmptyLine1) out.line(LINE_SOFT);
     return;
   }
-  if (kind !== K_MAPPING_VALUE && (T.d[(node << 5) + F_LD_LEN] | 0) > 0) {
-    printComments(T.d[(node << 5) + F_LD_FIRST] | 0, T.d[(node << 5) + F_LD_LEN] | 0);
+  if (kind !== K_MAPPING_VALUE && (T$.d[(node << 5) + F_LD_LEN] | 0) > 0) {
+    printComments(T$.d[(node << 5) + F_LD_FIRST] | 0, T$.d[(node << 5) + F_LD_LEN] | 0);
     out.hardLine();
   }
-  let tag = T.d[(node << 5) + F_TAG] | 0;
-  let anchor = T.d[(node << 5) + F_ANCHOR] | 0;
-  if (isOxfmt && tag >= 0 && anchor >= 0 && (T.d[(anchor << 5) + F_S_OFF] | 0) < (T.d[(tag << 5) + F_S_OFF] | 0)) {
+  let tag = T$.d[(node << 5) + F_TAG] | 0;
+  let anchor = T$.d[(node << 5) + F_ANCHOR] | 0;
+  if (isOxfmt && tag >= 0 && anchor >= 0 && (T$.d[(anchor << 5) + F_S_OFF] | 0) < (T$.d[(tag << 5) + F_S_OFF] | 0)) {
     const t = tag;
     tag = anchor;
     anchor = t;
@@ -444,13 +454,13 @@ function printInner(node: number, isLastDescendant: boolean): void {
     hasNextEmpty = hasNextEmptyLine(node);
   }
 
-  if ((T.d[(node << 5) + F_TAG] | 0) >= 0 || (T.d[(node << 5) + F_ANCHOR] | 0) >= 0) {
-    if ((kind === K_SEQUENCE || kind === K_MAPPING) && (T.d[(node << 5) + F_MD_LEN] | 0) === 0) out.hardLine();
+  if ((T$.d[(node << 5) + F_TAG] | 0) >= 0 || (T$.d[(node << 5) + F_ANCHOR] | 0) >= 0) {
+    if ((kind === K_SEQUENCE || kind === K_MAPPING) && (T$.d[(node << 5) + F_MD_LEN] | 0) === 0) out.hardLine();
     else out.token(" ");
   }
-  if ((T.d[(node << 5) + F_MD_LEN] | 0) > 0) {
-    if ((T.d[(node << 5) + F_MD_LEN] | 0) !== 1) out.hardLine();
-    printComments(T.d[(node << 5) + F_MD_FIRST] | 0, T.d[(node << 5) + F_MD_LEN] | 0);
+  if ((T$.d[(node << 5) + F_MD_LEN] | 0) > 0) {
+    if ((T$.d[(node << 5) + F_MD_LEN] | 0) !== 1) out.hardLine();
+    printComments(T$.d[(node << 5) + F_MD_FIRST] | 0, T$.d[(node << 5) + F_MD_LEN] | 0);
     out.hardLine();
   }
 
@@ -473,17 +483,17 @@ function printInner(node: number, isLastDescendant: boolean): void {
     out.endGroup();
   }
 
-  const trailingComment = T.d[(node << 5) + F_TRAILING] | 0;
+  const trailingComment = T$.d[(node << 5) + F_TRAILING] | 0;
   if (trailingComment >= 0 && kind !== K_DOCUMENT && kind !== K_DOCUMENT_HEAD && (commentInBrackets < 0 || commentInBrackets !== trailingComment)) {
     const parent = parentOf(node);
     let isKeyOfMapping = false;
-    if (parent >= 0 && (T.d[(parent << 5) + F_KIND] | 0) === K_MAPPING_KEY) {
+    if (parent >= 0 && (T$.d[(parent << 5) + F_KIND] | 0) === K_MAPPING_KEY) {
       const item = parentOf(parent);
       const mapping = item >= 0 ? parentOf(item) : -1;
-      isKeyOfMapping = mapping >= 0 && ((T.d[(mapping << 5) + F_KIND] | 0) === K_MAPPING || isOxfmt);
+      isKeyOfMapping = mapping >= 0 && ((T$.d[(mapping << 5) + F_KIND] | 0) === K_MAPPING || isOxfmt);
     }
     out.startLineSuffix();
-    if (!(kind === K_MAPPING_VALUE && (T.d[(node << 5) + F_CH_LEN] | 0) === 0)) out.token(" ");
+    if (!(kind === K_MAPPING_VALUE && (T$.d[(node << 5) + F_CH_LEN] | 0) === 0)) out.token(" ");
     if (!(isKeyOfMapping && isInlineNode(node))) out.breakParent();
     if (isOxfmt) hasNoNextEmptyLine(trailingComment);
     print(trailingComment, false);
@@ -493,12 +503,12 @@ function printInner(node: number, isLastDescendant: boolean): void {
   if (shouldPrintEndComments(node)) {
     const isAligned = kind === K_SEQUENCE_ITEM;
     if (isAligned) startAlign(2);
-    let c = T.d[(node << 5) + F_EN_FIRST] | 0;
-    for (let n = T.d[(node << 5) + F_EN_LEN] | 0; n > 0; n = n - 1) {
+    let c = T$.d[(node << 5) + F_EN_FIRST] | 0;
+    for (let n = T$.d[(node << 5) + F_EN_LEN] | 0; n > 0; n = n - 1) {
       out.hardLine();
-      if (isPreviousLineEmpty(text, T.d[(c << 5) + F_S_OFF] | 0)) out.hardLine();
+      if (isPreviousLineEmpty(text, T$.d[(c << 5) + F_S_OFF] | 0)) out.hardLine();
       print(c, false);
-      c = T.d[(c << 5) + F_NEXT] | 0;
+      c = T$.d[(c << 5) + F_NEXT] | 0;
     }
     if (isAligned) out.endIndent();
   }
@@ -507,8 +517,9 @@ function printInner(node: number, isLastDescendant: boolean): void {
 
 /** A node that is as it is written: `replaceEndOfLine` */
 function printIgnored(node: number): void {
-  const s = T.d[(node << 5) + F_S_OFF] | 0;
-  const e = trimJsWhitespaceEnd(text, s, T.d[(node << 5) + F_E_OFF] | 0);
+  const T$ = T;
+  const s = T$.d[(node << 5) + F_S_OFF] | 0;
+  const e = trimJsWhitespaceEnd(text, s, T$.d[(node << 5) + F_E_OFF] | 0);
   let lineStart = s;
   let index = 0;
   for (let i = s; i <= e; i++) {
@@ -529,7 +540,8 @@ function isAsciiWhitespaceByte(b: number): boolean {
 }
 
 function printNode(node: number, isLastDescendant: boolean): void {
-  const kind = T.d[(node << 5) + F_KIND] | 0;
+  const T$ = T;
+  const kind = T$.d[(node << 5) + F_KIND] | 0;
   switch (kind) {
     case K_ROOT:
       printRoot(node);
@@ -539,8 +551,8 @@ function printNode(node: number, isLastDescendant: boolean): void {
       break;
     case K_DOCUMENT_HEAD:
       printChildren(node, isLastDescendant);
-      if ((T.d[(node << 5) + F_CH_LEN] | 0) > 0 && (T.d[(node << 5) + F_EN_LEN] | 0) > 0) out.hardLine();
-      printComments(T.d[(node << 5) + F_EN_FIRST] | 0, T.d[(node << 5) + F_EN_LEN] | 0);
+      if ((T$.d[(node << 5) + F_CH_LEN] | 0) > 0 && (T$.d[(node << 5) + F_EN_LEN] | 0) > 0) out.hardLine();
+      printComments(T$.d[(node << 5) + F_EN_FIRST] | 0, T$.d[(node << 5) + F_EN_LEN] | 0);
       break;
     case K_DOCUMENT_BODY:
       printDocumentBody(node, isLastDescendant);
@@ -548,8 +560,8 @@ function printNode(node: number, isLastDescendant: boolean): void {
     case K_DIRECTIVE: {
       // The name without the `%`, and the parameters.
       out.token("%");
-      const e = trimJsWhitespaceEnd(text, T.d[(node << 5) + F_V_START] | 0, T.d[(node << 5) + F_V_END] | 0);
-      let i = trimJsWhitespaceStart(text, T.d[(node << 5) + F_V_START] | 0, e);
+      const e = trimJsWhitespaceEnd(text, T$.d[(node << 5) + F_V_START] | 0, T$.d[(node << 5) + F_V_END] | 0);
+      let i = trimJsWhitespaceStart(text, T$.d[(node << 5) + F_V_START] | 0, e);
       let index = 0;
       while (i < e) {
         while (i < e && ((text[i] | 0) === 32 || (text[i] | 0) === 9)) i = i + 1;
@@ -565,21 +577,21 @@ function printNode(node: number, isLastDescendant: boolean): void {
     }
     case K_COMMENT:
       out.token("#");
-      writeText(text, T.d[(node << 5) + F_V_START] | 0, T.d[(node << 5) + F_V_END] | 0);
+      writeText(text, T$.d[(node << 5) + F_V_START] | 0, T$.d[(node << 5) + F_V_END] | 0);
       break;
     case K_ALIAS:
       out.token("*");
-      writeText(text, T.d[(node << 5) + F_V_START] | 0, T.d[(node << 5) + F_V_END] | 0);
+      writeText(text, T$.d[(node << 5) + F_V_START] | 0, T$.d[(node << 5) + F_V_END] | 0);
       break;
     case K_TAG:
-      writeText(text, T.d[(node << 5) + F_S_OFF] | 0, T.d[(node << 5) + F_E_OFF] | 0);
+      writeText(text, T$.d[(node << 5) + F_S_OFF] | 0, T$.d[(node << 5) + F_E_OFF] | 0);
       break;
     case K_ANCHOR:
       out.token("&");
-      writeText(text, T.d[(node << 5) + F_V_START] | 0, T.d[(node << 5) + F_V_END] | 0);
+      writeText(text, T$.d[(node << 5) + F_V_START] | 0, T$.d[(node << 5) + F_V_END] | 0);
       break;
     case K_PLAIN:
-      printFlowScalarContent(node, text, T.d[(node << 5) + F_S_OFF] | 0, T.d[(node << 5) + F_E_OFF] | 0);
+      printFlowScalarContent(node, text, T$.d[(node << 5) + F_S_OFF] | 0, T$.d[(node << 5) + F_E_OFF] | 0);
       break;
     case K_QUOTE_DOUBLE:
     case K_QUOTE_SINGLE:
@@ -620,7 +632,8 @@ function printNode(node: number, isLastDescendant: boolean): void {
 }
 
 function isBlockKeep(node: number): boolean {
-  return isBlockScalarKind(T.d[(node << 5) + F_KIND] | 0) && (((T.d[(node << 5) + F_FLAGS] | 0) >> 1) & 3) === CH_KEEP;
+  const T$ = T;
+  return isBlockScalarKind(T$.d[(node << 5) + F_KIND] | 0) && (((T$.d[(node << 5) + F_FLAGS] | 0) >> 1) & 3) === CH_KEEP;
 }
 
 function chompingOf(node: number): number {
@@ -630,10 +643,11 @@ function chompingOf(node: number): number {
 function printRoot(node: number): void {
   const last = lastDescendant(node);
   let shouldPrintHardline = !isBlockKeep(last);
+  const T$ = T;
   if (!shouldPrintHardline && isOxfmt) {
     // For oxfmt a file ends with a line break, and here none has been kept.
-    const s = T.d[(last << 5) + F_S_OFF] | 0;
-    const e = T.d[(last << 5) + F_E_OFF] | 0;
+    const s = T$.d[(last << 5) + F_S_OFF] | 0;
+    const e = T$.d[(last << 5) + F_E_OFF] | 0;
     let nl = -1;
     for (let i = s; i < e; i++) {
       if ((text[i] | 0) === 10) {
@@ -655,12 +669,12 @@ function printRoot(node: number): void {
   }
   let keepsLineBreaks = false;
   let document = firstChild(node);
-  for (let index = 0, n = T.d[(node << 5) + F_CH_LEN] | 0; index < n; index++) {
+  for (let index = 0, n = T$.d[(node << 5) + F_CH_LEN] | 0; index < n; index++) {
     if (index > 0) {
       if (isOxfmt && !keepsLineBreaks) printLineBreakBefore(startOfDocument(document));
       else out.hardLine();
     }
-    const next = T.d[(document << 5) + F_NEXT] | 0;
+    const next = T$.d[(document << 5) + F_NEXT] | 0;
     isLastDocument = next < 0;
     // For oxfmt, what is between two documents is not up to what is in them.
     print(document, isLastDocument || isOxfmt);
@@ -670,7 +684,7 @@ function printRoot(node: number): void {
       keepsLineBreaks = false;
       if (shouldPrintHardline && !(isOxfmt && isEmptyDocument(document))) out.hardLine();
       out.token("...");
-      const comment = T.d[(document << 5) + F_TRAILING] | 0;
+      const comment = T$.d[(document << 5) + F_TRAILING] | 0;
       if (comment >= 0) {
         out.token(" ");
         print(comment, false);
@@ -682,16 +696,17 @@ function printRoot(node: number): void {
 }
 
 function printDocument(node: number, isLastDescendant: boolean): void {
-  if ((T.d[(node << 5) + F_CH_LEN] | 0) !== 2) return;
-  const head = T.d[(node << 5) + F_CH_FIRST] | 0;
-  const body = T.d[(node << 5) + F_CH_LAST] | 0;
+  const T$ = T;
+  if ((T$.d[(node << 5) + F_CH_LEN] | 0) !== 2) return;
+  const head = T$.d[(node << 5) + F_CH_FIRST] | 0;
+  const body = T$.d[(node << 5) + F_CH_LAST] | 0;
   let hasHead = false;
   // At the start of a line, where Prettier puts it, it would be a marker.
   let looksLikeMarker = false;
   const content = firstChild(body);
-  if (content >= 0 && (T.d[(content << 5) + F_KIND] | 0) === K_PLAIN && (T.d[(content << 5) + F_TAG] | 0) < 0 && (T.d[(content << 5) + F_ANCHOR] | 0) < 0 && (T.d[(content << 5) + F_LD_LEN] | 0) === 0) {
-    const s = T.d[(content << 5) + F_S_OFF] | 0;
-    const e = T.d[(content << 5) + F_E_OFF] | 0;
+  if (content >= 0 && (T$.d[(content << 5) + F_KIND] | 0) === K_PLAIN && (T$.d[(content << 5) + F_TAG] | 0) < 0 && (T$.d[(content << 5) + F_ANCHOR] | 0) < 0 && (T$.d[(content << 5) + F_LD_LEN] | 0) === 0) {
+    const s = T$.d[(content << 5) + F_S_OFF] | 0;
+    const e = T$.d[(content << 5) + F_E_OFF] | 0;
     if (e - s >= 3) {
       const b0 = text[s] | 0;
       if ((b0 === 45 || b0 === 46) && (text[s + 1] | 0) === b0 && (text[s + 2] | 0) === b0) {
@@ -699,16 +714,16 @@ function printDocument(node: number, isLastDescendant: boolean): void {
       }
     }
   }
-  const headTrailing = T.d[(head << 5) + F_TRAILING] | 0;
+  const headTrailing = T$.d[(head << 5) + F_TRAILING] | 0;
   // `shouldPrintDocumentHeadEndMarker`
   if (
-    (((T.d[(node << 5) + F_FLAGS] | 0) & 8) !== 0) ||
+    (((T$.d[(node << 5) + F_FLAGS] | 0) & 8) !== 0) ||
     looksLikeMarker ||
-    (T.d[(head << 5) + F_CH_LEN] | 0) !== 0 ||
-    (T.d[(head << 5) + F_EN_LEN] | 0) !== 0 ||
+    (T$.d[(head << 5) + F_CH_LEN] | 0) !== 0 ||
+    (T$.d[(head << 5) + F_EN_LEN] | 0) !== 0 ||
     headTrailing >= 0
   ) {
-    if ((T.d[(head << 5) + F_CH_LEN] | 0) !== 0 || (T.d[(head << 5) + F_EN_LEN] | 0) !== 0) {
+    if ((T$.d[(head << 5) + F_CH_LEN] | 0) !== 0 || (T$.d[(head << 5) + F_EN_LEN] | 0) !== 0) {
       print(head, isLastDescendant);
       out.hardLine();
     }
@@ -719,7 +734,7 @@ function printDocument(node: number, isLastDescendant: boolean): void {
     }
     hasHead = true;
   }
-  if ((T.d[(body << 5) + F_CH_LEN] | 0) !== 0 || (T.d[(body << 5) + F_EN_LEN] | 0) !== 0) {
+  if ((T$.d[(body << 5) + F_CH_LEN] | 0) !== 0 || (T$.d[(body << 5) + F_EN_LEN] | 0) !== 0) {
     if (hasHead && (!looksLikeMarker || headTrailing >= 0)) out.hardLine();
     if (looksLikeMarker) out.token(" ");
     print(body, isLastDescendant);
@@ -728,16 +743,17 @@ function printDocument(node: number, isLastDescendant: boolean): void {
 
 function printDocumentBody(node: number, isLastDescendant: boolean): void {
   printChildren(node, isLastDescendant);
-  if ((T.d[(node << 5) + F_CH_LEN] | 0) > 0 && (T.d[(node << 5) + F_EN_LEN] | 0) > 0) {
-    const lastChild = T.d[(node << 5) + F_CH_LAST] | 0;
-    const firstComment = T.d[(node << 5) + F_EN_FIRST] | 0;
+  const T$ = T;
+  if ((T$.d[(node << 5) + F_CH_LEN] | 0) > 0 && (T$.d[(node << 5) + F_EN_LEN] | 0) > 0) {
+    const lastChild = T$.d[(node << 5) + F_CH_LAST] | 0;
+    const firstComment = T$.d[(node << 5) + F_EN_FIRST] | 0;
     const last = lastDescendant(node);
-    const start = T.d[(firstComment << 5) + F_S_OFF] | 0;
-    const isBlock = isBlockScalarKind(T.d[(last << 5) + F_KIND] | 0);
+    const start = T$.d[(firstComment << 5) + F_S_OFF] | 0;
+    const isBlock = isBlockScalarKind(T$.d[(last << 5) + F_KIND] | 0);
     let hardLines = 0;
     if (isOxfmt && !hasNewlineBackwards(text, start)) {
       // It stays on its line. Behind a tag or an anchor that nothing follows there is a blank.
-      if ((T.d[(last << 5) + F_E_OFF] | 0) > (T.d[(last << 5) + F_S_OFF] | 0)) out.token(" ");
+      if ((T$.d[(last << 5) + F_E_OFF] | 0) > (T$.d[(last << 5) + F_S_OFF] | 0)) out.token(" ");
       hardLines = 0;
     } else if (isOxfmt && !(isBlock && chompingOf(last) === CH_KEEP)) {
       hardLines = 1 + (isPreviousLineEmpty(text, start) ? 1 : 0);
@@ -745,26 +761,27 @@ function printDocumentBody(node: number, isLastDescendant: boolean): void {
       // There is a line break at the end of a block scalar that keeps its line breaks.
       hardLines = chompingOf(last) === CH_KEEP ? 0 : 2;
     } else {
-      const keepsEmptyLine = (T.d[(lastChild << 5) + F_KIND] | 0) === K_MAPPING && isPreviousLineEmpty(text, start);
+      const keepsEmptyLine = (T$.d[(lastChild << 5) + F_KIND] | 0) === K_MAPPING && isPreviousLineEmpty(text, start);
       hardLines = keepsEmptyLine ? 2 : 1;
     }
     for (let i = 0; i < hardLines; i++) out.hardLine();
   }
-  if (isOxfmt && (T.d[(node << 5) + F_EN_LEN] | 0) > 0) hasNoNextEmptyLine(T.d[(node << 5) + F_EN_LAST] | 0);
-  printComments(T.d[(node << 5) + F_EN_FIRST] | 0, T.d[(node << 5) + F_EN_LEN] | 0);
+  if (isOxfmt && (T$.d[(node << 5) + F_EN_LEN] | 0) > 0) hasNoNextEmptyLine(T$.d[(node << 5) + F_EN_LAST] | 0);
+  printComments(T$.d[(node << 5) + F_EN_FIRST] | 0, T$.d[(node << 5) + F_EN_LEN] | 0);
 }
 
 /** Where the first of what is printed of a document is in the text. */
 function startOfDocument(document: number): number {
-  let start = T.d[(document << 5) + F_S_OFF] | 0;
+  const T$ = T;
+  let start = T$.d[(document << 5) + F_S_OFF] | 0;
   const head = firstChild(document);
   if (head < 0) return start;
-  if ((T.d[(head << 5) + F_CH_LEN] | 0) > 0) {
-    const o = T.d[((T.d[(head << 5) + F_CH_FIRST] | 0) << 5) + F_S_OFF] | 0;
+  if ((T$.d[(head << 5) + F_CH_LEN] | 0) > 0) {
+    const o = T$.d[((T$.d[(head << 5) + F_CH_FIRST] | 0) << 5) + F_S_OFF] | 0;
     if (o < start) start = o;
   }
-  if ((T.d[(head << 5) + F_EN_LEN] | 0) > 0) {
-    const o = T.d[((T.d[(head << 5) + F_EN_FIRST] | 0) << 5) + F_S_OFF] | 0;
+  if ((T$.d[(head << 5) + F_EN_LEN] | 0) > 0) {
+    const o = T$.d[((T$.d[(head << 5) + F_EN_FIRST] | 0) << 5) + F_S_OFF] | 0;
     if (o < start) start = o;
   }
   return start;
@@ -772,23 +789,25 @@ function startOfDocument(document: number): number {
 
 /** Nothing is printed of it but its end. */
 function isEmptyDocument(document: number): boolean {
-  if (((T.d[(document << 5) + F_FLAGS] | 0) & 8) !== 0) return false;
-  let part = T.d[(document << 5) + F_CH_FIRST] | 0;
-  for (let n = T.d[(document << 5) + F_CH_LEN] | 0; n > 0; n = n - 1) {
-    if ((T.d[(part << 5) + F_CH_LEN] | 0) !== 0 || (T.d[(part << 5) + F_EN_LEN] | 0) !== 0 || (T.d[(part << 5) + F_TRAILING] | 0) >= 0) return false;
-    part = T.d[(part << 5) + F_NEXT] | 0;
+  const T$ = T;
+  if (((T$.d[(document << 5) + F_FLAGS] | 0) & 8) !== 0) return false;
+  let part = T$.d[(document << 5) + F_CH_FIRST] | 0;
+  for (let n = T$.d[(document << 5) + F_CH_LEN] | 0; n > 0; n = n - 1) {
+    if ((T$.d[(part << 5) + F_CH_LEN] | 0) !== 0 || (T$.d[(part << 5) + F_EN_LEN] | 0) !== 0 || (T$.d[(part << 5) + F_TRAILING] | 0) >= 0) return false;
+    part = T$.d[(part << 5) + F_NEXT] | 0;
   }
   return true;
 }
 
 /** `shouldPrintDocumentEndMarker`. `next`: the next document, or -1. */
 function shouldPrintDocumentEndMarker(document: number, next: number): boolean {
-  if (((T.d[(document << 5) + F_FLAGS] | 0) & 16) !== 0 || (T.d[(document << 5) + F_TRAILING] | 0) >= 0) return true;
+  const T$ = T;
+  if (((T$.d[(document << 5) + F_FLAGS] | 0) & 16) !== 0 || (T$.d[(document << 5) + F_TRAILING] | 0) >= 0) return true;
   // For oxfmt, comments between two documents are no reason for a `...` that is not there.
   if (next < 0) return false;
   const head = firstChild(next);
   if (head < 0) return false;
-  return (T.d[(head << 5) + F_CH_LEN] | 0) !== 0 || (!isOxfmt && (T.d[(head << 5) + F_EN_LEN] | 0) !== 0);
+  return (T$.d[(head << 5) + F_CH_LEN] | 0) !== 0 || (!isOxfmt && (T$.d[(head << 5) + F_EN_LEN] | 0) !== 0);
 }
 
 // ---------------------------------------------------------------------------------------------- scalars
@@ -884,14 +903,15 @@ function writeFill(i: number): void {
     return;
   }
   // LK_JOINED
-  joinBuf.reset();
+  const joinBuf$ = joinBuf;
+  joinBuf$.reset();
   for (let k = 0; k < count; k++) {
-    if (k > 0) joinBuf.push(32);
-    joinBuf.append(wBuf, wS[first + k] | 0, wE[first + k] | 0);
+    if (k > 0) joinBuf$.push(32);
+    joinBuf$.append(wBuf, wS[first + k] | 0, wE[first + k] | 0);
   }
   out.startFill();
   out.startItem();
-  out.text(joinBuf.data, 0, joinBuf.len);
+  out.text(joinBuf$.data, 0, joinBuf$.len);
   out.endItem();
   out.endFill();
 }
@@ -911,11 +931,12 @@ function wordEndsWithBlank(k: number): boolean {
 /** `printFlowScalarContent`: the content is buf[start, end). */
 function printFlowScalarContent(node: number, buf: Uint8Array, start: number, end: number): void {
   // Most are one line that stays as it is.
-  if (proseWrap === PROSE_WRAP_PRESERVE && (T.d[(node << 5) + F_S_LINE] | 0) === (T.d[(node << 5) + F_E_LINE] | 0)) {
+  const T$ = T;
+  if (proseWrap === PROSE_WRAP_PRESERVE && (T$.d[(node << 5) + F_S_LINE] | 0) === (T$.d[(node << 5) + F_E_LINE] | 0)) {
     writeText(buf, start, end);
     return;
   }
-  flowScalarLineContents(T.d[(node << 5) + F_KIND] | 0, buf, start, end);
+  flowScalarLineContents(T$.d[(node << 5) + F_KIND] | 0, buf, start, end);
   for (let index = 0; index < nLn; index++) {
     if (index > 0) out.hardLine();
     writeFill(index);
@@ -984,11 +1005,12 @@ function flowScalarLineContents(kind: number, buf: Uint8Array, start: number, en
 
 /** `printQuoted` */
 function printQuoted(node: number): void {
-  const s = T.d[(node << 5) + F_S_OFF] | 0;
-  const e = T.d[(node << 5) + F_E_OFF] | 0;
+  const T$ = T;
+  const s = T$.d[(node << 5) + F_S_OFF] | 0;
+  const e = T$.d[(node << 5) + F_E_OFF] | 0;
   const rs = s + 1;
   const re = e > s ? e - 1 : e;
-  const isDouble = (T.d[(node << 5) + F_KIND] | 0) === K_QUOTE_DOUBLE;
+  const isDouble = (T$.d[(node << 5) + F_KIND] | 0) === K_QUOTE_DOUBLE;
   let hasBackslash = false;
   let hasEscape = false;
   let hasDoubleQuote = false;
@@ -1005,45 +1027,46 @@ function printQuoted(node: number): void {
   let buf: Uint8Array = text;
   let cs = rs;
   let ce = re;
+  const contentBuf$ = contentBuf;
   if ((!isDouble && hasBackslash) || (isDouble && hasEscape)) {
     // Only in double quotes are there escapes, and in single quotes a backslash needs none.
     quote = isDouble ? 34 : 39;
   } else if (hasDoubleQuote) {
     if (isDouble) {
       // `.replaceAll('\\"', '"').replaceAll("'", "''")`
-      contentBuf.reset();
+      contentBuf$.reset();
       let i = rs;
       while (i < re) {
         const b = text[i] | 0;
         if (b === 92 && i + 1 < re && (text[i + 1] | 0) === 34) {
-          contentBuf.push(34);
+          contentBuf$.push(34);
           i = i + 1;
         } else if (b === 39) {
-          contentBuf.push(39);
-          contentBuf.push(39);
+          contentBuf$.push(39);
+          contentBuf$.push(39);
         } else {
-          contentBuf.push(b);
+          contentBuf$.push(b);
         }
         i = i + 1;
       }
-      buf = contentBuf.data;
+      buf = contentBuf$.data;
       cs = 0;
-      ce = contentBuf.len;
+      ce = contentBuf$.len;
     }
     quote = 39;
   } else if (hasSingleQuote) {
     if (!isDouble) {
       // `.replaceAll("''", "'")`
-      contentBuf.reset();
+      contentBuf$.reset();
       let i = rs;
       while (i < re) {
         const b = text[i] | 0;
-        contentBuf.push(b);
+        contentBuf$.push(b);
         i = i + (b === 39 && i + 1 < re && (text[i + 1] | 0) === 39 ? 2 : 1);
       }
-      buf = contentBuf.data;
+      buf = contentBuf$.data;
       cs = 0;
-      ce = contentBuf.len;
+      ce = contentBuf$.len;
     }
     quote = 34;
   } else {
@@ -1061,10 +1084,11 @@ function blockValueLineContents(node: number, parentIndent: number, isLastDescen
   nW = 0;
   nLn = 0;
   nRl = 0;
-  if ((T.d[(node << 5) + F_S_LINE] | 0) === (T.d[(node << 5) + F_E_LINE] | 0)) return;
+  const T$ = T;
+  if ((T$.d[(node << 5) + F_S_LINE] | 0) === (T$.d[(node << 5) + F_E_LINE] | 0)) return;
   // Without the line of the `>` or `|`.
-  const sourceStart = T.d[(node << 5) + F_S_OFF] | 0;
-  const sourceEnd = T.d[(node << 5) + F_E_OFF] | 0;
+  const sourceStart = T$.d[(node << 5) + F_S_OFF] | 0;
+  const sourceEnd = T$.d[(node << 5) + F_E_OFF] | 0;
   let contentStart = -1;
   for (let i = sourceStart; i < sourceEnd; i++) {
     if ((text[i] | 0) === 10) {
@@ -1075,7 +1099,7 @@ function blockValueLineContents(node: number, parentIndent: number, isLastDescen
   if (contentStart < 0 || contentStart >= sourceEnd) return;
   const contentEnd = sourceEnd;
   const chomping = chompingOf(node);
-  const indent = T.d[(node << 5) + F_INDENT];
+  const indent = T$.d[(node << 5) + F_INDENT];
   let leadingSpaceCount = 0;
   if (indent < 0) {
     // `/^(?<leadingSpace> *)[^\n\r ]/m`
@@ -1107,7 +1131,7 @@ function blockValueLineContents(node: number, parentIndent: number, isLastDescen
     }
   }
   const nRaw = nRl;
-  if (proseWrap === PROSE_WRAP_PRESERVE || (T.d[(node << 5) + F_KIND] | 0) === K_BLOCK_LITERAL) {
+  if (proseWrap === PROSE_WRAP_PRESERVE || (T$.d[(node << 5) + F_KIND] | 0) === K_BLOCK_LITERAL) {
     for (let index = 0; index < nRaw; index++) {
       const s = rlS[index] | 0;
       const e = rlE[index] | 0;
@@ -1226,19 +1250,20 @@ function lineIsBlank(li: number): boolean {
 function printBlock(node: number, isLastDescendant: boolean): void {
   let parentIndent = 0;
   let ancestor = parentOf(node);
+  const T$ = T;
   while (ancestor >= 0) {
-    const k = T.d[(ancestor << 5) + F_KIND] | 0;
+    const k = T$.d[(ancestor << 5) + F_KIND] | 0;
     if (k === K_SEQUENCE || k === K_MAPPING) parentIndent = parentIndent + 1;
     ancestor = parentOf(ancestor);
   }
-  const kind = T.d[(node << 5) + F_KIND] | 0;
+  const kind = T$.d[(node << 5) + F_KIND] | 0;
   out.token(kind === K_BLOCK_FOLDED ? ">" : "|");
-  const indent = T.d[(node << 5) + F_INDENT];
+  const indent = T$.d[(node << 5) + F_INDENT];
   if (indent >= 0) out.token(String(indent));
   const chomping = chompingOf(node);
   if (chomping === CH_KEEP) out.token("+");
   else if (chomping === CH_STRIP) out.token("-");
-  const comment = T.d[(node << 5) + F_INDICATOR] | 0;
+  const comment = T$.d[(node << 5) + F_INDICATOR] | 0;
   if (comment >= 0) {
     // oxfmt does not count it when it asks whether the `|` fits behind the key.
     if (isOxfmt) out.startLineSuffix();
@@ -1289,48 +1314,49 @@ function printBlock(node: number, isLastDescendant: boolean): void {
 
 /** `printFlowMapping` and `printFlowSequence` */
 function printFlowMapping(node: number, isLastDescendant: boolean): void {
-  const isMapping = (T.d[(node << 5) + F_KIND] | 0) === K_FLOW_MAPPING;
-  const hasChildren = (T.d[(node << 5) + F_CH_LEN] | 0) > 0;
+  const T$ = T;
+  const isMapping = (T$.d[(node << 5) + F_KIND] | 0) === K_FLOW_MAPPING;
+  const hasChildren = (T$.d[(node << 5) + F_CH_LEN] | 0) > 0;
   const lineKind = isMapping && hasChildren && bracketSpacing ? LINE_SPACE : LINE_SOFT;
   let isLastItemEmptyMappingItem = false;
   if (hasChildren) {
-    const last = T.d[(node << 5) + F_CH_LAST] | 0;
-    if ((T.d[(last << 5) + F_KIND] | 0) === K_FLOW_MAPPING_ITEM) {
+    const last = T$.d[(node << 5) + F_CH_LAST] | 0;
+    if ((T$.d[(last << 5) + F_KIND] | 0) === K_FLOW_MAPPING_ITEM) {
       isLastItemEmptyMappingItem = true;
-      let c = T.d[(last << 5) + F_CH_FIRST] | 0;
-      for (let n = T.d[(last << 5) + F_CH_LEN] | 0; n > 0; n = n - 1) {
+      let c = T$.d[(last << 5) + F_CH_FIRST] | 0;
+      for (let n = T$.d[(last << 5) + F_CH_LEN] | 0; n > 0; n = n - 1) {
         if (!isEmptyNode(c)) {
           isLastItemEmptyMappingItem = false;
           break;
         }
-        c = T.d[(c << 5) + F_NEXT] | 0;
+        c = T$.d[(c << 5) + F_NEXT] | 0;
       }
     }
   }
   out.token(isMapping ? "{" : "[");
   startAlign(tabWidth);
   out.line(lineKind);
-  if (commentInBrackets >= 0 && commentInBracketsStart === (T.d[(node << 5) + F_S_OFF] | 0)) {
+  if (commentInBrackets >= 0 && commentInBracketsStart === (T$.d[(node << 5) + F_S_OFF] | 0)) {
     const comment = commentInBrackets;
     commentInBrackets = -1;
     hasNoNextEmptyLine(comment);
     print(comment, false);
     out.hardLine();
   }
-  let id = T.d[(node << 5) + F_CH_FIRST] | 0;
-  for (let i = 0, n = T.d[(node << 5) + F_CH_LEN] | 0; i < n; i++) {
+  let id = T$.d[(node << 5) + F_CH_FIRST] | 0;
+  for (let i = 0, n = T$.d[(node << 5) + F_CH_LEN] | 0; i < n; i++) {
     const child = id;
-    const next = T.d[(child << 5) + F_NEXT] | 0;
+    const next = T$.d[(child << 5) + F_NEXT] | 0;
     print(child, isLastDescendant && next < 0);
     // For oxfmt, what is between the brackets is on one line or each on its own.
-    if (isOxfmt && (T.d[(child << 5) + F_KIND] | 0) === K_FLOW_MAPPING_ITEM) {
+    if (isOxfmt && (T$.d[(child << 5) + F_KIND] | 0) === K_FLOW_MAPPING_ITEM) {
       const key = firstChild(child);
       const keyContent = key >= 0 ? firstChild(key) : -1;
       if (keyContent >= 0) {
-        const kk = T.d[(keyContent << 5) + F_KIND] | 0;
+        const kk = T$.d[(keyContent << 5) + F_KIND] | 0;
         if (
-          (T.d[(keyContent << 5) + F_TRAILING] | 0) >= 0 ||
-          ((kk === K_PLAIN || kk === K_QUOTE_DOUBLE || kk === K_QUOTE_SINGLE) && (T.d[(keyContent << 5) + F_S_LINE] | 0) !== (T.d[(keyContent << 5) + F_E_LINE] | 0))
+          (T$.d[(keyContent << 5) + F_TRAILING] | 0) >= 0 ||
+          ((kk === K_PLAIN || kk === K_QUOTE_DOUBLE || kk === K_QUOTE_SINGLE) && (T$.d[(keyContent << 5) + F_S_LINE] | 0) !== (T$.d[(keyContent << 5) + F_E_LINE] | 0))
         ) {
           out.breakParent();
         }
@@ -1339,7 +1365,7 @@ function printFlowMapping(node: number, isLastDescendant: boolean): void {
     if (next < 0) break;
     out.token(",");
     out.line(LINE_SPACE);
-    if ((T.d[(child << 5) + F_S_LINE] | 0) !== (T.d[(next << 5) + F_S_LINE] | 0) && hasNextEmptyLine(child)) out.line(LINE_SOFT);
+    if ((T$.d[(child << 5) + F_S_LINE] | 0) !== (T$.d[(next << 5) + F_S_LINE] | 0) && hasNextEmptyLine(child)) out.line(LINE_SOFT);
     id = next;
   }
   if (trailingComma) {
@@ -1348,9 +1374,9 @@ function printFlowMapping(node: number, isLastDescendant: boolean): void {
     out.otherwise();
     out.endIfBreak();
   }
-  if ((T.d[(node << 5) + F_EN_LEN] | 0) > 0) {
+  if ((T$.d[(node << 5) + F_EN_LEN] | 0) > 0) {
     out.hardLine();
-    printComments(T.d[(node << 5) + F_EN_FIRST] | 0, T.d[(node << 5) + F_EN_LEN] | 0);
+    printComments(T$.d[(node << 5) + F_EN_FIRST] | 0, T$.d[(node << 5) + F_EN_LEN] | 0);
   }
   out.endIndent();
   if (!isLastItemEmptyMappingItem) out.line(lineKind);
@@ -1362,20 +1388,22 @@ function printFlowMapping(node: number, isLastDescendant: boolean): void {
 /** `isAbsolutelyPrintedAsSingleLineNode`. `node`: -1 for none. */
 function isAbsolutelyPrintedAsSingleLine(node: number): boolean {
   if (node < 0) return true;
-  const kind = T.d[(node << 5) + F_KIND] | 0;
+  const T$ = T;
+  const kind = T$.d[(node << 5) + F_KIND] | 0;
   if (kind === K_ALIAS) return true;
   if (kind !== K_PLAIN && kind !== K_QUOTE_SINGLE && kind !== K_QUOTE_DOUBLE) return false;
-  if (proseWrap === PROSE_WRAP_PRESERVE) return (T.d[(node << 5) + F_S_LINE] | 0) === (T.d[(node << 5) + F_E_LINE] | 0);
+  if (proseWrap === PROSE_WRAP_PRESERVE) return (T$.d[(node << 5) + F_S_LINE] | 0) === (T$.d[(node << 5) + F_E_LINE] | 0);
   // A backslash at the end of a line: `/\\$/m`
-  const s = T.d[(node << 5) + F_S_OFF] | 0;
-  const e = T.d[(node << 5) + F_E_OFF] | 0;
+  const s = T$.d[(node << 5) + F_S_OFF] | 0;
+  const e = T$.d[(node << 5) + F_E_OFF] | 0;
   if (e > s && (text[e - 1] | 0) === 92) return false;
   for (let i = s; i + 1 < e; i++) {
     if ((text[i] | 0) === 92 && (text[i + 1] | 0) === 10) return false;
   }
   scalarSource(kind, text, s, e);
-  const d = scalarOut.data;
-  const n = scalarOut.len;
+  const scalarOut$ = scalarOut;
+  const d = scalarOut$.data;
+  const n = scalarOut$.len;
   if (proseWrap === PROSE_WRAP_NEVER) {
     for (let i = 0; i < n; i++) if ((d[i] | 0) === 10) return false;
     return true;
@@ -1398,23 +1426,25 @@ function printKey(key: number, isLastDescendant: boolean): void {
 /** Whether a scalar in `node` is on more than one line. */
 function hasScalarOverSeveralLines(node: number): boolean {
   if (node < 0) return false;
-  const base = leftVec.len;
-  let c = T.d[(node << 5) + F_CH_FIRST] | 0;
-  for (let n = T.d[(node << 5) + F_CH_LEN] | 0; n > 0; n = n - 1) {
-    leftVec.push(c);
-    c = T.d[(c << 5) + F_NEXT] | 0;
+  const leftVec$ = leftVec;
+  const base = leftVec$.len;
+  const T$ = T;
+  let c = T$.d[(node << 5) + F_CH_FIRST] | 0;
+  for (let n = T$.d[(node << 5) + F_CH_LEN] | 0; n > 0; n = n - 1) {
+    leftVec$.push(c);
+    c = T$.d[(c << 5) + F_NEXT] | 0;
   }
-  while (leftVec.len > base) {
-    const id = leftVec.pop();
-    const k = T.d[(id << 5) + F_KIND] | 0;
-    if ((k === K_PLAIN || k === K_QUOTE_DOUBLE || k === K_QUOTE_SINGLE) && (T.d[(id << 5) + F_S_LINE] | 0) !== (T.d[(id << 5) + F_E_LINE] | 0)) {
-      leftVec.truncate(base);
+  while (leftVec$.len > base) {
+    const id = leftVec$.pop();
+    const k = T$.d[(id << 5) + F_KIND] | 0;
+    if ((k === K_PLAIN || k === K_QUOTE_DOUBLE || k === K_QUOTE_SINGLE) && (T$.d[(id << 5) + F_S_LINE] | 0) !== (T$.d[(id << 5) + F_E_LINE] | 0)) {
+      leftVec$.truncate(base);
       return true;
     }
-    let ch = T.d[(id << 5) + F_CH_FIRST] | 0;
-    for (let n = T.d[(id << 5) + F_CH_LEN] | 0; n > 0; n = n - 1) {
-      leftVec.push(ch);
-      ch = T.d[(ch << 5) + F_NEXT] | 0;
+    let ch = T$.d[(id << 5) + F_CH_FIRST] | 0;
+    for (let n = T$.d[(id << 5) + F_CH_LEN] | 0; n > 0; n = n - 1) {
+      leftVec$.push(ch);
+      ch = T$.d[(ch << 5) + F_NEXT] | 0;
     }
   }
   return false;
@@ -1428,36 +1458,39 @@ function isBlockCollection(node: number): boolean {
 function writeColon(spaceBeforeColon: boolean, hasEndComments: boolean, valueContent: number, value: number, parent: number, keyComment: number): void {
   if (spaceBeforeColon) out.token(" ");
   out.token(":");
+  const T$ = T;
   if (
     hasEndComments &&
     valueContent >= 0 &&
-    ((T.d[(valueContent << 5) + F_KIND] | 0) === K_FLOW_MAPPING || (T.d[(valueContent << 5) + F_KIND] | 0) === K_FLOW_SEQUENCE) &&
-    (T.d[(valueContent << 5) + F_CH_LEN] | 0) === 0
+    ((T$.d[(valueContent << 5) + F_KIND] | 0) === K_FLOW_MAPPING || (T$.d[(valueContent << 5) + F_KIND] | 0) === K_FLOW_SEQUENCE) &&
+    (T$.d[(valueContent << 5) + F_CH_LEN] | 0) === 0
   ) {
     out.token(" ");
   } else if (
-    (valueContent >= 0 && (T.d[(valueContent << 5) + F_LD_LEN] | 0) > 0) ||
+    (valueContent >= 0 && (T$.d[(valueContent << 5) + F_LD_LEN] | 0) > 0) ||
     (hasEndComments && !isOxfmt && valueContent >= 0 && !isBlockCollection(valueContent)) ||
-    (parent >= 0 && ((T.d[(parent << 5) + F_KIND] | 0) === K_MAPPING || isOxfmt) && keyComment >= 0 && isInlineNode(valueContent)) ||
-    (valueContent >= 0 && isBlockCollection(valueContent) && (T.d[(valueContent << 5) + F_TAG] | 0) < 0 && (T.d[(valueContent << 5) + F_ANCHOR] | 0) < 0)
+    (parent >= 0 && ((T$.d[(parent << 5) + F_KIND] | 0) === K_MAPPING || isOxfmt) && keyComment >= 0 && isInlineNode(valueContent)) ||
+    (valueContent >= 0 && isBlockCollection(valueContent) && (T$.d[(valueContent << 5) + F_TAG] | 0) < 0 && (T$.d[(valueContent << 5) + F_ANCHOR] | 0) < 0)
   ) {
     out.hardLine();
   } else if (valueContent >= 0) {
     out.line(LINE_SPACE);
-  } else if ((T.d[(value << 5) + F_TRAILING] | 0) >= 0) {
+  } else if ((T$.d[(value << 5) + F_TRAILING] | 0) >= 0) {
     out.token(" ");
   }
 }
 
 function noCommentsBeforeOrIn(content: number): boolean {
-  return content < 0 || ((T.d[(content << 5) + F_LD_LEN] | 0) === 0 && (T.d[(content << 5) + F_MD_LEN] | 0) === 0);
+  const T$ = T;
+  return content < 0 || ((T$.d[(content << 5) + F_LD_LEN] | 0) === 0 && (T$.d[(content << 5) + F_MD_LEN] | 0) === 0);
 }
 
 /** `printMappingItem` */
 function printMappingItem(node: number, isLastDescendant: boolean): void {
-  if ((T.d[(node << 5) + F_CH_LEN] | 0) !== 2) return;
-  const key = T.d[(node << 5) + F_CH_FIRST] | 0;
-  const value = T.d[(node << 5) + F_CH_LAST] | 0;
+  const T$ = T;
+  if ((T$.d[(node << 5) + F_CH_LEN] | 0) !== 2) return;
+  const key = T$.d[(node << 5) + F_CH_FIRST] | 0;
+  const value = T$.d[(node << 5) + F_CH_LAST] | 0;
   const parent = parentOf(node);
   const isEmptyKey = isEmptyNode(key);
   const isEmptyValue = isEmptyNode(value);
@@ -1469,40 +1502,40 @@ function printMappingItem(node: number, isLastDescendant: boolean): void {
   const valueContent = firstChild(value);
   // For oxfmt a comment behind the `[` or `{` of the value stays between the brackets. Prettier takes it for one behind the
   // key.
-  let keyComment = keyContent >= 0 ? T.d[(keyContent << 5) + F_TRAILING] | 0 : -1;
+  let keyComment = keyContent >= 0 ? T$.d[(keyContent << 5) + F_TRAILING] | 0 : -1;
   if (isOxfmt && keyComment >= 0 && valueContent >= 0) {
-    const vk = T.d[(valueContent << 5) + F_KIND] | 0;
-    if ((vk === K_FLOW_MAPPING || vk === K_FLOW_SEQUENCE) && (T.d[(valueContent << 5) + F_CH_LEN] | 0) > 0 && (T.d[(valueContent << 5) + F_S_OFF] | 0) < (T.d[(keyComment << 5) + F_S_OFF] | 0)) {
+    const vk = T$.d[(valueContent << 5) + F_KIND] | 0;
+    if ((vk === K_FLOW_MAPPING || vk === K_FLOW_SEQUENCE) && (T$.d[(valueContent << 5) + F_CH_LEN] | 0) > 0 && (T$.d[(valueContent << 5) + F_S_OFF] | 0) < (T$.d[(keyComment << 5) + F_S_OFF] | 0)) {
       commentInBrackets = keyComment;
-      commentInBracketsStart = T.d[(valueContent << 5) + F_S_OFF] | 0;
+      commentInBracketsStart = T$.d[(valueContent << 5) + F_S_OFF] | 0;
       keyComment = -1;
     }
   }
   // `needsSpaceInFrontOfMappingValue`
-  const spaceBeforeColon = keyContent >= 0 && (T.d[(keyContent << 5) + F_KIND] | 0) === K_ALIAS;
+  const spaceBeforeColon = keyContent >= 0 && (T$.d[(keyContent << 5) + F_KIND] | 0) === K_ALIAS;
 
   // At the start of the file, U+FEFF is a byte order mark. Prettier puts it there.
   let wouldBeByteOrderMark = false;
-  if ((T.d[(node << 5) + F_S_OFF] | 0) === startOfContent && keyContent >= 0) {
-    const s = T.d[(keyContent << 5) + F_S_OFF] | 0;
-    wouldBeByteOrderMark = (T.d[(keyContent << 5) + F_E_OFF] | 0) - s >= 3 && (text[s] | 0) === 0xef && (text[s + 1] | 0) === 0xbb && (text[s + 2] | 0) === 0xbf;
+  if ((T$.d[(node << 5) + F_S_OFF] | 0) === startOfContent && keyContent >= 0) {
+    const s = T$.d[(keyContent << 5) + F_S_OFF] | 0;
+    wouldBeByteOrderMark = (T$.d[(keyContent << 5) + F_E_OFF] | 0) - s >= 3 && (text[s] | 0) === 0xef && (text[s + 1] | 0) === 0xbb && (text[s + 2] | 0) === 0xbf;
   }
-  const nodeKind = T.d[(node << 5) + F_KIND] | 0;
+  const nodeKind = T$.d[(node << 5) + F_KIND] | 0;
 
   if (isEmptyValue) {
-    if (nodeKind === K_FLOW_MAPPING_ITEM && parent >= 0 && (T.d[(parent << 5) + F_KIND] | 0) === K_FLOW_MAPPING) {
+    if (nodeKind === K_FLOW_MAPPING_ITEM && parent >= 0 && (T$.d[(parent << 5) + F_KIND] | 0) === K_FLOW_MAPPING) {
       printKey(key, isLastDescendant);
       return;
     }
     let isInSet = false;
     if (parent >= 0) {
-      const ptag = T.d[(parent << 5) + F_TAG] | 0;
-      isInSet = ptag >= 0 && ((T.d[(ptag << 5) + F_FLAGS] | 0) & 1) !== 0;
+      const ptag = T$.d[(parent << 5) + F_TAG] | 0;
+      isInSet = ptag >= 0 && ((T$.d[(ptag << 5) + F_FLAGS] | 0) & 1) !== 0;
     }
     if (
       nodeKind === K_MAPPING_ITEM &&
       isAbsolutelyPrintedAsSingleLine(keyContent) &&
-      (keyContent < 0 || (T.d[(keyContent << 5) + F_TRAILING] | 0) < 0) &&
+      (keyContent < 0 || (T$.d[(keyContent << 5) + F_TRAILING] | 0) < 0) &&
       !isInSet &&
       !wouldBeByteOrderMark
     ) {
@@ -1527,17 +1560,17 @@ function printMappingItem(node: number, isLastDescendant: boolean): void {
   }
 
   // An explicit key.
-  if ((T.d[(value << 5) + F_LD_LEN] | 0) > 0 || !isInlineNode(keyContent) || wouldBeByteOrderMark) {
+  if ((T$.d[(value << 5) + F_LD_LEN] | 0) > 0 || !isInlineNode(keyContent) || wouldBeByteOrderMark) {
     out.token("? ");
     startAlign(2);
     printKey(key, isLastDescendant);
     out.endIndent();
     out.hardLine();
-    let c = T.d[(value << 5) + F_LD_FIRST] | 0;
-    for (let n = T.d[(value << 5) + F_LD_LEN] | 0; n > 0; n = n - 1) {
+    let c = T$.d[(value << 5) + F_LD_FIRST] | 0;
+    for (let n = T$.d[(value << 5) + F_LD_LEN] | 0; n > 0; n = n - 1) {
       print(c, false);
       out.hardLine();
-      c = T.d[(c << 5) + F_NEXT] | 0;
+      c = T$.d[(c << 5) + F_NEXT] | 0;
     }
     out.token(": ");
     startAlign(2);
@@ -1547,15 +1580,15 @@ function printMappingItem(node: number, isLastDescendant: boolean): void {
   }
 
   const keyHasNoComments =
-    noCommentsBeforeOrIn(keyContent) && keyComment < 0 && (T.d[(key << 5) + F_EN_LEN] | 0) === 0;
+    noCommentsBeforeOrIn(keyContent) && keyComment < 0 && (T$.d[(key << 5) + F_EN_LEN] | 0) === 0;
   // `isSingleLineNode`
   let isSingleLineKey = true;
   if (keyContent >= 0) {
-    const kk = T.d[(keyContent << 5) + F_KIND] | 0;
-    if (kk === K_PLAIN || kk === K_QUOTE_DOUBLE || kk === K_QUOTE_SINGLE) isSingleLineKey = (T.d[(keyContent << 5) + F_S_LINE] | 0) === (T.d[(keyContent << 5) + F_E_LINE] | 0);
+    const kk = T$.d[(keyContent << 5) + F_KIND] | 0;
+    if (kk === K_PLAIN || kk === K_QUOTE_DOUBLE || kk === K_QUOTE_SINGLE) isSingleLineKey = (T$.d[(keyContent << 5) + F_S_LINE] | 0) === (T$.d[(keyContent << 5) + F_E_LINE] | 0);
     else isSingleLineKey = kk === K_ALIAS;
   }
-  const hasEndComments = (T.d[(value << 5) + F_EN_LEN] | 0) > 0;
+  const hasEndComments = (T$.d[(value << 5) + F_EN_LEN] | 0) > 0;
 
   // On one line.
   if (

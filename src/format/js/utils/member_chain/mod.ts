@@ -100,25 +100,27 @@ function isOneGroupAfterTheHead(hasInnerCall: boolean, f: Formatter): boolean {
 
 /** Writes the call `callExpression`, whose callee is a member access. */
 export function writeMemberChain(callExpression: number, f: Formatter): void {
-  const base = mv.len;
+  const mv$ = mv;
+  const base = mv$.len;
   const hasInnerCall = pushChainMembers(callExpression, f);
   if (!isOneGroupAfterTheHead(hasInnerCall, f)) {
     reverseFrom(base);
     fmtMemberChain(callExpression, base, f);
-    mv.len = base;
+    mv$.len = base;
     return;
   }
   const curried = isLongCurriedCall(callExpression, f);
   if (!curried) f.startGroup();
-  for (let i = mv.len - 1; i >= base; i--) fmtChainMember(mv.data[i] | 0, f);
+  for (let i = mv$.len - 1; i >= base; i--) fmtChainMember(mv$.data[i] | 0, f);
   if (!curried) f.endGroup();
-  mv.len = base;
+  mv$.len = base;
 }
 
 function reverseFrom(base: number): void {
   let i = base;
-  let j = mv.len - 1;
-  const d = mv.data;
+  const mv$ = mv;
+  let j = mv$.len - 1;
+  const d = mv$.data;
   while (i < j) {
     const t = d[i] | 0;
     d[i] = d[j] | 0;
@@ -158,20 +160,22 @@ function shouldMergeTailWithHead(root: number, base: number, gbase: number, gcou
   const g1s = groupStart(gbase, 1);
   const g1e = groupEnd(gbase, gcount, 1);
   if (g1e <= g1s) return false;
-  const firstMember = mv.data[(base + g1s) | 0] | 0;
+  const mv$ = mv;
+  const firstMember = mv$.data[(base + g1s) | 0] | 0;
   const cx = cxOf(f);
   if (!cx.isQuiet && (hasLeadingComment(firstMember, f) || hasTrailingComment(firstMember, f))) return false;
   const hasComputedProperty = cmKind(firstMember) === CM_COMPUTED_MEMBER;
 
   const headEnd = groupEnd(gbase, gcount, 0);
-  if (headEnd === 1 && cmKind(mv.data[base | 0] | 0) === CM_NODE) {
-    const node = cmExpr(mv.data[base | 0] | 0);
+  const hir$ = hir;
+  if (headEnd === 1 && cmKind(mv$.data[base | 0] | 0) === CM_NODE) {
+    const node = cmExpr(mv$.data[base | 0] | 0);
     const t = exprTag(node);
     if (t === EXPR_IDENT) {
       if (hasComputedProperty) return true;
       const s = exprStart(node);
       const e = exprEnd(node);
-      if (isFactory(hir.text, s, e - s)) return true;
+      if (isFactory(hir$.text, s, e - s)) return true;
       // A name that is shorter than the indentation: the `.` would not even be to the right of it.
       if (e - s <= f.options.indentWidth) {
         const parent = exprParent(root);
@@ -183,7 +187,7 @@ function shouldMergeTailWithHead(root: number, base: number, gbase: number, gcou
   }
   // Prettier looks at the name in `[]` as well.
   if (headEnd === 0) return false;
-  const last = mv.data[(base + headEnd - 1) | 0] | 0;
+  const last = mv$.data[(base + headEnd - 1) | 0] | 0;
   const k = cmKind(last);
   const le = cmExpr(last);
   if (k === CM_STATIC_MEMBER && exprTag(le) === EXPR_DOT) {
@@ -199,7 +203,7 @@ function shouldMergeTailWithHead(root: number, base: number, gbase: number, gcou
     if (exprTag(index) === EXPR_IDENT && nameInBracketsCanBeFactory(f)) {
       const s = exprStart(index);
       const e = exprEnd(index);
-      return hasComputedProperty || isFactory(hir.text, s, e - s);
+      return hasComputedProperty || isFactory(hir$.text, s, e - s);
     }
   }
   return false;
@@ -260,13 +264,14 @@ function pushEndsOfRemainingGroups(base: number, mlen: number, start: number, f:
   let hasSeenCallExpression = false;
   let groupStartAt = start;
   const cx = cxOf(f);
+  const mv$ = mv;
   for (let index = start; index < mlen; index++) {
-    const m = mv.data[(base + index) | 0] | 0;
+    const m = mv$.data[(base + index) | 0] | 0;
     const k = cmKind(m);
     if (k === CM_COMPUTED_MEMBER && isComputedArrayMemberAccess(m)) {
       // `[0]` goes with what is before it.
     } else if ((k === CM_STATIC_MEMBER || k === CM_COMPUTED_MEMBER) && hasSeenCallExpression) {
-      mv.push(index);
+      mv$.push(index);
       groupStartAt = index;
       hasSeenCallExpression = false;
     } else if (k === CM_CALL_MIDDLE || k === CM_CALL_END) {
@@ -274,12 +279,12 @@ function pushEndsOfRemainingGroups(base: number, mlen: number, start: number, f:
     }
     // So that the comment stays behind what it is written behind.
     if (!cx.isQuiet && (hasTrailingComment(m, f) || isBeforeCommentThatStartsLine(cmExpr(m), f))) {
-      mv.push(index + 1);
+      mv$.push(index + 1);
       groupStartAt = index + 1;
       hasSeenCallExpression = false;
     }
   }
-  if (groupStartAt < mlen) mv.push(mlen);
+  if (groupStartAt < mlen) mv$.push(mlen);
 }
 
 /** Whether a comment leads `member`. For oxfmt: it is on a line of its own before the `.`, or before the `[` of `[name]`. */
@@ -352,8 +357,9 @@ function isBeforeCommentThatStartsLine(e: number, f: Formatter): boolean {
 /** Prettier's `nodeHasComment`. */
 function memberChainHasComment(base: number, mlen: number, f: Formatter): boolean {
   if (cxOf(f).isQuiet) return false;
+  const mv$ = mv;
   for (let i = 0; i < mlen; i++) {
-    const m = mv.data[(base + i) | 0] | 0;
+    const m = mv$.data[(base + i) | 0] | 0;
     if (hasLeadingComment(m, f)) return true;
     const k = cmKind(m);
     if (k !== CM_CALL_END && !(k === CM_COMPUTED_MEMBER && commentBehindBracketsBreaksNoChain(f)) && hasTrailingComment(m, f)) return true;
@@ -368,8 +374,9 @@ function memberChainHasComment(base: number, mlen: number, f: Formatter): boolea
 function groupsShouldBreak(base: number, mlen: number, fbase: number, gcount: number, f: Formatter): boolean {
   // The call expressions among the links; the last of them has no call after it.
   let lastCall = -1;
+  const mv$ = mv;
   for (let i = mlen - 1; i >= 0; i--) {
-    if (callOfLink(mv.data[(base + i) | 0] | 0, f) >= 0) {
+    if (callOfLink(mv$.data[(base + i) | 0] | 0, f) >= 0) {
       lastCall = i;
       break;
     }
@@ -378,7 +385,7 @@ function groupsShouldBreak(base: number, mlen: number, fbase: number, gcount: nu
   let hasFunctionLikeArgument = false;
   let hasComplexArgs = false;
   for (let i = 0; i <= lastCall; i++) {
-    const call = callOfLink(mv.data[(base + i) | 0] | 0, f);
+    const call = callOfLink(mv$.data[(base + i) | 0] | 0, f);
     if (call < 0) continue;
     callsCount = (callsCount + 1) | 0;
     const as = callArgsStart(call);
@@ -405,7 +412,7 @@ function groupsShouldBreak(base: number, mlen: number, fbase: number, gcount: nu
   }
 
   if (gcount === 0) return false;
-  const d = mv.data;
+  const d = mv$.data;
   const head = d[fbase | 0] | 0;
   const last = d[(fbase + gcount - 1) | 0] | 0;
   const endsWithCall = mlen > 0 && cmIsCall(d[(base + mlen - 1) | 0] | 0);
@@ -413,7 +420,7 @@ function groupsShouldBreak(base: number, mlen: number, fbase: number, gcount: nu
   if (hasFunctionLikeArgument && endsWithCall && last >= 0 && f.willBreak(last)) return true;
   // tail.iter().rev().skip(1): the tail but for its last
   for (let i = 1; i < gcount - 1; i++) {
-    const h = mv.data[(fbase + i) | 0] | 0;
+    const h = mv$.data[(fbase + i) | 0] | 0;
     if (h >= 0 && f.willBreak(h)) return true;
   }
   return false;
@@ -430,16 +437,17 @@ function callOfLink(m: number, f: Formatter): number {
 
 /** Writes the chain whose links are `mv[base .. mv.len)`, first to last. */
 function fmtMemberChain(root: number, base: number, f: Formatter): void {
-  const mlen = (mv.len - base) | 0;
+  const mv$ = mv;
+  const mlen = (mv$.len - base) | 0;
   const cx = cxOf(f);
 
   // MemberChain::new
-  const gbase0 = mv.len;
+  const gbase0 = mv$.len;
   const headEnd = getSplitIndexOfHeadAndTailGroups(base, mlen, f);
-  mv.push(headEnd);
+  mv$.push(headEnd);
   pushEndsOfRemainingGroups(base, mlen, headEnd, f);
   let gbase = gbase0;
-  let gcount = (mv.len - gbase0) | 0;
+  let gcount = (mv$.len - gbase0) | 0;
   // The first group of the tail may belong to the head.
   if (gcount - 1 > 0 && shouldMergeTailWithHead(root, base, gbase, gcount, f)) {
     gbase = (gbase + 1) | 0;
@@ -450,10 +458,10 @@ function fmtMemberChain(root: number, base: number, f: Formatter): void {
   const hasComment = memberChainHasComment(base, mlen, f);
 
   // find_empty_lines: a flag for each group of the tail
-  const nbase = mv.len;
+  const nbase = mv$.len;
   let hasEmptyLineAfterCall = false;
   {
-    let previous = headEnd2(gbase, gcount) > 0 ? mv.data[(base + groupEnd(gbase, gcount, 0) - 1) | 0] | 0 : -1;
+    let previous = headEnd2(gbase, gcount) > 0 ? mv$.data[(base + groupEnd(gbase, gcount, 0) - 1) | 0] | 0 : -1;
     for (let index = 0; index + 1 < gcount; index++) {
       let needs = false;
       if (previous >= 0) {
@@ -469,10 +477,10 @@ function fmtMemberChain(root: number, base: number, f: Formatter): void {
           needs = index === 0 && shouldInsertEmptyLineAfter(cmExpr(previous), f);
         }
       }
-      mv.push(needs ? 1 : 0);
+      mv$.push(needs ? 1 : 0);
       const ge = groupEnd(gbase, gcount, index + 1);
       const gs = groupStart(gbase, index + 1);
-      previous = ge > gs ? mv.data[(base + ge - 1) | 0] | 0 : -1;
+      previous = ge > gs ? mv$.data[(base + ge - 1) | 0] | 0 : -1;
     }
   }
 
@@ -480,19 +488,19 @@ function fmtMemberChain(root: number, base: number, f: Formatter): void {
     const curried = isLongCurriedCall(root, f);
     if (!curried) f.startGroup();
     for (let g = 0; g < gcount; g++) {
-      fmtMemberChainGroup(mv, base, groupStart(gbase, g), groupEnd(gbase, gcount, g), f);
+      fmtMemberChainGroup(mv$, base, groupStart(gbase, g), groupEnd(gbase, gcount, g), f);
     }
     if (!curried) f.endGroup();
     return;
   }
 
   // The groups are asked about, and written in two ways. They are formatted in order, for the sake of the comments.
-  const fbase = mv.len;
+  const fbase = mv$.len;
   for (let g = 0; g < gcount; g++) {
     const slot = f.startCapture();
-    fmtMemberChainGroup(mv, base, groupStart(gbase, g), groupEnd(gbase, gcount, g), f);
+    fmtMemberChainGroup(mv$, base, groupStart(gbase, g), groupEnd(gbase, gcount, g), f);
     const h = f.endCapture(slot);
-    mv.push(h);
+    mv$.push(h);
   }
 
   f.startLabelled(LABEL_MEMBER_CHAIN);
@@ -501,12 +509,12 @@ function fmtMemberChain(root: number, base: number, f: Formatter): void {
     writeExpanded(fbase, nbase, gcount, f);
     f.endGroup();
   } else {
-    const hasEmptyLineBeforeTail = gcount > 1 && (mv.data[nbase | 0] | 0) === 1;
-    const lastHandle = gcount > 0 ? mv.data[(fbase + gcount - 1) | 0] | 0 : -1;
+    const hasEmptyLineBeforeTail = gcount > 1 && (mv$.data[nbase | 0] | 0) === 1;
+    const lastHandle = gcount > 0 ? mv$.data[(fbase + gcount - 1) | 0] | 0 : -1;
     const lastGroupBreaks = lastHandle >= 0 && f.willBreak(lastHandle);
     if (hasEmptyLineBeforeTail || lastGroupBreaks) f.expandParent();
     const s0 = f.startVariant();
-    for (let g = 0; g < gcount; g++) f.writeInterned(mv.data[(fbase + g) | 0] | 0);
+    for (let g = 0; g < gcount; g++) f.writeInterned(mv$.data[(fbase + g) | 0] | 0);
     const v0 = f.endVariant(s0);
     const s1 = f.startVariant();
     writeExpanded(fbase, nbase, gcount, f);
@@ -523,12 +531,13 @@ function headEnd2(gbase: number, gcount: number): number {
 
 /** `format_expanded`: the head, and each group of the tail on a line of its own, indented. */
 function writeExpanded(fbase: number, nbase: number, gcount: number, f: Formatter): void {
-  if (gcount > 0) f.writeInterned(mv.data[fbase | 0] | 0);
+  const mv$ = mv;
+  if (gcount > 0) f.writeInterned(mv$.data[fbase | 0] | 0);
   f.startIndent();
   for (let g = 1; g < gcount; g++) {
-    if ((mv.data[(nbase + g - 1) | 0] | 0) === 1) f.emptyLine();
+    if ((mv$.data[(nbase + g - 1) | 0] | 0) === 1) f.emptyLine();
     else f.hardLineBreak();
-    f.writeInterned(mv.data[(fbase + g) | 0] | 0);
+    f.writeInterned(mv$.data[(fbase + g) | 0] | 0);
   }
   f.endIndent();
 }
@@ -538,27 +547,28 @@ function writeExpanded(fbase: number, nbase: number, gcount: number, f: Formatte
  * or a comment between its links.
  */
 export function isMemberCallChain(expression: number, f: Formatter): boolean {
-  const base = mv.len;
+  const mv$ = mv;
+  const base = mv$.len;
   const hasInnerCall = pushChainMembers(expression, f);
   if (isOneGroupAfterTheHead(hasInnerCall, f)) {
-    mv.len = base;
+    mv$.len = base;
     return false;
   }
   reverseFrom(base);
-  const mlen = (mv.len - base) | 0;
-  const gbase0 = mv.len;
+  const mlen = (mv$.len - base) | 0;
+  const gbase0 = mv$.len;
   const headEnd = getSplitIndexOfHeadAndTailGroups(base, mlen, f);
-  mv.push(headEnd);
+  mv$.push(headEnd);
   pushEndsOfRemainingGroups(base, mlen, headEnd, f);
   let gbase = gbase0;
-  let gcount = (mv.len - gbase0) | 0;
+  let gcount = (mv$.len - gbase0) | 0;
   if (gcount - 1 > 0 && shouldMergeTailWithHead(expression, base, gbase, gcount, f)) {
     gbase = (gbase + 1) | 0;
     gcount = (gcount - 1) | 0;
   }
   const tailLen = gcount > 0 ? gcount - 1 : 0;
   const result = tailLen > 1 || memberChainHasComment(base, mlen, f);
-  mv.len = base;
+  mv$.len = base;
   return result;
 }
 
@@ -572,7 +582,8 @@ function startsChain(member: number, f: Formatter): boolean {
  * them. The chain starts where something needs parentheses.
  */
 function pushChainMembers(root: number, f: Formatter): boolean {
-  mv.push(cmMake(CM_CALL_END, root));
+  const mv$ = mv;
+  mv$.push(cmMake(CM_CALL_END, root));
   const hasTypeCasts = cxOf(f).comments.hasTypeCastComments;
   let hasInnerCall = false;
   let next = exprCallee(root);
@@ -588,7 +599,7 @@ function pushChainMembers(root: number, f: Formatter): boolean {
       ((!isLink || ((tag === EXPR_NON_NULL || exprChain(expression) !== CHAIN_NO) && exprIsChainRoot(expression))) &&
         expressionNeedsParentheses(expression, f))
     ) {
-      mv.push(cmMake(CM_NODE, expression));
+      mv$.push(cmMake(CM_NODE, expression));
       break;
     }
 
@@ -597,21 +608,21 @@ function pushChainMembers(root: number, f: Formatter): boolean {
       if (callee >= 0 && ((isMemberExpression(callee, f) && !startsChain(callee, f)) || isCallExpression(callee, f))) {
         next = callee;
         hasInnerCall = true;
-        mv.push(cmMake(CM_CALL_MIDDLE, expression));
+        mv$.push(cmMake(CM_CALL_MIDDLE, expression));
       } else {
-        mv.push(cmMake(CM_NODE, expression));
+        mv$.push(cmMake(CM_NODE, expression));
       }
     } else if (tag === EXPR_DOT && !startsChain(expression, f)) {
       next = exprObject(expression);
-      mv.push(cmMake(CM_STATIC_MEMBER, expression));
+      mv$.push(cmMake(CM_STATIC_MEMBER, expression));
     } else if (tag === EXPR_INDEX) {
       next = exprObject(expression);
-      mv.push(cmMake(CM_COMPUTED_MEMBER, expression));
+      mv$.push(cmMake(CM_COMPUTED_MEMBER, expression));
     } else if (tag === EXPR_NON_NULL) {
       next = exprNonNullExpr(expression);
-      mv.push(cmMake(CM_NON_NULL, expression));
+      mv$.push(cmMake(CM_NON_NULL, expression));
     } else {
-      mv.push(cmMake(CM_NODE, expression));
+      mv$.push(cmMake(CM_NODE, expression));
     }
   }
   return hasInnerCall;

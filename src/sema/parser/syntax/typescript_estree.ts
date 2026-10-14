@@ -209,19 +209,22 @@ function text(): Uint8Array {
 }
 
 function byte(at: number): number {
-  return at >= 0 && at < (hir.sourceLen | 0) ? hir.text[at] | 0 : 0;
+  const hir$ = hir;
+  return at >= 0 && at < (hir$.sourceLen | 0) ? hir$.text[at] | 0 : 0;
 }
 
 /** The token at `at`. */
 function tokenAt(at: number): string {
-  const n = tokenLen(hir.text, hir.sourceLen | 0, at);
+  const hir$ = hir;
+  const n = tokenLen(hir$.text, hir$.sourceLen | 0, at);
   let s = "";
-  for (let i = 0; i < n; i++) s += String.fromCharCode(hir.text[(at + i) | 0] | 0);
+  for (let i = 0; i < n; i++) s += String.fromCharCode(hir$.text[(at + i) | 0] | 0);
   return s;
 }
 
 function sliceText(start: number, end: number): string {
-  return Buffer.from(hir.text.buffer, hir.text.byteOffset + start, end - start).toString("utf8");
+  const hir$ = hir;
+  return Buffer.from(hir$.text.buffer, hir$.text.byteOffset + start, end - start).toString("utf8");
 }
 
 /** Whether the token at `at` is a `StringLiteral`. */
@@ -261,9 +264,10 @@ function failForEmptyList(when: number, at: number): void {
 }
 
 function hasKeyword(modStart: number, modLen: number, keyword: number): boolean {
+  const hir$ = hir;
   for (let i = 0; i < modLen; i++) {
-    const m = hir.ids[(modStart + i) | 0] | 0;
-    if ((hir.modifierKind[m] | 0) === MODK_KEYWORD && (hir.modifierValue[m] | 0) === keyword) return true;
+    const m = hir$.ids[(modStart + i) | 0] | 0;
+    if ((hir$.modifierKind[m] | 0) === MODK_KEYWORD && (hir$.modifierValue[m] | 0) === keyword) return true;
   }
   return false;
 }
@@ -304,34 +308,35 @@ function checkModifiers(
   otherFlags: number,
   otherMessage: string,
 ): void {
+  const hir$ = hir;
   if (kind === K_PROPERTY_ASSIGNMENT) {
     for (let i = 0; i < modLen; i++) {
-      const m = hir.ids[(modStart + i) | 0] | 0;
-      if ((hir.modifierKind[m] | 0) === MODK_KEYWORD) {
-        fail(nodeStart, nodeEnd, hir.modifierPos[m] | 0, on("cannot be used here.", hir.modifierValue[m] | 0));
+      const m = hir$.ids[(modStart + i) | 0] | 0;
+      if ((hir$.modifierKind[m] | 0) === MODK_KEYWORD) {
+        fail(nodeStart, nodeEnd, hir$.modifierPos[m] | 0, on("cannot be used here.", hir$.modifierValue[m] | 0));
         return;
       }
     }
     return;
   }
   for (let i = 0; i < modLen; i++) {
-    const m = hir.ids[(modStart + i) | 0] | 0;
-    if ((hir.modifierKind[m] | 0) === MODK_DECORATOR) {
+    const m = hir$.ids[(modStart + i) | 0] | 0;
+    if ((hir$.modifierKind[m] | 0) === MODK_DECORATOR) {
       let message = "";
       if (decorated === D_OVERLOAD) message = "A decorator can only decorate a method implementation, not an overload.";
       else if (decorated === D_INVALIDLY) message = "Decorators are not valid here.";
       if (message !== "") {
-        fail(nodeStart, nodeEnd, hir.modifierPos[m] | 0, message);
+        fail(nodeStart, nodeEnd, hir$.modifierPos[m] | 0, message);
         return;
       }
       break;
     }
   }
   for (let i = 0; i < modLen; i++) {
-    const m = hir.ids[(modStart + i) | 0] | 0;
-    if ((hir.modifierKind[m] | 0) !== MODK_KEYWORD) continue;
-    const modifier = hir.modifierValue[m] | 0;
-    const pos_ = hir.modifierPos[m] | 0;
+    const m = hir$.ids[(modStart + i) | 0] | 0;
+    if ((hir$.modifierKind[m] | 0) !== MODK_KEYWORD) continue;
+    const modifier = hir$.modifierValue[m] | 0;
+    const pos_ = hir$.modifierPos[m] | 0;
     const isAny = (flags: number): boolean => (flags & modifier) !== 0;
     let message: string;
     if (modifier !== FLAG_READONLY && (kind === K_PROPERTY_SIGNATURE || kind === K_METHOD_SIGNATURE)) {
@@ -366,16 +371,16 @@ function checkModifiers(
       let other = -1;
       if (isAny(ACCESSIBILITY)) {
         for (let k = 0; k < modLen; k++) {
-          const o = hir.ids[(modStart + k) | 0] | 0;
-          if ((hir.modifierKind[o] | 0) !== MODK_KEYWORD) continue;
-          if ((hir.modifierPos[o] | 0) !== pos_ && ((ACCESSIBILITY & (hir.modifierValue[o] | 0)) !== 0)) {
+          const o = hir$.ids[(modStart + k) | 0] | 0;
+          if ((hir$.modifierKind[o] | 0) !== MODK_KEYWORD) continue;
+          if ((hir$.modifierPos[o] | 0) !== pos_ && ((ACCESSIBILITY & (hir$.modifierValue[o] | 0)) !== 0)) {
             other = o;
             break;
           }
         }
       }
       if (other >= 0) {
-        fail(nodeStart, nodeEnd, hir.modifierPos[other] | 0, "Accessibility modifier already seen.");
+        fail(nodeStart, nodeEnd, hir$.modifierPos[other] | 0, "Accessibility modifier already seen.");
         return;
       } else if (otherFlags !== 0 && isAny(otherFlags)) {
         message = otherMessage;
@@ -399,23 +404,27 @@ function placeOfStatement(id: number): number {
 
 /** The statement in whose head the list of declarations `statement` is: its tag (a `for`, a `for-in` or a `for-of`), else -1. */
 export function loopWithHead(statement: number): number {
-  if ((bound.stmtParentTag[statement] | 0) !== P_STMT) return -1;
-  const parent = bound.stmtParentA[statement] | 0;
-  if (parent < 0 || parent >= hir.nStmts) return -1;
-  const tag = hir.stmtTag[parent] | 0;
+  const bound$ = bound;
+  if ((bound$.stmtParentTag[statement] | 0) !== P_STMT) return -1;
+  const parent = bound$.stmtParentA[statement] | 0;
+  const hir$ = hir;
+  if (parent < 0 || parent >= hir$.nStmts) return -1;
+  const tag = hir$.stmtTag[parent] | 0;
   let head: number;
-  if (tag === STMT_FOR) head = hir.stmtA[parent] | 0;
-  else if (tag === STMT_FOR_IN || tag === STMT_FOR_OF) head = hir.stmtA[parent] | 0;
+  if (tag === STMT_FOR) head = hir$.stmtA[parent] | 0;
+  else if (tag === STMT_FOR_IN || tag === STMT_FOR_OF) head = hir$.stmtA[parent] | 0;
   else return -1;
   return head === statement ? tag : -1;
 }
 
 function statements(): void {
-  const n = hir.nStmts | 0;
+  const hir$ = hir;
+  const n = hir$.nStmts | 0;
+  const bound$ = bound;
   for (let i = 0; i < n; i++) {
-    const tag = hir.stmtTag[i] | 0;
-    const modStart = hir.stmtModStart[i] | 0;
-    const modLen = hir.stmtModLen[i] | 0;
+    const tag = hir$.stmtTag[i] | 0;
+    const modStart = hir$.stmtModStart[i] | 0;
+    const modLen = hir$.stmtModLen[i] | 0;
     const hasCheck =
       modLen > 0 ||
       tag === STMT_SWITCH ||
@@ -425,18 +434,18 @@ function statements(): void {
       tag === STMT_FOR_IN ||
       tag === STMT_FOR_OF ||
       tag === STMT_IMPORT_EQUALS ||
-      (tag === STMT_VAR && (hir.stmtB[i] | 0) === 0);
-    if (!hasCheck || (bound.stmtParentTag[i] | 0) === P_NONE) continue;
-    const nodeStart = hir.stmtStart[i] | 0;
-    const nodeEnd = hir.stmtLocEnd[i] | 0;
+      (tag === STMT_VAR && (hir$.stmtB[i] | 0) === 0);
+    if (!hasCheck || (bound$.stmtParentTag[i] | 0) === P_NONE) continue;
+    const nodeStart = hir$.stmtStart[i] | 0;
+    const nodeEnd = hir$.stmtLocEnd[i] | 0;
     // Those of a class are checked with the class.
     if (modLen > 0 && tag !== STMT_CLASS) {
       const kind = tag === STMT_FN ? K_FUNCTION_DECLARATION : K_OTHER;
       let using_ = "";
       if (tag === STMT_VAR) {
-        const first = hir.stmtA[i] | 0;
-        if ((hir.stmtB[i] | 0) > 0) {
-          const k = hir.varDeclKind[hir.ids[first] | 0] | 0;
+        const first = hir$.stmtA[i] | 0;
+        if ((hir$.stmtB[i] | 0) > 0) {
+          const k = hir$.varDeclKind[hir$.ids[first] | 0] | 0;
           if (k === VAR_USING) using_ = "'declare' modifier cannot appear on a 'using' declaration.";
           else if (k === VAR_AWAIT_USING) using_ = "'declare' modifier cannot appear on a 'await using' declaration.";
         }
@@ -445,24 +454,24 @@ function statements(): void {
     }
     switch (tag) {
       case STMT_SWITCH: {
-        const cases = hir.stmtB[i] | 0;
-        const count = hir.stmtC[i] | 0;
+        const cases = hir$.stmtB[i] | 0;
+        const count = hir$.stmtC[i] | 0;
         let defaults = 0;
-        for (let k = 0; k < count; k++) if ((hir.caseTest[hir.ids[(cases + k) | 0] | 0] | 0) < 0) defaults = (defaults + 1) | 0;
+        for (let k = 0; k < count; k++) if ((hir$.caseTest[hir$.ids[(cases + k) | 0] | 0] | 0) < 0) defaults = (defaults + 1) | 0;
         if (defaults > 1) fail(nodeStart, nodeEnd, nodeStart, "A 'default' clause cannot appear more than once in a 'switch' statement.");
         break;
       }
       case STMT_THROW: {
-        const thrown = hir.stmtA[i] | 0;
-        if (thrown < 0 || thrown >= hir.nExprs || (hir.exprPos[thrown] | 0) === (hir.exprEnd[thrown] | 0)) {
+        const thrown = hir$.stmtA[i] | 0;
+        if (thrown < 0 || thrown >= hir$.nExprs || (hir$.exprPos[thrown] | 0) === (hir$.exprEnd[thrown] | 0)) {
           fail(nodeStart, nodeEnd, nodeStart, "A throw statement must throw an expression.");
         }
         break;
       }
       case STMT_TRY: {
-        const param = hir.stmtB[i] | 0;
-        if (param >= 0 && param < hir.nVarDecls) {
-          const init = hir.varDeclInit[param] | 0;
+        const param = hir$.stmtB[i] | 0;
+        if (param >= 0 && param < hir$.nVarDecls) {
+          const init = hir$.varDeclInit[param] | 0;
           if (init >= 0) {
             let cs = nodeStart;
             let ce = nodeEnd;
@@ -476,10 +485,10 @@ function statements(): void {
         break;
       }
       case STMT_FN: {
-        const f = hir.stmtA[i] | 0;
-        if (f < 0 || f >= hir.nFns) break;
-        const hasBody = (hir.fnBodyKind[f] | 0) !== BODY_NONE;
-        const isGenerator = ((hir.fnFlags[f] | 0) & FLAG_GENERATOR) !== 0;
+        const f = hir$.stmtA[i] | 0;
+        if (f < 0 || f >= hir$.nFns) break;
+        const hasBody = (hir$.fnBodyKind[f] | 0) !== BODY_NONE;
+        const isGenerator = ((hir$.fnFlags[f] | 0) & FLAG_GENERATOR) !== 0;
         let message: string;
         if (hasKeyword(modStart, modLen, FLAG_AMBIENT)) {
           if (hasBody) message = "An implementation cannot be declared in ambient contexts.";
@@ -493,27 +502,27 @@ function statements(): void {
         break;
       }
       case STMT_VAR: {
-        const listStart = hir.stmtA[i] | 0;
-        const listLen = hir.stmtB[i] | 0;
+        const listStart = hir$.stmtA[i] | 0;
+        const listLen = hir$.stmtB[i] | 0;
         const isStatement = loopWithHead(i) < 0;
         if (listLen === 0 && isStatement) {
           fail(nodeStart, nodeEnd, nodeStart, "A variable declaration list must have at least one variable declarator.");
         }
         if (hasKeyword(modStart, modLen, FLAG_AMBIENT)) {
-          for (let k = 0; k < listLen; k++) variableDeclaration(hir.ids[(listStart + k) | 0] | 0);
+          for (let k = 0; k < listLen; k++) variableDeclaration(hir$.ids[(listStart + k) | 0] | 0);
         }
         break;
       }
       case STMT_FOR_IN:
-        checkForStatementDeclaration(nodeStart, nodeEnd, hir.stmtA[i] | 0, "for...in");
+        checkForStatementDeclaration(nodeStart, nodeEnd, hir$.stmtA[i] | 0, "for...in");
         break;
       case STMT_FOR_OF:
-        checkForStatementDeclaration(nodeStart, nodeEnd, hir.stmtA[i] | 0, "for...of");
+        checkForStatementDeclaration(nodeStart, nodeEnd, hir$.stmtA[i] | 0, "for...of");
         break;
       case STMT_IMPORT_EQUALS: {
-        const ie = hir.stmtA[i] | 0;
-        if (ie >= 0 && ie < hir.nImportEquals) {
-          const isAlias = ((hir.importEqualsFlags[ie] | 0) & FLAG_TYPE_ONLY) !== 0 && (hir.importEqualsTargetKind[ie] | 0) === IET_ENTITY;
+        const ie = hir$.stmtA[i] | 0;
+        if (ie >= 0 && ie < hir$.nImportEquals) {
+          const isAlias = ((hir$.importEqualsFlags[ie] | 0) & FLAG_TYPE_ONLY) !== 0 && (hir$.importEqualsTargetKind[ie] | 0) === IET_ENTITY;
           if (isAlias) fail(nodeStart, nodeEnd, nodeStart, "An import alias cannot use 'import type'");
         }
         break;
@@ -525,26 +534,27 @@ function statements(): void {
 
 /** `checkForStatementDeclaration` */
 function checkForStatementDeclaration(nodeStart: number, nodeEnd: number, left: number, name: string): void {
-  if (left < 0 || left >= hir.nStmts) return;
-  const tag = hir.stmtTag[left] | 0;
+  const hir$ = hir;
+  if (left < 0 || left >= hir$.nStmts) return;
+  const tag = hir$.stmtTag[left] | 0;
   if (tag === STMT_VAR) {
-    const listStart = hir.stmtA[left] | 0;
-    const listLen = hir.stmtB[left] | 0;
+    const listStart = hir$.stmtA[left] | 0;
+    const listLen = hir$.stmtB[left] | 0;
     if (listLen !== 1) {
-      fail(nodeStart, nodeEnd, hir.stmtStart[left] | 0, "Only a single variable declaration is allowed in a '" + name + "' statement.");
+      fail(nodeStart, nodeEnd, hir$.stmtStart[left] | 0, "Only a single variable declaration is allowed in a '" + name + "' statement.");
       return;
     }
-    const d = hir.ids[listStart] | 0;
-    const pat = hir.varDeclPat[d] | 0;
-    const start = pat >= 0 && pat < hir.nPats ? hir.patPos[pat] | 0 : hir.stmtStart[left] | 0;
-    if ((hir.varDeclInit[d] | 0) >= 0) {
+    const d = hir$.ids[listStart] | 0;
+    const pat = hir$.varDeclPat[d] | 0;
+    const start = pat >= 0 && pat < hir$.nPats ? hir$.patPos[pat] | 0 : hir$.stmtStart[left] | 0;
+    if ((hir$.varDeclInit[d] | 0) >= 0) {
       fail(nodeStart, nodeEnd, start, "The variable declaration of a '" + name + "' statement cannot have an initializer.");
-    } else if ((hir.varDeclTy[d] | 0) >= 0) {
+    } else if ((hir$.varDeclTy[d] | 0) >= 0) {
       fail(nodeStart, nodeEnd, start, "The variable declaration of a '" + name + "' statement cannot have a type annotation.");
     }
   } else if (tag === STMT_EXPR) {
-    const target = hir.stmtA[left] | 0;
-    const t = target >= 0 && target < hir.nExprs ? hir.exprTag[target] | 0 : -1;
+    const target = hir$.stmtA[left] | 0;
+    const t = target >= 0 && target < hir$.nExprs ? hir$.exprTag[target] | 0 : -1;
     const isPattern = (t === EXPR_OBJECT || t === EXPR_ARRAY) && !fileIsParenthesized(target);
     if (!isPattern && !isValidAssignmentTarget(target)) {
       fail(nodeStart, nodeEnd, startOf(target), "The left-hand side of a '" + name + "' statement must be a variable or a property access.");
@@ -555,13 +565,14 @@ function checkForStatementDeclaration(nodeStart: number, nodeEnd: number, left: 
 /** `isValidAssignmentTarget` */
 function isValidAssignmentTarget(id0: number): boolean {
   let id = id0;
+  const hir$ = hir;
   for (;;) {
-    if (id < 0 || id >= hir.nExprs) return false;
-    const t = hir.exprTag[id] | 0;
+    if (id < 0 || id >= hir$.nExprs) return false;
+    const t = hir$.exprTag[id] | 0;
     if (t === EXPR_IDENT) return true;
-    if (t === EXPR_DOT || t === EXPR_INDEX) return (hir.exprAux[id] | 0) === CHAIN_NO;
+    if (t === EXPR_DOT || t === EXPR_INDEX) return (hir$.exprAux[id] | 0) === CHAIN_NO;
     if (t === EXPR_AS || t === EXPR_SATISFIES || t === EXPR_INSTANTIATION || t === EXPR_AS_CONST || t === EXPR_NON_NULL) {
-      id = hir.exprA[id] | 0;
+      id = hir$.exprA[id] | 0;
       continue;
     }
     return false;
@@ -571,39 +582,41 @@ function isValidAssignmentTarget(id0: number): boolean {
 // ───────────────────────────── declarations of variables ─────────────────────────────
 
 function variableDeclarations(): void {
-  const n = hir.nVarDecls | 0;
+  const hir$ = hir;
+  const n = hir$.nVarDecls | 0;
   for (let i = 0; i < n; i++) {
-    const kind = hir.varDeclKind[i] | 0;
-    if (((hir.varDeclFlags[i] | 0) & FLAG_DEFINITE) !== 0 || kind === VAR_USING || kind === VAR_AWAIT_USING) variableDeclaration(i);
+    const kind = hir$.varDeclKind[i] | 0;
+    if (((hir$.varDeclFlags[i] | 0) & FLAG_DEFINITE) !== 0 || kind === VAR_USING || kind === VAR_AWAIT_USING) variableDeclaration(i);
   }
 }
 
 /** `VariableDeclaration` */
 function variableDeclaration(id: number): void {
-  if (id < 0 || id >= hir.nVarDecls) return;
+  const hir$ = hir;
+  if (id < 0 || id >= hir$.nVarDecls) return;
   const list = bound.varStmt[id] | 0;
-  const pat = hir.varDeclPat[id] | 0;
-  if (list < 0 || list >= hir.nStmts || pat < 0 || pat >= hir.nPats) return;
-  const nodeStart = hir.patPos[pat] | 0;
-  const nodeEnd = hir.varDeclLocEnd[id] | 0;
-  const flags = hir.varDeclFlags[id] | 0;
-  const kindOfVar = hir.varDeclKind[id] | 0;
-  const init = hir.varDeclInit[id] | 0;
+  const pat = hir$.varDeclPat[id] | 0;
+  if (list < 0 || list >= hir$.nStmts || pat < 0 || pat >= hir$.nPats) return;
+  const nodeStart = hir$.patPos[pat] | 0;
+  const nodeEnd = hir$.varDeclLocEnd[id] | 0;
+  const flags = hir$.varDeclFlags[id] | 0;
+  const kindOfVar = hir$.varDeclKind[id] | 0;
+  const init = hir$.varDeclInit[id] | 0;
   const isDefinite = (flags & FLAG_DEFINITE) !== 0;
-  const isIdentifier = (hir.patTag[pat] | 0) === PAT_IDENT;
+  const isIdentifier = (hir$.patTag[pat] | 0) === PAT_IDENT;
   if (isDefinite && init >= 0) {
     fail(nodeStart, nodeEnd, nodeStart, "Declarations with initializers cannot also have definite assignment assertions.");
     return;
   }
-  if (isDefinite && (!isIdentifier || (hir.varDeclTy[id] | 0) < 0)) {
+  if (isDefinite && (!isIdentifier || (hir$.varDeclTy[id] | 0) < 0)) {
     fail(nodeStart, nodeEnd, nodeStart, "Declarations with definite assignment assertions must also have type annotations.");
     return;
   }
   // The parameter of a `catch` is not in a list.
-  if ((hir.stmtTag[list] | 0) !== STMT_VAR) return;
+  if ((hir$.stmtTag[list] | 0) !== STMT_VAR) return;
   const headOf = loopWithHead(list);
   const kind = varKindText(kindOfVar);
-  const statementStart = hir.stmtStart[list] | 0;
+  const statementStart = hir$.stmtStart[list] | 0;
   if (kindOfVar === VAR_USING || kindOfVar === VAR_AWAIT_USING) {
     if (headOf === STMT_FOR_IN) {
       fail(nodeStart, nodeEnd, statementStart, "The left-hand side of a 'for...in' statement cannot be a '" + kind + "' declaration.");
@@ -619,13 +632,13 @@ function variableDeclaration(id: number): void {
     }
   }
   if (headOf >= 0) return;
-  const isDeclared = hasKeyword(hir.stmtModStart[list] | 0, hir.stmtModLen[list] | 0, FLAG_AMBIENT);
+  const isDeclared = hasKeyword(hir$.stmtModStart[list] | 0, hir$.stmtModLen[list] | 0, FLAG_AMBIENT);
   const isAssignable = kindOfVar === VAR_LET || kindOfVar === VAR_VAR;
   if (isDefinite && (isDeclared || !isAssignable)) {
     fail(nodeStart, nodeEnd, nodeStart, "A definite assignment assertion '!' is not permitted in this context.");
     return;
   }
-  if (isDeclared && init >= 0 && (isAssignable || (hir.varDeclTy[id] | 0) >= 0)) {
+  if (isDeclared && init >= 0 && (isAssignable || (hir$.varDeclTy[id] | 0) >= 0)) {
     fail(nodeStart, nodeEnd, nodeStart, "Initializers are not permitted in ambient contexts.");
   }
 }
@@ -633,24 +646,26 @@ function variableDeclaration(id: number): void {
 // ───────────────────────────── classes and interfaces ─────────────────────────────
 
 function classes(): void {
-  const n = hir.nClasses | 0;
+  const hir$ = hir;
+  const n = hir$.nClasses | 0;
+  const bound$ = bound;
   for (let i = 0; i < n; i++) {
-    const modLen = hir.classModLen[i] | 0;
-    const implementsLen = hir.classImplementsLen[i] | 0;
-    const name = hir.className[i] | 0;
+    const modLen = hir$.classModLen[i] | 0;
+    const implementsLen = hir$.classImplementsLen[i] | 0;
+    const name = hir$.className[i] | 0;
     const hasCheck = modLen > 0 || name < 0 || implementsLen > 0;
-    if (!hasCheck || (bound.classReached[i] | 0) === 0) continue;
-    const ownerTag = bound.classOwnerTag[i] | 0;
+    if (!hasCheck || (bound$.classReached[i] | 0) === 0) continue;
+    const ownerTag = bound$.classOwnerTag[i] | 0;
     if (ownerTag === CO_NONE) continue;
     classSpan(i);
     const nodeStart = SP[0] | 0;
     const nodeEnd = SP[1] | 0;
-    const modStart = hir.classModStart[i] | 0;
+    const modStart = hir$.classModStart[i] | 0;
     let kind: number;
     let place: number;
     if (ownerTag === CO_STMT) {
       kind = K_CLASS_DECLARATION;
-      place = placeOfStatement(bound.classOwnerA[i] | 0);
+      place = placeOfStatement(bound$.classOwnerA[i] | 0);
     } else {
       kind = K_CLASS_EXPRESSION;
       place = PL_OTHER;
@@ -660,27 +675,27 @@ function classes(): void {
     if (kind === K_CLASS_DECLARATION && name < 0 && !isDefaultExport) {
       fail(nodeStart, nodeEnd, nodeStart, "A class declaration without the 'default' modifier must have a name.");
     }
-    heritage(nodeStart, nodeEnd, hir.classImplementsStart[i] | 0, implementsLen, "A class can only implement an identifier/qualified-name with optional type arguments.");
+    heritage(nodeStart, nodeEnd, hir$.classImplementsStart[i] | 0, implementsLen, "A class can only implement an identifier/qualified-name with optional type arguments.");
   }
-  const ni = hir.nInterfaces | 0;
+  const ni = hir$.nInterfaces | 0;
   for (let i = 0; i < ni; i++) {
-    const st = hir.interfaceStmt[i] | 0;
-    if (st < 0 || st >= hir.nStmts) continue;
-    const nodeStart = hir.stmtStart[st] | 0;
-    const nodeEnd = hir.stmtLocEnd[st] | 0;
-    heritage(nodeStart, nodeEnd, hir.interfaceExtendsStart[i] | 0, hir.interfaceExtendsLen[i] | 0, "Interface declaration can only extend an identifier/qualified name with optional type arguments.");
+    const st = hir$.interfaceStmt[i] | 0;
+    if (st < 0 || st >= hir$.nStmts) continue;
+    const nodeStart = hir$.stmtStart[st] | 0;
+    const nodeEnd = hir$.stmtLocEnd[st] | 0;
+    heritage(nodeStart, nodeEnd, hir$.interfaceExtendsStart[i] | 0, hir$.interfaceExtendsLen[i] | 0, "Interface declaration can only extend an identifier/qualified name with optional type arguments.");
     // An `implements` without elements leaves nothing in the HIR.
     const afterHead = interfaceBodyStart(i);
     if (afterHead >= 0 && tokenAt(afterHead) === "implements") {
       failInHeritage(nodeStart, nodeEnd, afterHead, 0, "Interface declaration cannot have 'implements' clause.");
     }
     // The elements of the clauses after the first `extends`. An `extends` among them has a diagnostic.
-    const others = hir.interfaceOtherHeritageStart[i] | 0;
-    const otherLen = hir.interfaceOtherHeritageLen[i] | 0;
+    const others = hir$.interfaceOtherHeritageStart[i] | 0;
+    const otherLen = hir$.interfaceOtherHeritageLen[i] | 0;
     for (let k = 0; k < otherLen; k++) {
-      const t = hir.ids[(others + k) | 0] | 0;
-      if (t < 0 || t >= hir.nTypes) continue;
-      const keyword = fileEndOfTokenBefore(hir.typePos[t] | 0);
+      const t = hir$.ids[(others + k) | 0] | 0;
+      if (t < 0 || t >= hir$.nTypes) continue;
+      const keyword = fileEndOfTokenBefore(hir$.typePos[t] | 0);
       if (keyword >= 10 && sliceText(keyword - 10, keyword) === "implements") {
         failInHeritage(nodeStart, nodeEnd, keyword - 10, 0, "Interface declaration cannot have 'implements' clause.");
       }
@@ -706,10 +721,11 @@ function isImportAttributesObjectOf(e: number): boolean {
 
 /** The elements of a heritage clause have to be entity names. */
 function heritage(nodeStart: number, nodeEnd: number, elements: number, count: number, message: string): void {
+  const hir$ = hir;
   for (let k = 0; k < count; k++) {
-    const t = hir.ids[(elements + k) | 0] | 0;
-    if (t < 0 || t >= hir.nTypes) continue;
-    if ((hir.typeTag[t] | 0) === TYPE_HERITAGE) failInHeritage(nodeStart, nodeEnd, hir.typePos[t] | 0, 1, message);
+    const t = hir$.ids[(elements + k) | 0] | 0;
+    if (t < 0 || t >= hir$.nTypes) continue;
+    if ((hir$.typeTag[t] | 0) === TYPE_HERITAGE) failInHeritage(nodeStart, nodeEnd, hir$.typePos[t] | 0, 1, message);
   }
 }
 
@@ -726,22 +742,24 @@ function failInHeritage(nodeStart: number, nodeEnd: number, at: number, rank: nu
 // ───────────────────────────── members ─────────────────────────────
 
 function members(): void {
-  const n = hir.nMembers | 0;
+  const hir$ = hir;
+  const n = hir$.nMembers | 0;
   const flagsOfInterest = FLAG_ABSTRACT | FLAG_DEFINITE | FLAG_STRING_NAME;
+  const bound$ = bound;
   for (let i = 0; i < n; i++) {
-    const flags = hir.memberFlags[i] | 0;
-    const modStart = hir.memberModStart[i] | 0;
-    const modLen = hir.memberModLen[i] | 0;
-    const init = hir.memberInit[i] | 0;
+    const flags = hir$.memberFlags[i] | 0;
+    const modStart = hir$.memberModStart[i] | 0;
+    const modLen = hir$.memberModLen[i] | 0;
+    const init = hir$.memberInit[i] | 0;
     if (modLen === 0 && (flags & flagsOfInterest) === 0 && init < 0) continue;
-    const ownerTag = bound.memberOwnerTag[i] | 0;
+    const ownerTag = bound$.memberOwnerTag[i] | 0;
     if (ownerTag === MO_NONE) continue;
-    const cls = ownerTag === MO_CLASS ? bound.memberOwnerA[i] | 0 : -1;
-    const nodeStart = hir.memberStart[i] | 0;
-    const nodeEnd = hir.memberLocEnd[i] | 0;
-    const f = hir.memberFunc[i] | 0;
-    const hasBody = f >= 0 && f < hir.nFns && (hir.fnBodyKind[f] | 0) !== BODY_NONE;
-    const mk = hir.memberKind[i] | 0;
+    const cls = ownerTag === MO_CLASS ? bound$.memberOwnerA[i] | 0 : -1;
+    const nodeStart = hir$.memberStart[i] | 0;
+    const nodeEnd = hir$.memberLocEnd[i] | 0;
+    const f = hir$.memberFunc[i] | 0;
+    const hasBody = f >= 0 && f < hir$.nFns && (hir$.fnBodyKind[f] | 0) !== BODY_NONE;
+    const mk = hir$.memberKind[i] | 0;
     let kind: number;
     switch (mk) {
       case MEMBER_PROPERTY:
@@ -768,7 +786,7 @@ function members(): void {
     const isAbstract = (flags & FLAG_ABSTRACT) !== 0;
     let decorated = D_INVALIDLY;
     if (kind === K_PROPERTY_DECLARATION) {
-      const isDeclaration = cls >= 0 && (bound.classOwnerTag[cls] | 0) === CO_STMT;
+      const isDeclaration = cls >= 0 && (bound$.classOwnerTag[cls] | 0) === CO_STMT;
       decorated = isDeclaration || !isAbstract ? D_VALIDLY : D_INVALIDLY;
     } else if ((kind === K_METHOD_DECLARATION || kind === K_ACCESSOR) && hasBody && cls >= 0) {
       decorated = D_VALIDLY;
@@ -776,15 +794,15 @@ function members(): void {
       decorated = D_OVERLOAD;
     }
     checkModifiers(kind, place, nodeStart, nodeEnd, modStart, modLen, decorated, 0, "");
-    const namePos = hir.memberNamePos[i] | 0;
+    const namePos = hir$.memberNamePos[i] | 0;
     if (kind === K_PROPERTY_DECLARATION) {
       const isDefinite = (flags & FLAG_DEFINITE) !== 0;
       if (isAbstract && init >= 0) {
         fail(nodeStart, nodeEnd, startOf(init), "Abstract property cannot have an initializer.");
       } else if (isDefinite && isAbstract) {
         const nameEnd = memberNameEnd(i);
-        fail(nodeStart, nodeEnd, skipTrivia(hir.text, hir.sourceLen | 0, nameEnd), "A definite assignment assertion '!' is not permitted in this context.");
-      } else if (isDefinite && (hir.memberTy[i] | 0) < 0) {
+        fail(nodeStart, nodeEnd, skipTrivia(hir$.text, hir$.sourceLen | 0, nameEnd), "A definite assignment assertion '!' is not permitted in this context.");
+      } else if (isDefinite && (hir$.memberTy[i] | 0) < 0) {
         fail(nodeStart, nodeEnd, nodeStart, "Declarations with definite assignment assertions must also have type annotations.");
       } else if (isDefinite && init >= 0) {
         fail(nodeStart, nodeEnd, nodeStart, "Declarations with initializers cannot also have definite assignment assertions.");
@@ -824,21 +842,23 @@ function memberKeyIs(i: number, name: string): boolean {
 // ───────────────────────────── parameters ─────────────────────────────
 
 function parameters(): void {
-  const n = hir.nParams | 0;
+  const hir$ = hir;
+  const n = hir$.nParams | 0;
+  const bound$ = bound;
   for (let i = 0; i < n; i++) {
-    const modLen = hir.paramModLen[i] | 0;
+    const modLen = hir$.paramModLen[i] | 0;
     if (modLen === 0) continue;
-    const func = bound.paramFn[i] | 0;
-    if (func < 0 || func >= hir.nFns) continue;
+    const func = bound$.paramFn[i] | 0;
+    if (func < 0 || func >= hir$.nFns) continue;
     paramSpan(i);
     const nodeStart = SP[0] | 0;
     const nodeEnd = SP[1] | 0;
-    const modStart = hir.paramModStart[i] | 0;
-    const flags = hir.paramFlags[i] | 0;
-    const fnKind = hir.fnKind[func] | 0;
-    const hasBody = (hir.fnBodyKind[func] | 0) !== BODY_NONE;
-    const pat = hir.paramPat[i] | 0;
-    const pt = pat >= 0 && pat < hir.nPats ? hir.patTag[pat] | 0 : -1;
+    const modStart = hir$.paramModStart[i] | 0;
+    const flags = hir$.paramFlags[i] | 0;
+    const fnKind = hir$.fnKind[func] | 0;
+    const hasBody = (hir$.fnBodyKind[func] | 0) !== BODY_NONE;
+    const pat = hir$.paramPat[i] | 0;
+    const pt = pat >= 0 && pat < hir$.nPats ? hir$.patTag[pat] | 0 : -1;
     const isPattern = pt === PAT_OBJECT || pt === PAT_ARRAY;
     // `checkParameter`
     let asProperty = "";
@@ -847,11 +867,11 @@ function parameters(): void {
     else if (isPattern) asProperty = "A parameter property may not be declared using a binding pattern.";
     // `decorated`
     let isInClassDeclaration = false;
-    if ((bound.fnOwnerTag[func] | 0) === FO_MEMBER) {
-      const member = bound.fnOwnerA[func] | 0;
-      if ((bound.memberOwnerTag[member] | 0) === MO_CLASS) {
-        const cls = bound.memberOwnerA[member] | 0;
-        isInClassDeclaration = (bound.classOwnerTag[cls] | 0) === CO_STMT;
+    if ((bound$.fnOwnerTag[func] | 0) === FO_MEMBER) {
+      const member = bound$.fnOwnerA[func] | 0;
+      if ((bound$.memberOwnerTag[member] | 0) === MO_CLASS) {
+        const cls = bound$.memberOwnerA[member] | 0;
+        isInClassDeclaration = (bound$.classOwnerTag[cls] | 0) === CO_STMT;
       }
     }
     const takesDecorators = fnKind === FN_CONSTRUCTOR || fnKind === FN_METHOD || fnKind === FN_SETTER;
@@ -862,18 +882,20 @@ function parameters(): void {
 }
 
 function typeParameters(): void {
-  const n = hir.nTypeParams | 0;
+  const hir$ = hir;
+  const n = hir$.nTypeParams | 0;
+  const bound$ = bound;
   for (let i = 0; i < n; i++) {
-    const modLen = hir.typeParamModLen[i] | 0;
-    if (modLen === 0 || (bound.typeParamReached[i] | 0) === 0) continue;
+    const modLen = hir$.typeParamModLen[i] | 0;
+    if (modLen === 0 || (bound$.typeParamReached[i] | 0) === 0) continue;
     const parent = typeParamParent(i);
     let place = PL_OTHER;
     if (nodeKind(parent) === N_CLASS) place = PL_CLASS;
     else if (nodeKind(parent) === N_STMT) {
-      const t = hir.stmtTag[nodeId(parent)] | 0;
+      const t = hir$.stmtTag[nodeId(parent)] | 0;
       if (t === STMT_INTERFACE || t === STMT_TYPE_ALIAS) place = PL_INTERFACE_OR_TYPE_ALIAS;
     }
-    checkModifiers(K_TYPE_PARAMETER, place, hir.typeParamStart[i] | 0, hir.typeParamEnd[i] | 0, hir.typeParamModStart[i] | 0, modLen, D_INVALIDLY, 0, "");
+    checkModifiers(K_TYPE_PARAMETER, place, hir$.typeParamStart[i] | 0, hir$.typeParamEnd[i] | 0, hir$.typeParamModStart[i] | 0, modLen, D_INVALIDLY, 0, "");
   }
 }
 
@@ -881,23 +903,26 @@ function typeParameters(): void {
 
 /** `<>` from `open`, where a list of type parameters can start. */
 function emptyTypeParametersAt(open: number): void {
-  if (byte(open) === 60 && byte(skipTrivia(hir.text, hir.sourceLen | 0, (open + 1) | 0)) === 62) failForEmptyList(WHEN_TYPE_PARAMETERS, open);
+  const hir$ = hir;
+  if (byte(open) === 60 && byte(skipTrivia(hir$.text, hir$.sourceLen | 0, (open + 1) | 0)) === 62) failForEmptyList(WHEN_TYPE_PARAMETERS, open);
 }
 
 /** `convertTypeParameters`. The HIR does not tell a list that is empty from none. For a class there is a diagnostic. */
 function functions(): void {
-  const t = hir.text;
-  const len = hir.sourceLen | 0;
-  const n = hir.nFns | 0;
+  const hir$ = hir;
+  const t = hir$.text;
+  const len = hir$.sourceLen | 0;
+  const n = hir$.nFns | 0;
+  const bound$ = bound;
   for (let i = 0; i < n; i++) {
-    const kind = hir.fnKind[i] | 0;
+    const kind = hir$.fnKind[i] | 0;
     const hasList = !(kind === FN_ARROW || kind === FN_STATIC_BLOCK || kind === FN_INDEX_SIGNATURE);
-    const anchor = hir.fnAnchor[i] | 0;
-    if (!hasList || (hir.fnTypeParamsLen[i] | 0) !== 0 || anchor === 0) continue;
+    const anchor = hir$.fnAnchor[i] | 0;
+    if (!hasList || (hir$.fnTypeParamsLen[i] | 0) !== 0 || anchor === 0) continue;
     // Before the `(`: a `>`, or something to look behind.
     const before = byte(anchor - 1);
     if (!(before === 62 || before === 32 || before === 9 || before === 10 || before === 13 || before === 47)) continue;
-    if (((hir.fnFlags[i] | 0) & FLAG_REPARSED) !== 0 || (bound.fnOwnerTag[i] | 0) === FO_NONE) continue;
+    if (((hir$.fnFlags[i] | 0) & FLAG_REPARSED) !== 0 || (bound$.fnOwnerTag[i] | 0) === FO_NONE) continue;
     const close = fileEndOfTokenBefore(anchor);
     if (close < 2 || byte(close - 1) !== 62) continue;
     const open = fileEndOfTokenBefore(close - 1);
@@ -906,53 +931,55 @@ function functions(): void {
   void t;
   void len;
   const afterName = (at: number): number => skipTrivia(hir.text, hir.sourceLen | 0, (at + tokenLen(hir.text, hir.sourceLen | 0, at)) | 0);
-  const ni = hir.nInterfaces | 0;
+  const ni = hir$.nInterfaces | 0;
   for (let i = 0; i < ni; i++) {
-    if ((hir.interfaceTypeParamsLen[i] | 0) === 0) emptyTypeParametersAt(afterName(hir.interfaceNamePos[i] | 0));
+    if ((hir$.interfaceTypeParamsLen[i] | 0) === 0) emptyTypeParametersAt(afterName(hir$.interfaceNamePos[i] | 0));
   }
-  const na = hir.nAliases | 0;
+  const na = hir$.nAliases | 0;
   for (let i = 0; i < na; i++) {
-    if ((hir.aliasTypeParamsLen[i] | 0) === 0 && ((hir.aliasFlags[i] | 0) & FLAG_REPARSED) === 0) emptyTypeParametersAt(afterName(hir.aliasNamePos[i] | 0));
+    if ((hir$.aliasTypeParamsLen[i] | 0) === 0 && ((hir$.aliasFlags[i] | 0) & FLAG_REPARSED) === 0) emptyTypeParametersAt(afterName(hir$.aliasNamePos[i] | 0));
   }
 }
 
 // ───────────────────────────── object literals ─────────────────────────────
 
 function properties(): void {
-  const n = hir.nProps | 0;
+  const hir$ = hir;
+  const n = hir$.nProps | 0;
   // `modifiers_of_props`
   for (let id = 0; id < n; id++) {
-    const modLen = hir.propModLen[id] | 0;
+    const modLen = hir$.propModLen[id] | 0;
     if (modLen === 0) continue;
     if (!propIsInTree(id)) continue;
-    const pk = hir.propKind[id] | 0;
+    const pk = hir$.propKind[id] | 0;
     let kind: number;
     if (pk === PROP_METHOD) kind = K_METHOD_DECLARATION;
     else if (pk === PROP_GETTER || pk === PROP_SETTER) kind = K_ACCESSOR;
     else kind = K_PROPERTY_ASSIGNMENT;
     propSpan(id);
-    checkModifiers(kind, PL_OBJECT_LITERAL, SP[0] | 0, SP[1] | 0, hir.propModStart[id] | 0, modLen, D_INVALIDLY, 0, "");
+    checkModifiers(kind, PL_OBJECT_LITERAL, SP[0] | 0, SP[1] | 0, hir$.propModStart[id] | 0, modLen, D_INVALIDLY, 0, "");
   }
+  const bound$ = bound;
   for (let i = 0; i < n; i++) {
-    const pk = hir.propKind[i] | 0;
+    const pk = hir$.propKind[i] | 0;
     const isMethod = pk === PROP_METHOD || pk === PROP_GETTER || pk === PROP_SETTER;
-    const postfix = hir.propPostfixToken[i] | 0;
+    const postfix = hir$.propPostfixToken[i] | 0;
     if (!isMethod && postfix === 0) continue;
     if (isMethod) {
       let hasBody = true;
-      const value = hir.propValue[i] | 0;
-      if (value >= 0 && value < hir.nExprs && (hir.exprTag[value] | 0) === EXPR_FN) {
-        const f = hir.exprA[value] | 0;
-        hasBody = f < 0 || f >= hir.nFns || (hir.fnBodyKind[f] | 0) !== BODY_NONE;
+      const value = hir$.propValue[i] | 0;
+      if (value >= 0 && value < hir$.nExprs && (hir$.exprTag[value] | 0) === EXPR_FN) {
+        const f = hir$.exprA[value] | 0;
+        hasBody = f < 0 || f >= hir$.nFns || (hir$.fnBodyKind[f] | 0) !== BODY_NONE;
       }
-      const object = bound.propOwner[i] | 0;
+      const object = bound$.propOwner[i] | 0;
       if (object < 0 || hasBody || !propIsInTree(i)) continue;
       // A check of the `ObjectLiteralExpression`, unless it is converted as a pattern.
       if (!exprIsAssignmentTarget(object)) {
         exprOuterSpan(object);
         // `object.span()` is the span of the node without its parentheses.
-        const os = hir.exprPos[object] | 0;
-        const oe = hir.exprEnd[object] | 0;
+        const os = hir$.exprPos[object] | 0;
+        const oe = hir$.exprEnd[object] | 0;
         propSpan(i);
         failAtStep(os, oe, i, (SP[1] | 0) > 0 ? (SP[1] | 0) - 1 : 0, "'{' expected.");
       }
@@ -979,9 +1006,10 @@ function propIsInTree(i: number): boolean {
 // ───────────────────────────── expressions ─────────────────────────────
 
 function expressions(): void {
-  const n = hir.nExprs | 0;
+  const hir$ = hir;
+  const n = hir$.nExprs | 0;
   for (let i = 0; i < n; i++) {
-    const t = hir.exprTag[i] | 0;
+    const t = hir$.exprTag[i] | 0;
     if (!(t === EXPR_TAGGED_TEMPLATE || t === EXPR_PRIVATE_IDENTIFIER || t === EXPR_UNARY || t === EXPR_IMPORT_CALL)) continue;
     if (!exprInTree(i)) continue;
     expression(i);
@@ -991,63 +1019,65 @@ function expressions(): void {
 /** `File::expr_in_tree` */
 function exprInTree(i: number): boolean {
   if ((bound.exprParentTag[i] | 0) === P_NONE) return false;
-  const t = hir.exprTag[i] | 0;
+  const hir$ = hir;
+  const t = hir$.exprTag[i] | 0;
   if (t === EXPR_MISSING) return false;
-  if (hir.importAttributesLen !== 0 && t === EXPR_OBJECT && isImportAttributesObjectOf(i)) return false;
+  if (hir$.importAttributesLen !== 0 && t === EXPR_OBJECT && isImportAttributesObjectOf(i)) return false;
   return true;
 }
 
 function expression(it: number): void {
-  const t = hir.exprTag[it] | 0;
-  const itStart = hir.exprPos[it] | 0;
-  const itEnd = hir.exprEnd[it] | 0;
+  const hir$ = hir;
+  const t = hir$.exprTag[it] | 0;
+  const itStart = hir$.exprPos[it] | 0;
+  const itEnd = hir$.exprEnd[it] | 0;
   if (t === EXPR_TAGGED_TEMPLATE) {
-    const call = hir.exprA[it] | 0;
-    const tag = hir.callCallee[call] | 0;
+    const call = hir$.exprA[it] | 0;
+    const tag = hir$.callCallee[call] | 0;
     // `node.tag.flags & ts.NodeFlags.OptionalChain`
-    const tt = tag >= 0 ? hir.exprTag[tag] | 0 : -1;
-    const isChain = (tt === EXPR_DOT || tt === EXPR_INDEX) ? (hir.exprAux[tag] | 0) !== CHAIN_NO : tt === EXPR_CALL ? (hir.callChain[hir.exprA[tag] | 0] | 0) !== CHAIN_NO : false;
+    const tt = tag >= 0 ? hir$.exprTag[tag] | 0 : -1;
+    const isChain = (tt === EXPR_DOT || tt === EXPR_INDEX) ? (hir$.exprAux[tag] | 0) !== CHAIN_NO : tt === EXPR_CALL ? (hir$.callChain[hir$.exprA[tag] | 0] | 0) !== CHAIN_NO : false;
     if (isChain && !fileIsParenthesized(tag)) {
       fail(itStart, itEnd, itStart, "Tagged template expressions are not permitted in an optional chain.");
     }
   } else if (t === EXPR_PRIVATE_IDENTIFIER) {
     const parentNode = fileExprParent(it);
     if (parentNode < 0) return;
-    const pt = hir.exprTag[parentNode] | 0;
+    const pt = hir$.exprTag[parentNode] | 0;
     let isIn = false;
     let left: number;
     let right: number;
     if (pt === EXPR_BINARY) {
-      isIn = (hir.exprAux[parentNode] | 0) === BIN_IN;
-      left = hir.exprA[parentNode] | 0;
-      right = hir.exprB[parentNode] | 0;
+      isIn = (hir$.exprAux[parentNode] | 0) === BIN_IN;
+      left = hir$.exprA[parentNode] | 0;
+      right = hir$.exprB[parentNode] | 0;
     } else if (pt === EXPR_ASSIGN) {
-      left = hir.exprA[parentNode] | 0;
-      right = hir.exprB[parentNode] | 0;
+      left = hir$.exprA[parentNode] | 0;
+      right = hir$.exprB[parentNode] | 0;
     } else return;
     const isPrivate = (id: number): boolean => id >= 0 && id < hir.nExprs && (hir.exprTag[id] | 0) === EXPR_PRIVATE_IDENTIFIER;
-    const ps = hir.exprPos[parentNode] | 0;
-    const pe = hir.exprEnd[parentNode] | 0;
+    const ps = hir$.exprPos[parentNode] | 0;
+    const pe = hir$.exprEnd[parentNode] | 0;
     if (left === it && !isIn) {
       fail(ps, pe, itStart, "Private identifiers cannot appear on the right-hand-side of an 'in' expression.");
     } else if (right === it && (isIn || !isPrivate(left))) {
       fail(ps, pe, itStart, "Private identifiers are only allowed on the left-hand-side of an 'in' expression.");
     }
   } else if (t === EXPR_UNARY) {
-    const op = hir.exprAux[it] | 0;
-    const operand = hir.exprA[it] | 0;
+    const op = hir$.exprAux[it] | 0;
+    const operand = hir$.exprA[it] | 0;
     const isUpdate = op === UN_PRE_INC || op === UN_PRE_DEC || op === UN_POST_INC || op === UN_POST_DEC;
     if (isUpdate && !isValidAssignmentTarget(operand)) {
       fail(itStart, itEnd, startOf(operand), "Invalid left-hand side expression in unary operation");
     }
   } else if (t === EXPR_IMPORT_CALL) {
-    const argsStart = hir.exprA[it] | 0;
-    const argsLen = hir.exprB[it] | 0;
+    const argsStart = hir$.exprA[it] | 0;
+    const argsLen = hir$.exprB[it] | 0;
     // `import.source()`: the dialect of Babel, in which `bun fmt` has every file parsed, has it.
     if (isOfPrettier && importCallPhase(it) >= 0) {
-      const dot = skipTrivia(hir.text, hir.sourceLen | 0, (itStart + 6) | 0);
+      const dot = skipTrivia(hir$.text, hir$.sourceLen | 0, (itStart + 6) | 0);
       // It is `defer` or `source`, or the parser had not taken it. The first letter can be `s` or `\u{73}`.
-      const at = skipTrivia(hir.text, hir.sourceLen | 0, (dot + 1) | 0);
+      const at = skipTrivia(hir$.text, hir$.sourceLen | 0, (dot + 1) | 0);
       let isSource = false;
       const c = byte(at);
       if (c === 115) isSource = true;
@@ -1060,17 +1090,17 @@ function expression(it: number): void {
       if (isSource) fail(itStart, itEnd, itStart, NO_SOURCE);
     }
     const isMissing = (id: number): boolean => id >= 0 && id < hir.nExprs && (hir.exprTag[id] | 0) === EXPR_MISSING;
-    const first = argsLen > 0 ? hir.ids[argsStart] | 0 : -1;
+    const first = argsLen > 0 ? hir$.ids[argsStart] | 0 : -1;
     const hasNone = argsLen === 1 && isMissing(first);
     let isDeferred = false;
-    for (let k = 0; k < (hir.deferredImportCallsLen | 0); k += 2) {
-      if ((hir.deferredImportCalls[k] | 0) === first) {
+    for (let k = 0; k < (hir$.deferredImportCallsLen | 0); k += 2) {
+      if ((hir$.deferredImportCalls[k] | 0) === first) {
         isDeferred = true;
         break;
       }
     }
     if ((hasNone || argsLen > 2) && !isDeferred) {
-      const at = argsLen > 2 ? startOf(hir.ids[(argsStart + 2) | 0] | 0) : itStart;
+      const at = argsLen > 2 ? startOf(hir$.ids[(argsStart + 2) | 0] | 0) : itStart;
       fail(itStart, itEnd, at, "Dynamic import requires exactly one or two arguments.");
     }
   }
@@ -1084,59 +1114,60 @@ function importCallPhase(e: number): number {
 // ───────────────────────────── what there is little of ─────────────────────────────
 
 function theRest(): void {
-  const ne = hir.nEnumMembers | 0;
+  const hir$ = hir;
+  const ne = hir$.nEnumMembers | 0;
   for (let i = 0; i < ne; i++) {
-    const pos_ = hir.enumMemberPos[i] | 0;
-    const nodeEnd = hir.enumMemberLocEnd[i] | 0;
-    const nameKind = hir.enumMemberNameKind[i] | 0;
-    const isComputed = (hir.enumMemberComputedName[i] | 0) >= 0 || nameKind === NK_COMPUTED_STRING || nameKind === NK_COMPUTED_NUMBER;
+    const pos_ = hir$.enumMemberPos[i] | 0;
+    const nodeEnd = hir$.enumMemberLocEnd[i] | 0;
+    const nameKind = hir$.enumMemberNameKind[i] | 0;
+    const isComputed = (hir$.enumMemberComputedName[i] | 0) >= 0 || nameKind === NK_COMPUTED_STRING || nameKind === NK_COMPUTED_NUMBER;
     if (isComputed) {
       fail(pos_, nodeEnd, pos_, "Computed property names are not allowed in enums.");
     } else if (nameKind === NK_NUMERIC_LITERAL || (byte(pos_) >= 48 && byte(pos_) <= 57)) {
       fail(pos_, nodeEnd, pos_, "An enum member cannot have a numeric name.");
     }
   }
-  const nm = hir.nMapped | 0;
+  const nm = hir$.nMapped | 0;
   for (let i = 0; i < nm; i++) {
-    const membersStart = hir.mappedMembersStart[i] | 0;
-    const membersLen = hir.mappedMembersLen[i] | 0;
+    const membersStart = hir$.mappedMembersStart[i] | 0;
+    const membersLen = hir$.mappedMembersLen[i] | 0;
     if (membersLen === 0) continue;
-    const member = hir.ids[membersStart] | 0;
-    const memberStart = hir.memberStart[member] | 0;
+    const member = hir$.ids[membersStart] | 0;
+    const memberStart = hir$.memberStart[member] | 0;
     let nodeStart = memberStart;
     let nodeEnd = memberStart;
-    const nt = hir.nTypes | 0;
+    const nt = hir$.nTypes | 0;
     for (let k = 0; k < nt; k++) {
-      if ((hir.typeTag[k] | 0) === TYPE_MAPPED && (hir.typeA[k] | 0) === i) {
-        nodeStart = hir.typePos[k] | 0;
-        nodeEnd = hir.typeEnd[k] | 0;
+      if ((hir$.typeTag[k] | 0) === TYPE_MAPPED && (hir$.typeA[k] | 0) === i) {
+        nodeStart = hir$.typePos[k] | 0;
+        nodeEnd = hir$.typeEnd[k] | 0;
         break;
       }
     }
     fail(nodeStart, nodeEnd, memberStart, "A mapped type may not declare properties or methods.");
   }
-  const nim = hir.nImports | 0;
+  const nim = hir$.nImports | 0;
   for (let i = 0; i < nim; i++) {
-    const st = hir.importStmt[i] | 0;
-    if (st < 0 || st >= hir.nStmts) continue;
-    const hasBindings = (hir.importNamespace[i] | 0) >= 0 || (hir.importHasNamedImports[i] | 0) !== 0;
-    const hasDefault = (hir.importDefault[i] | 0) >= 0;
-    const typeOnly = (hir.importTypeOnly[i] | 0) !== 0;
-    const deferred = (hir.importIsDeferred[i] | 0) !== 0;
+    const st = hir$.importStmt[i] | 0;
+    if (st < 0 || st >= hir$.nStmts) continue;
+    const hasBindings = (hir$.importNamespace[i] | 0) >= 0 || (hir$.importHasNamedImports[i] | 0) !== 0;
+    const hasDefault = (hir$.importDefault[i] | 0) >= 0;
+    const typeOnly = (hir$.importTypeOnly[i] | 0) !== 0;
+    const deferred = (hir$.importIsDeferred[i] | 0) !== 0;
     let message: string;
     if (typeOnly && hasDefault && hasBindings) message = "A type-only import can specify a default import or named bindings, but not both.";
-    else if (deferred && (hir.importHasNamedImports[i] | 0) !== 0) message = "Named imports are not allowed in a deferred import.";
+    else if (deferred && (hir$.importHasNamedImports[i] | 0) !== 0) message = "Named imports are not allowed in a deferred import.";
     else if (deferred && hasDefault) message = "Default imports are not allowed in a deferred import.";
     else continue;
-    fail(hir.stmtStart[st] | 0, hir.stmtLocEnd[st] | 0, hir.importClauseStart[i] | 0, message);
+    fail(hir$.stmtStart[st] | 0, hir$.stmtLocEnd[st] | 0, hir$.importClauseStart[i] | 0, message);
   }
-  const nes = hir.nExportSpecs | 0;
+  const nes = hir$.nExportSpecs | 0;
   for (let i = 0; i < nes; i++) {
-    const ex = hir.exportSpecExport[i] | 0;
-    const hasSource = ex < 0 || ex >= hir.nExports || (hir.exportHasModuleSpecifier[ex] | 0) !== 0;
-    const localPos = hir.exportSpecLocalPos[i] | 0;
+    const ex = hir$.exportSpecExport[i] | 0;
+    const hasSource = ex < 0 || ex >= hir$.nExports || (hir$.exportHasModuleSpecifier[ex] | 0) !== 0;
+    const localPos = hir$.exportSpecLocalPos[i] | 0;
     if (!hasSource && isStringLiteral(localPos)) {
-      fail(hir.exportSpecStart[i] | 0, hir.exportSpecEnd[i] | 0, localPos, "A string literal cannot be used as a local exported binding without `from`.");
+      fail(hir$.exportSpecStart[i] | 0, hir$.exportSpecEnd[i] | 0, localPos, "A string literal cannot be used as a local exported binding without `from`.");
     }
   }
 }
@@ -1150,13 +1181,15 @@ let declEnd = 0;
 function declarationWithHead(at: number): number {
   let best = 0;
   let bestStart = -1;
-  const nc = hir.nClasses | 0;
+  const hir$ = hir;
+  const nc = hir$.nClasses | 0;
+  const bound$ = bound;
   for (let i = 0; i < nc; i++) {
-    if ((bound.classOwnerTag[i] | 0) === CO_NONE) continue;
+    if ((bound$.classOwnerTag[i] | 0) === CO_NONE) continue;
     classSpan(i);
     const s0 = SP[0] | 0;
     const e0 = SP[1] | 0;
-    const first = (hir.classMembersLen[i] | 0) > 0 ? hir.memberStart[hir.ids[hir.classMembersStart[i] | 0] | 0] | 0 : e0;
+    const first = (hir$.classMembersLen[i] | 0) > 0 ? hir$.memberStart[hir$.ids[hir$.classMembersStart[i] | 0] | 0] | 0 : e0;
     if (s0 <= at && at <= first && s0 >= bestStart) {
       bestStart = s0;
       declStart = s0;
@@ -1164,13 +1197,13 @@ function declarationWithHead(at: number): number {
       best = 1;
     }
   }
-  const ni = hir.nInterfaces | 0;
+  const ni = hir$.nInterfaces | 0;
   for (let i = 0; i < ni; i++) {
-    const st = hir.interfaceStmt[i] | 0;
-    if (st < 0 || st >= hir.nStmts) continue;
-    const s0 = hir.stmtStart[st] | 0;
-    const e0 = hir.stmtLocEnd[st] | 0;
-    const first = (hir.interfaceMembersLen[i] | 0) > 0 ? hir.memberStart[hir.ids[hir.interfaceMembersStart[i] | 0] | 0] | 0 : e0;
+    const st = hir$.interfaceStmt[i] | 0;
+    if (st < 0 || st >= hir$.nStmts) continue;
+    const s0 = hir$.stmtStart[st] | 0;
+    const e0 = hir$.stmtLocEnd[st] | 0;
+    const first = (hir$.interfaceMembersLen[i] | 0) > 0 ? hir$.memberStart[hir$.ids[hir$.interfaceMembersStart[i] | 0] | 0] | 0 : e0;
     if (s0 <= at && at <= first && s0 >= bestStart) {
       bestStart = s0;
       declStart = s0;
@@ -1196,9 +1229,10 @@ function diagnostics(): void {
 }
 
 function argOf(row: number, index: number): string {
-  const id = hir.diagnostics[row + 4] | 0;
+  const hir$ = hir;
+  const id = hir$.diagnostics[row + 4] | 0;
   if (id < 0) return "";
-  const args = hir.diagArgs[id];
+  const args = hir$.diagArgs[id];
   return index < args.length ? args[index] : "";
 }
 
@@ -1214,7 +1248,8 @@ function inHeritage(at: number, rank: number, message: string): void {
   // That a clause is empty is checked first, and the parser reports one thing about a clause.
   const keyword = tokenAt(at);
   const isClause = keyword === "extends" || keyword === "implements";
-  if (isClause && byte(skipTrivia(hir.text, hir.sourceLen | 0, (at + keyword.length) | 0)) === 123) {
+  const hir$ = hir;
+  if (isClause && byte(skipTrivia(hir$.text, hir$.sourceLen | 0, (at + keyword.length) | 0)) === 123) {
     failInHeritage(nodeStart, nodeEnd, at, 0, "'" + keyword + "' list cannot be empty.");
     return;
   }
@@ -1222,8 +1257,9 @@ function inHeritage(at: number, rank: number, message: string): void {
 }
 
 function diagnostic(row: number): void {
-  const at = hir.diagnostics[row + 1] | 0;
-  const code = hir.diagnostics[row + 3] | 0;
+  const hir$ = hir;
+  const at = hir$.diagnostics[row + 1] | 0;
+  const code = hir$.diagnostics[row + 3] | 0;
   switch (code) {
     case 1098:
       failForEmptyList(WHEN_TYPE_PARAMETERS, at);
@@ -1269,10 +1305,10 @@ function diagnostic(row: number): void {
     // The specifier of a module that is not a string.
     case 1141: {
       let isRequire = false;
-      const nie = hir.nImportEquals | 0;
+      const nie = hir$.nImportEquals | 0;
       for (let k = 0; k < nie; k++) {
-        const e = hir.importEqualsExpression[k] | 0;
-        if (e >= 0 && e < hir.nExprs && (hir.exprPos[e] | 0) === at) {
+        const e = hir$.importEqualsExpression[k] | 0;
+        if (e >= 0 && e < hir$.nExprs && (hir$.exprPos[e] | 0) === at) {
           isRequire = true;
           break;
         }
@@ -1305,11 +1341,11 @@ function diagnostic(row: number): void {
           if (start >= 0) {
             // `node.parent.kind !== SyntaxKind.CallExpression`, which an argument passes too.
             let isInCall = false;
-            const nex = hir.nExprs | 0;
+            const nex = hir$.nExprs | 0;
             for (let k = 0; k < nex; k++) {
-              if ((hir.exprTag[k] | 0) === EXPR_DOT && (hir.exprPos[k] | 0) === start && !fileIsParenthesized(k)) {
+              if ((hir$.exprTag[k] | 0) === EXPR_DOT && (hir$.exprPos[k] | 0) === start && !fileIsParenthesized(k)) {
                 const parent = fileExprParent(k);
-                isInCall = parent >= 0 && (hir.exprTag[parent] | 0) === EXPR_CALL;
+                isInCall = parent >= 0 && (hir$.exprTag[parent] | 0) === EXPR_CALL;
                 break;
               }
             }

@@ -625,48 +625,53 @@ function oneSpan(has: boolean): void {
 }
 
 function oneExpr(e: number): void {
+  const finder$ = finder;
   if (e < 0) {
-    finder.one(false, 0, 0);
+    finder$.one(false, 0, 0);
     return;
   }
   exprSpan(e);
-  finder.one(true, SP[0] | 0, SP[1] | 0);
+  finder$.one(true, SP[0] | 0, SP[1] | 0);
 }
 
 function oneStmt(s: number): void {
+  const finder$ = finder;
   if (s < 0) {
-    finder.one(false, 0, 0);
+    finder$.one(false, 0, 0);
     return;
   }
   stmtSpan(s);
-  finder.one(true, SP[0] | 0, SP[1] | 0);
+  finder$.one(true, SP[0] | 0, SP[1] | 0);
 }
 
 function oneType(t: number): void {
+  const finder$ = finder;
   if (t < 0) {
-    finder.one(false, 0, 0);
+    finder$.one(false, 0, 0);
     return;
   }
   typeSpan(t);
-  finder.one(true, SP[0] | 0, SP[1] | 0);
+  finder$.one(true, SP[0] | 0, SP[1] | 0);
 }
 
 function oneTypeAnnotation(t: number): void {
+  const finder$ = finder;
   if (t < 0) {
-    finder.one(false, 0, 0);
+    finder$.one(false, 0, 0);
     return;
   }
   typeAnnotationSpan(t);
-  finder.one(true, SP[0] | 0, SP[1] | 0);
+  finder$.one(true, SP[0] | 0, SP[1] | 0);
 }
 
 function oneIdent(atom: number, pos: number): void {
+  const finder$ = finder;
   if (atom < 0) {
-    finder.one(false, 0, 0);
+    finder$.one(false, 0, 0);
     return;
   }
   identSpan(atom, pos);
-  finder.one(true, SP[0] | 0, SP[1] | 0);
+  finder$.one(true, SP[0] | 0, SP[1] | 0);
 }
 
 /** The decorators among the modifiers `(start, len)`. */

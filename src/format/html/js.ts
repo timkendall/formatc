@@ -237,8 +237,10 @@ class ContextPool {
 const contexts = new ContextPool();
 
 function contextAt(depth: number, options: FormatOptions): JsFormatContext {
-  while (contexts.list.length <= depth) contexts.list.push(new JsFormatContext(options, noCursor));
-  return contexts.list[depth];
+  const contexts$ = contexts;
+  const noCursor$ = noCursor;
+  while (contexts$.list.length <= depth) contexts$.list.push(new JsFormatContext(options, noCursor$));
+  return contexts$.list[depth];
 }
 
 /**
@@ -268,20 +270,25 @@ function withFile(
     options.jsdoc = hostOptions.jsdoc;
   }
   const kinds = sourceType === SOURCE_SCRIPT ? KINDS_SCRIPT : sourceType === SOURCE_MODULE ? KINDS_MODULE : KINDS_UNKNOWN;
+  const names$ = names;
+  const hir$ = hir;
+  const contexts$ = contexts;
+  const noCursor$ = noCursor;
+  const job$ = job;
   for (let pi = 0; pi < paths.length; pi++) {
     const path = paths[pi];
     for (let ki = 0; ki < kinds.length; ki++) {
       const isScript = kinds[ki] === 1;
       if (parseFile(src, src.length, path, isScript) !== 0) continue;
-      fileBegin(names, isTypeScriptPath(path), !isScript);
+      fileBegin(names$, isTypeScriptPath(path), !isScript);
       if (fileHasParseErrors()) continue;
       // TODO(port) for js-core: `refused_by_prettier_with(file, TypesInJavaScript::Refused)`.
-      const text = hir.text.subarray(0, hir.sourceLen | 0);
-      const depth = contexts.depth;
+      const text = hir$.text.subarray(0, hir$.sourceLen | 0);
+      const depth = contexts$.depth;
       const cx = contextAt(depth, options);
-      cx.reset(options, text, noCursor);
+      cx.reset(options, text, noCursor$);
       // (An expression of Angular has no comments: `JsFormatContext::new(file, options, &[])`.)
-      if (job.mode === W_ANGULAR) {
+      if (job$.mode === W_ANGULAR) {
         cx.comments.begin(cx.src);
         cx.comments.n = 0;
       }
@@ -300,10 +307,10 @@ function withFile(
         }
         if (isHtmlLike) continue;
       }
-      contexts.depth = depth + 1;
+      contexts$.depth = depth + 1;
       const isExpressionFile = path.charCodeAt(0) === 0;
       const written = writeJs(f, cx, options, text, isExpressionFile);
-      contexts.depth = depth;
+      contexts$.depth = depth;
       return written;
     }
   }
@@ -320,24 +327,26 @@ function writeJs(f: Formatter, cx: JsFormatContext, options: FormatOptions, sour
   const outerOptions = f.options;
   const outerFlavor = f.flavor;
   const outerTabWidth = f.tabWidth;
-  const outerRoot = jsState.expressionRootFile;
+  const jsState$ = jsState;
+  const outerRoot = jsState$.expressionRootFile;
   // The job is read before anything is written: a template of JavaScript in the code may format HTML again.
-  const mode = job.mode;
-  const hug = job.hug;
-  const root = job.root;
-  const binding = job.binding;
-  const isTypescript = job.isTypescript;
-  const shown = job.shown;
-  const ignored = job.ignored;
-  const ignoredS = job.ignoredS;
-  const ignoredE = job.ignoredE;
-  const rest = job.rest;
+  const job$ = job;
+  const mode = job$.mode;
+  const hug = job$.hug;
+  const root = job$.root;
+  const binding = job$.binding;
+  const isTypescript = job$.isTypescript;
+  const shown = job$.shown;
+  const ignored = job$.ignored;
+  const ignoredS = job$.ignoredS;
+  const ignoredE = job$.ignoredE;
+  const rest = job$.rest;
   f.beginEmbedded(shown === null ? source : shown, -1);
   f.context = cx;
   f.options = options;
   f.flavor = options.flavor;
   f.tabWidth = options.flavor === FLAVOR_OXFMT ? options.indentWidth : 0;
-  jsState.expressionRootFile = isExpressionFile;
+  jsState$.expressionRootFile = isExpressionFile;
   let result = false;
   switch (mode) {
     case W_STATEMENTS:
@@ -385,7 +394,7 @@ function writeJs(f: Formatter, cx: JsFormatContext, options: FormatOptions, sour
     default:
       break;
   }
-  jsState.expressionRootFile = outerRoot;
+  jsState$.expressionRootFile = outerRoot;
   f.context = outerContext;
   f.options = outerOptions;
   f.flavor = outerFlavor;
@@ -445,10 +454,11 @@ function writeStatements(f: Formatter): void {
 
 /** `textToDoc(code, { parser })` for a program. `flavor`: whose output it is. Returns whether it has been written. */
 export function writeProgram(p: Printer, b: Uint8Array, s: number, e: number, syntax: number, sourceType: number, inHtml: InHtml, flavor: number): boolean {
-  job.mode = W_STATEMENTS;
-  job.shown = null;
-  job.ignored = null;
-  job.rest = null;
+  const job$ = job;
+  job$.mode = W_STATEMENTS;
+  job$.shown = null;
+  job$.ignored = null;
+  job$.rest = null;
   const start = p.w.beginForeign();
   const r = withFile(p, b.subarray(s, e), pathsOf(syntax, b, s, e), sourceType, inHtml, PIECE_SCRIPT, flavor);
   p.w.endForeign(start);
@@ -601,6 +611,7 @@ export function writeExpression(p: Printer, b: Uint8Array, s: number, e: number,
   const f = p.w.f;
   const start = p.w.beginForeign();
   let r: boolean;
+  const job$ = job;
   if (writePath(f, b, s, e, hug)) {
     r = true;
   } else {
@@ -609,12 +620,12 @@ export function writeExpression(p: Printer, b: Uint8Array, s: number, e: number,
     wrapped.set(b.subarray(s, e), 1);
     wrapped[e - s + 1] = 10;
     wrapped[e - s + 2] = 41;
-    job.mode = W_EXPRESSION;
-    job.hug = hug;
-    job.root = inHtml.root;
-    job.shown = null;
-    job.ignored = null;
-    job.rest = null;
+    job$.mode = W_EXPRESSION;
+    job$.hug = hug;
+    job$.root = inHtml.root;
+    job$.shown = null;
+    job$.ignored = null;
+    job$.rest = null;
     r = withFile(p, wrapped, isTypescript ? PATHS_EXPRESSION_TS : PATHS_EXPRESSION_JSX, SOURCE_MODULE, inHtml, PIECE_OTHER, 0);
   }
   p.w.endForeign(start);
@@ -633,14 +644,15 @@ export function writeAngularExpressionCode(
 ): boolean {
   const start = p.w.beginForeign();
   // The plugin that sorts classes does not take over the parsers of Angular.
-  job.mode = W_ANGULAR;
-  job.hug = hug;
-  job.root = inHtml.root;
-  job.shown = shown;
-  job.ignored = ignored;
-  job.ignoredS = 0;
-  job.ignoredE = ignored === null ? 0 : ignored.length;
-  job.rest = rest;
+  const job$ = job;
+  job$.mode = W_ANGULAR;
+  job$.hug = hug;
+  job$.root = inHtml.root;
+  job$.shown = shown;
+  job$.ignored = ignored;
+  job$.ignoredS = 0;
+  job$.ignoredE = ignored === null ? 0 : ignored.length;
+  job$.rest = rest;
   const r = withFile(p, code, PATHS_EXPRESSION_TS, SOURCE_SCRIPT_FALSE, inHtml, PIECE_OTHER, 0);
   p.w.endForeign(start);
   return r;
@@ -652,11 +664,12 @@ const SOURCE_SCRIPT_FALSE = SOURCE_MODULE;
 /** The same for a program. For `shouldHugJsExpression` the root is a `File`, which is not hugged. */
 export function writeProgramInAttribute(p: Printer, b: Uint8Array, s: number, e: number, syntax: number, inHtml: InHtml, hug: number): boolean {
   const start = p.w.beginForeign();
-  job.mode = W_PROGRAM_IN_ATTRIBUTE;
-  job.hug = hug;
-  job.shown = null;
-  job.ignored = null;
-  job.rest = null;
+  const job$ = job;
+  job$.mode = W_PROGRAM_IN_ATTRIBUTE;
+  job$.hug = hug;
+  job$.shown = null;
+  job$.ignored = null;
+  job$.rest = null;
   const r = withFile(p, b.subarray(s, e), pathsOf(syntax, b, s, e), SOURCE_UNKNOWN, inHtml, PIECE_OTHER, 0);
   p.w.endForeign(start);
   return r;
@@ -672,12 +685,13 @@ export function writeBinding(p: Printer, b: Uint8Array, s: number, e: number, is
   program.appendAscii(after);
   const bytes = program.view();
   const start = p.w.beginForeign();
-  job.mode = W_BINDING;
-  job.binding = binding;
-  job.isTypescript = isTypescript;
-  job.shown = null;
-  job.ignored = null;
-  job.rest = null;
+  const job$ = job;
+  job$.mode = W_BINDING;
+  job$.binding = binding;
+  job$.isTypescript = isTypescript;
+  job$.shown = null;
+  job$.ignored = null;
+  job$.rest = null;
   const r = withFile(
     p,
     bytes,

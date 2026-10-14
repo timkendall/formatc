@@ -24,6 +24,8 @@ export function normalizeLabel(p: Parser, buf: Uint8Array, start: number, end: n
   let inWs = true; // skip leading whitespace
   let i = start | 0;
   const size = end - start;
+  const UTF8$ = UTF8;
+  const FOLD$ = FOLD;
   while (i < end) {
     const c = buf[i] | 0;
     if (c === 32 || c === 9 || c === 10 || c === 13) {
@@ -35,11 +37,11 @@ export function normalizeLabel(p: Parser, buf: Uint8Array, start: number, end: n
     } else if (c >= 0x80) {
       // Multi-byte UTF-8: decode, case fold, re-encode
       const cp = decodeUtf8(buf, start, size, i - start);
-      const dlen = UTF8.len;
+      const dlen = UTF8$.len;
       caseFold(cp);
-      const n = FOLD.n;
+      const n = FOLD$.n;
       for (let j = 0; j < n; j++) {
-        const f = j === 0 ? FOLD.c0 : j === 1 ? FOLD.c1 : FOLD.c2;
+        const f = j === 0 ? FOLD$.c0 : j === 1 ? FOLD$.c1 : FOLD$.c2;
         const len = encodeUtf8(f, enc4, 0);
         if (len > 0) out.append(enc4, 0, len);
       }

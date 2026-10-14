@@ -233,51 +233,56 @@ function pushProp(tok: number): void {
 // ---------------------------------------------------------------------------------------------- nodes
 
 function newNode(kind: number): number {
-  const id = T.n;
-  if (id === T.cap) T.ensure(id + 1);
-  T.n = id + 1;
+  const T$ = T;
+  const id = T$.n;
+  if (id === T$.cap) T$.ensure(id + 1);
+  T$.n = id + 1;
   const b = id << 5;
   // The first and the last of a list, the range of a text and the indentation are only read where they are written.
   // (No local for `T.d`: in a small function a local costs a retain and a release.)
-  T.d[b + F_KIND] = kind | 0;
-  T.d[b + F_PARENT] = -1;
-  T.d[b + F_NEXT] = -1;
-  T.d[b + F_CH_LEN] = 0;
-  T.d[b + F_LD_LEN] = 0;
-  T.d[b + F_MD_LEN] = 0;
-  T.d[b + F_EN_LEN] = 0;
-  T.d[b + F_TRAILING] = -1;
-  T.d[b + F_INDICATOR] = -1;
-  T.d[b + F_TAG] = -1;
-  T.d[b + F_ANCHOR] = -1;
-  T.d[b + F_FLAGS] = 0;
+  T$.d[b + F_KIND] = kind | 0;
+  T$.d[b + F_PARENT] = -1;
+  T$.d[b + F_NEXT] = -1;
+  T$.d[b + F_CH_LEN] = 0;
+  T$.d[b + F_LD_LEN] = 0;
+  T$.d[b + F_MD_LEN] = 0;
+  T$.d[b + F_EN_LEN] = 0;
+  T$.d[b + F_TRAILING] = -1;
+  T$.d[b + F_INDICATOR] = -1;
+  T$.d[b + F_TAG] = -1;
+  T$.d[b + F_ANCHOR] = -1;
+  T$.d[b + F_FLAGS] = 0;
   return id;
 }
 
 function setStart(id: number, offset: number): void {
   const b = id << 5;
-  T.d[b + F_S_OFF] = offset | 0;
-  T.d[b + F_S_LINE] = lineOf(offset) | 0;
+  const T$ = T;
+  T$.d[b + F_S_OFF] = offset | 0;
+  T$.d[b + F_S_LINE] = lineOf(offset) | 0;
 }
 
 function setEnd(id: number, offset: number): void {
   const b = id << 5;
-  T.d[b + F_E_OFF] = offset | 0;
-  T.d[b + F_E_LINE] = lineOf(offset) | 0;
+  const T$ = T;
+  T$.d[b + F_E_OFF] = offset | 0;
+  T$.d[b + F_E_LINE] = lineOf(offset) | 0;
 }
 
 function copyStart(id: number, from: number): void {
   const b = id << 5;
   const f = from << 5;
-  T.d[b + F_S_OFF] = T.d[f + F_S_OFF] | 0;
-  T.d[b + F_S_LINE] = T.d[f + F_S_LINE] | 0;
+  const T$ = T;
+  T$.d[b + F_S_OFF] = T$.d[f + F_S_OFF] | 0;
+  T$.d[b + F_S_LINE] = T$.d[f + F_S_LINE] | 0;
 }
 
 function copyEnd(id: number, from: number): void {
   const b = id << 5;
   const f = from << 5;
-  T.d[b + F_E_OFF] = T.d[f + F_E_OFF] | 0;
-  T.d[b + F_E_LINE] = T.d[f + F_E_LINE] | 0;
+  const T$ = T;
+  T$.d[b + F_E_OFF] = T$.d[f + F_E_OFF] | 0;
+  T$.d[b + F_E_LINE] = T$.d[f + F_E_LINE] | 0;
 }
 
 function newNodeAt(kind: number, start: number, end: number): number {
@@ -380,67 +385,74 @@ function unitsBetween(from: number, to: number): number {
 /** `item` is the only child of `owner`, which has none yet. */
 function setOnlyChild(owner: number, item: number): void {
   const ob = owner << 5;
-  T.d[ob + F_CH_FIRST] = item | 0;
-  T.d[ob + F_CH_LAST] = item | 0;
-  T.d[ob + F_CH_LEN] = 1;
-  T.d[(item << 5) + F_PARENT] = owner | 0;
+  const T$ = T;
+  T$.d[ob + F_CH_FIRST] = item | 0;
+  T$.d[ob + F_CH_LAST] = item | 0;
+  T$.d[ob + F_CH_LEN] = 1;
+  T$.d[(item << 5) + F_PARENT] = owner | 0;
 }
 
 /** `first` and `second` are the children of `owner`, which has none yet. */
 function setTwoChildren(owner: number, first: number, second: number): void {
   const ob = owner << 5;
-  T.d[ob + F_CH_FIRST] = first | 0;
-  T.d[ob + F_CH_LAST] = second | 0;
-  T.d[ob + F_CH_LEN] = 2;
-  T.d[(first << 5) + F_PARENT] = owner | 0;
-  T.d[(second << 5) + F_PARENT] = owner | 0;
-  T.d[(first << 5) + F_NEXT] = second | 0;
+  const T$ = T;
+  T$.d[ob + F_CH_FIRST] = first | 0;
+  T$.d[ob + F_CH_LAST] = second | 0;
+  T$.d[ob + F_CH_LEN] = 2;
+  T$.d[(first << 5) + F_PARENT] = owner | 0;
+  T$.d[(second << 5) + F_PARENT] = owner | 0;
+  T$.d[(first << 5) + F_NEXT] = second | 0;
 }
 
 function appendChild(owner: number, item: number): void {
-  const len = T.d[(owner << 5) + F_CH_LEN] | 0;
-  if (len === 0) T.d[(owner << 5) + F_CH_FIRST] = item;
-  else T.d[((T.d[(owner << 5) + F_CH_LAST] | 0) << 5) + F_NEXT] = item;
-  T.d[(owner << 5) + F_CH_LAST] = item;
-  T.d[(owner << 5) + F_CH_LEN] = len + 1;
-  T.d[(item << 5) + F_PARENT] = owner;
+  const T$ = T;
+  const len = T$.d[(owner << 5) + F_CH_LEN] | 0;
+  if (len === 0) T$.d[(owner << 5) + F_CH_FIRST] = item;
+  else T$.d[((T$.d[(owner << 5) + F_CH_LAST] | 0) << 5) + F_NEXT] = item;
+  T$.d[(owner << 5) + F_CH_LAST] = item;
+  T$.d[(owner << 5) + F_CH_LEN] = len + 1;
+  T$.d[(item << 5) + F_PARENT] = owner;
 }
 
 function appendLeading(owner: number, item: number): void {
-  const len = T.d[(owner << 5) + F_LD_LEN] | 0;
-  if (len === 0) T.d[(owner << 5) + F_LD_FIRST] = item;
-  else T.d[((T.d[(owner << 5) + F_LD_LAST] | 0) << 5) + F_NEXT] = item;
-  T.d[(owner << 5) + F_LD_LAST] = item;
-  T.d[(owner << 5) + F_LD_LEN] = len + 1;
-  T.d[(owner << 5) + F_FLAGS] = (T.d[(owner << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
-  T.d[(item << 5) + F_PARENT] = owner;
+  const T$ = T;
+  const len = T$.d[(owner << 5) + F_LD_LEN] | 0;
+  if (len === 0) T$.d[(owner << 5) + F_LD_FIRST] = item;
+  else T$.d[((T$.d[(owner << 5) + F_LD_LAST] | 0) << 5) + F_NEXT] = item;
+  T$.d[(owner << 5) + F_LD_LAST] = item;
+  T$.d[(owner << 5) + F_LD_LEN] = len + 1;
+  T$.d[(owner << 5) + F_FLAGS] = (T$.d[(owner << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
+  T$.d[(item << 5) + F_PARENT] = owner;
 }
 
 function appendMiddle(owner: number, item: number): void {
-  const len = T.d[(owner << 5) + F_MD_LEN] | 0;
-  if (len === 0) T.d[(owner << 5) + F_MD_FIRST] = item;
-  else T.d[((T.d[(owner << 5) + F_MD_LAST] | 0) << 5) + F_NEXT] = item;
-  T.d[(owner << 5) + F_MD_LAST] = item;
-  T.d[(owner << 5) + F_MD_LEN] = len + 1;
-  T.d[(owner << 5) + F_FLAGS] = (T.d[(owner << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
-  T.d[(item << 5) + F_PARENT] = owner;
+  const T$ = T;
+  const len = T$.d[(owner << 5) + F_MD_LEN] | 0;
+  if (len === 0) T$.d[(owner << 5) + F_MD_FIRST] = item;
+  else T$.d[((T$.d[(owner << 5) + F_MD_LAST] | 0) << 5) + F_NEXT] = item;
+  T$.d[(owner << 5) + F_MD_LAST] = item;
+  T$.d[(owner << 5) + F_MD_LEN] = len + 1;
+  T$.d[(owner << 5) + F_FLAGS] = (T$.d[(owner << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
+  T$.d[(item << 5) + F_PARENT] = owner;
 }
 
 function appendEnd(owner: number, item: number): void {
-  const len = T.d[(owner << 5) + F_EN_LEN] | 0;
-  if (len === 0) T.d[(owner << 5) + F_EN_FIRST] = item;
-  else T.d[((T.d[(owner << 5) + F_EN_LAST] | 0) << 5) + F_NEXT] = item;
-  T.d[(owner << 5) + F_EN_LAST] = item;
-  T.d[(owner << 5) + F_EN_LEN] = len + 1;
-  T.d[(owner << 5) + F_FLAGS] = (T.d[(owner << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
-  T.d[(item << 5) + F_PARENT] = owner;
+  const T$ = T;
+  const len = T$.d[(owner << 5) + F_EN_LEN] | 0;
+  if (len === 0) T$.d[(owner << 5) + F_EN_FIRST] = item;
+  else T$.d[((T$.d[(owner << 5) + F_EN_LAST] | 0) << 5) + F_NEXT] = item;
+  T$.d[(owner << 5) + F_EN_LAST] = item;
+  T$.d[(owner << 5) + F_EN_LEN] = len + 1;
+  T$.d[(owner << 5) + F_FLAGS] = (T$.d[(owner << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
+  T$.d[(item << 5) + F_PARENT] = owner;
 }
 
 /** Makes `pending[from..]` the children of `parent`. */
 function addPendingChildren(parent: number, from: number): void {
-  const n = pending.len;
-  for (let i = from; i < n; i++) appendChild(parent, pending.data[i] | 0);
-  pending.truncate(from);
+  const pending$ = pending;
+  const n = pending$.len;
+  for (let i = from; i < n; i++) appendChild(parent, pending$.data[i] | 0);
+  pending$.truncate(from);
 }
 
 /** `related` belongs to `owner`. */
@@ -451,8 +463,9 @@ function own(owner: number, related: number): number {
 
 function transformComment(start: number, end: number): number {
   const id = newNodeAt(K_COMMENT, start, end);
-  T.d[(id << 5) + F_V_START] = start + 1;
-  T.d[(id << 5) + F_V_END] = end > start + 1 ? end : start + 1;
+  const T$ = T;
+  T$.d[(id << 5) + F_V_START] = start + 1;
+  T$.d[(id << 5) + F_V_END] = end > start + 1 ? end : start + 1;
   comments.push(id);
   return id;
 }
@@ -608,6 +621,7 @@ function pushTag(handleStart: number, handleEnd: number, prefixStart: number, pr
 function transformContentProperties(id: number, start: number, pb: number, pn: number): void {
   let firstTagOrAnchorStart = -1;
   if (pn > 0) hasProperties = true;
+  const T$ = T;
   for (let i = pb; i < pb + pn; i++) {
     const tok = propTok[i] | 0;
     const tokKind = tkKind[tok] | 0;
@@ -616,19 +630,19 @@ function transformContentProperties(id: number, start: number, pb: number, pn: n
     if (tokKind === TK_TAG) {
       if (firstTagOrAnchorStart < 0) firstTagOrAnchorStart = tokStart;
       const tag = newNodeAt(K_TAG, tokStart, tokEnd);
-      const kind = T.d[(id << 5) + F_KIND] | 0;
+      const kind = T$.d[(id << 5) + F_KIND] | 0;
       if ((kind === K_MAPPING || kind === K_FLOW_MAPPING) && isSetTag(tokStart, tokEnd)) {
-        T.d[(tag << 5) + F_FLAGS] = (T.d[(tag << 5) + F_FLAGS] | 0) | F_SET_TAG;
+        T$.d[(tag << 5) + F_FLAGS] = (T$.d[(tag << 5) + F_FLAGS] | 0) | F_SET_TAG;
       }
-      T.d[(id << 5) + F_TAG] = own(id, tag);
-      T.d[(id << 5) + F_FLAGS] = (T.d[(id << 5) + F_FLAGS] | 0) | F_HAS_PROPS;
+      T$.d[(id << 5) + F_TAG] = own(id, tag);
+      T$.d[(id << 5) + F_FLAGS] = (T$.d[(id << 5) + F_FLAGS] | 0) | F_HAS_PROPS;
     } else if (tokKind === TK_ANCHOR) {
       if (firstTagOrAnchorStart < 0) firstTagOrAnchorStart = tokStart;
       const anchor = newNodeAt(K_ANCHOR, tokStart, tokEnd);
-      T.d[(anchor << 5) + F_V_START] = tokStart + 1;
-      T.d[(anchor << 5) + F_V_END] = tokEnd > tokStart + 1 ? tokEnd : tokStart + 1;
-      T.d[(id << 5) + F_ANCHOR] = own(id, anchor);
-      T.d[(id << 5) + F_FLAGS] = (T.d[(id << 5) + F_FLAGS] | 0) | F_HAS_PROPS;
+      T$.d[(anchor << 5) + F_V_START] = tokStart + 1;
+      T$.d[(anchor << 5) + F_V_END] = tokEnd > tokStart + 1 ? tokEnd : tokStart + 1;
+      T$.d[(id << 5) + F_ANCHOR] = own(id, anchor);
+      T$.d[(id << 5) + F_FLAGS] = (T$.d[(id << 5) + F_FLAGS] | 0) | F_HAS_PROPS;
     } else {
       const comment = transformComment(tokStart, tokEnd);
       if (firstTagOrAnchorStart >= 0 && firstTagOrAnchorStart <= tokStart && tokEnd <= start) {
@@ -652,10 +666,12 @@ function isInBraces(node: number, mapping: number): boolean {
 
 /** `transformNode`. `node` is written at the next token, behind the properties. Returns the node, or -1 (`Unexpected`). */
 function transformNode(node: number, pb: number, pn: number): number {
-  if (!stack.enter()) return -1;
+  const stack$ = stack;
+  if (!stack$.enter()) return -1;
   const top = propTop;
   let result = -1;
   const nk = yamlNodeKind(node) | 0;
+  const T$ = T;
   if (nk === NK_SCALAR) {
     result = transformScalar(pb, pn);
   } else if (nk === NK_ALIAS) {
@@ -665,8 +681,8 @@ function transformNode(node: number, pb: number, pn: number): number {
       const end = tkEnd[tok] | 0;
       const id = newNodeAt(K_ALIAS, start, end);
       if (pn > 0) transformContentProperties(id, start, pb, pn);
-      T.d[(id << 5) + F_V_START] = start + 1;
-      T.d[(id << 5) + F_V_END] = end > start + 1 ? end : start + 1;
+      T$.d[(id << 5) + F_V_START] = start + 1;
+      T$.d[(id << 5) + F_V_END] = end > start + 1 ? end : start + 1;
       result = id;
     }
   } else if (nk === NK_OBJECT) {
@@ -679,7 +695,7 @@ function transformNode(node: number, pb: number, pn: number): number {
     result = transformEmptyNode(pb, pn);
   }
   propTop = top;
-  stack.leave();
+  stack$.leave();
   return result;
 }
 
@@ -825,7 +841,8 @@ function transformBlockScalar(kind: number, tok: number, pb: number, pn: number)
   const end = endOfBlockScalar(body, tend, chomping === CH_KEEP);
   const id = newNodeAt(kind, start, end);
   if (pn > 0) transformContentProperties(id, start, pb, pn);
-  T.d[(id << 5) + F_INDENT] = -1;
+  const T$ = T;
+  T$.d[(id << 5) + F_INDENT] = -1;
   if (digitsStart < beforeLastSign) {
     let all = 0;
     for (let i = digitsStart; i < beforeLastSign; i++) {
@@ -833,11 +850,11 @@ function transformBlockScalar(kind: number, tok: number, pb: number, pn: number)
       if (all > 4294967295) all = 4294967295;
       all = (all + ((text[i] | 0) - 48)) % 4294967296;
     }
-    T.d[(id << 5) + F_INDENT] = all;
+    T$.d[(id << 5) + F_INDENT] = all;
   }
-  T.d[(id << 5) + F_FLAGS] = (T.d[(id << 5) + F_FLAGS] | 0) | (chomping << 1);
-  T.d[(id << 5) + F_INDICATOR] = indicatorComment;
-  if (indicatorComment >= 0) T.d[(id << 5) + F_FLAGS] = (T.d[(id << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
+  T$.d[(id << 5) + F_FLAGS] = (T$.d[(id << 5) + F_FLAGS] | 0) | (chomping << 1);
+  T$.d[(id << 5) + F_INDICATOR] = indicatorComment;
+  if (indicatorComment >= 0) T$.d[(id << 5) + F_FLAGS] = (T$.d[(id << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
   if (indicatorComment >= 0) own(id, indicatorComment);
   return id;
 }
@@ -858,14 +875,15 @@ function finishFlowCollection(kind: number, endKind: number, startTok: number, c
 function transformFlowMap(mapping: number, pb: number, pn: number): number {
   const start = take(TK_MAPPING_START);
   if (start < 0) return -1;
-  const children = pending.len;
+  const pending$ = pending;
+  const children = pending$.len;
   const count = yamlNodeCount(mapping) | 0;
   for (let i = 0; i < count; i++) {
     const mark = propTop;
     const child = transformPair(yamlPropKey(mapping, i), yamlPropValue(mapping, i), K_FLOW_MAPPING_ITEM, propTop, 0);
     propTop = mark;
     if (child < 0) return -1;
-    pending.push(child);
+    pending$.push(child);
   }
   return finishFlowCollection(K_FLOW_MAPPING, TK_MAPPING_END, start, children, pb, pn);
 }
@@ -873,7 +891,8 @@ function transformFlowMap(mapping: number, pb: number, pn: number): number {
 function transformFlowSeq(sequence: number, pb: number, pn: number): number {
   const start = take(TK_SEQUENCE_START);
   if (start < 0) return -1;
-  const children = pending.len;
+  const pending$ = pending;
+  const children = pending$.len;
   const count = yamlNodeCount(sequence) | 0;
   for (let i = 0; i < count; i++) {
     const item = yamlItem(sequence, i);
@@ -896,16 +915,17 @@ function transformFlowSeq(sequence: number, pb: number, pn: number): number {
     }
     propTop = mark;
     if (child < 0) return -1;
-    pending.push(child);
+    pending$.push(child);
   }
   return finishFlowCollection(K_FLOW_SEQUENCE, TK_SEQUENCE_END, start, children, pb, pn);
 }
 
 /** A node of `kind` from the first to the last of `pending[children..]`, which are in it. */
 function finishBlockCollection(kind: number, start: number, children: number, pb: number, pn: number): number {
-  if (pending.len <= children) return -1;
-  const first = pending.data[children] | 0;
-  const last = pending.data[pending.len - 1] | 0;
+  const pending$ = pending;
+  if (pending$.len <= children) return -1;
+  const first = pending$.data[children] | 0;
+  const last = pending$.data[pending$.len - 1] | 0;
   const id = newNode(kind);
   copyStart(id, first);
   copyEnd(id, last);
@@ -930,16 +950,17 @@ function transformMap(mapping: number, pb: number, pn: number): number {
   // The rest are the properties of the first key
   const keyBase = pb + ownCount;
   let keyCount = pn - ownCount;
-  const children = pending.len;
+  const pending$ = pending;
+  const children = pending$.len;
   const count = yamlNodeCount(mapping) | 0;
   for (let i = 0; i < count; i++) {
-    if (pending.len > children && isAtKeyThatYamlRefuses()) return -1;
+    if (pending$.len > children && isAtKeyThatYamlRefuses()) return -1;
     propTop = keyBase + keyCount;
     const child = transformPair(yamlPropKey(mapping, i), yamlPropValue(mapping, i), K_MAPPING_ITEM, keyBase, keyCount);
     keyCount = 0;
     propTop = keyBase;
     if (child < 0) return -1;
-    pending.push(child);
+    pending$.push(child);
   }
   return finishBlockCollection(K_MAPPING, start, children, pb, ownCount);
 }
@@ -961,15 +982,17 @@ function isAtKeyThatYamlRefuses(): boolean {
   if (firstTok < 0 || keyTok < 0) return false;
   const kk = tkKind[keyTok] | 0;
   if (kk !== TK_SEQUENCE_START && kk !== TK_MAPPING_START) return false;
-  if (pending.len === 0) return false;
-  const item = pending.data[pending.len - 1] | 0;
-  const valueNode = T.d[(item << 5) + F_CH_LEN] > 0 ? T.d[(item << 5) + F_CH_LAST] | 0 : -1;
+  const pending$ = pending;
+  if (pending$.len === 0) return false;
+  const item = pending$.data[pending$.len - 1] | 0;
+  const T$ = T;
+  const valueNode = T$.d[(item << 5) + F_CH_LEN] > 0 ? T$.d[(item << 5) + F_CH_LAST] | 0 : -1;
   if (valueNode < 0) return false;
-  const content = T.d[(valueNode << 5) + F_CH_LEN] > 0 ? T.d[(valueNode << 5) + F_CH_FIRST] | 0 : -1;
+  const content = T$.d[(valueNode << 5) + F_CH_LEN] > 0 ? T$.d[(valueNode << 5) + F_CH_FIRST] | 0 : -1;
   if (content < 0) return false;
-  const end = T.d[(content << 5) + F_E_OFF] | 0;
+  const end = T$.d[(content << 5) + F_E_OFF] | 0;
   const firstStart = tkStart[firstTok] | 0;
-  const vk = T.d[(content << 5) + F_KIND] | 0;
+  const vk = T$.d[(content << 5) + F_KIND] | 0;
   // between = text[end..firstStart]
   let hasBetween = end <= firstStart && firstStart <= textLen;
   let newlines = 0;
@@ -981,14 +1004,15 @@ function isAtKeyThatYamlRefuses(): boolean {
     endsWithNewline = firstStart > end && (text[firstStart - 1] | 0) === 10;
   }
   if (vk === K_BLOCK_FOLDED || vk === K_BLOCK_LITERAL) return newlines > 0;
-  if (vk === K_PLAIN && (T.d[(content << 5) + F_S_OFF] | 0) === end) return false;
+  if (vk === K_PLAIN && (T$.d[(content << 5) + F_S_OFF] | 0) === end) return false;
   return !endsWithNewline || newlines !== 1;
 }
 
 function transformSeq(sequence: number, pb: number, pn: number): number {
   if (at >= tkCount) return -1;
   const start = tkStart[at] | 0;
-  const children = pending.len;
+  const pending$ = pending;
+  const children = pending$.len;
   const count = yamlNodeCount(sequence) | 0;
   for (let i = 0; i < count; i++) {
     const item = yamlItem(sequence, i);
@@ -1013,7 +1037,7 @@ function transformSeq(sequence: number, pb: number, pn: number): number {
     if (content >= 0) copyEnd(id, content);
     else setEnd(id, tkEnd[indicator] | 0);
     if (content >= 0) setOnlyChild(id, content);
-    pending.push(id);
+    pending$.push(id);
   }
   return finishBlockCollection(K_SEQUENCE, start, children, pb, pn);
 }
@@ -1100,8 +1124,9 @@ function transformPair(key: number, value: number, kind: number, keyBase: number
   if (keyStartTok < 0) return -1;
   const keyStart = tkStart[keyStartTok] | 0;
   const mappingKey = newNode(K_MAPPING_KEY);
+  const T$ = T;
   if (keyContent >= 0) {
-    if ((T.d[(keyContent << 5) + F_S_OFF] | 0) === keyStart) copyStart(mappingKey, keyContent);
+    if ((T$.d[(keyContent << 5) + F_S_OFF] | 0) === keyStart) copyStart(mappingKey, keyContent);
     else setStart(mappingKey, keyStart);
     copyEnd(mappingKey, keyContent);
     setOnlyChild(mappingKey, keyContent);
@@ -1122,8 +1147,8 @@ function transformPair(key: number, value: number, kind: number, keyBase: number
   } else {
     // the end of the key, for both
     copyEnd(mappingValue, mappingKey);
-    T.d[(mappingValue << 5) + F_S_OFF] = T.d[(mappingKey << 5) + F_E_OFF] | 0;
-    T.d[(mappingValue << 5) + F_S_LINE] = T.d[(mappingKey << 5) + F_E_LINE] | 0;
+    T$.d[(mappingValue << 5) + F_S_OFF] = T$.d[(mappingKey << 5) + F_E_OFF] | 0;
+    T$.d[(mappingValue << 5) + F_S_LINE] = T$.d[(mappingKey << 5) + F_E_LINE] | 0;
   }
   if (valueContent >= 0) setOnlyChild(mappingValue, valueContent);
   const id = newNode(kind);
@@ -1163,8 +1188,9 @@ function transformDirective(tok: number): number {
     else break;
   }
   const directive = newNodeAt(K_DIRECTIVE, start, contentEnd);
-  T.d[(directive << 5) + F_V_START] = start;
-  T.d[(directive << 5) + F_V_END] = contentEnd;
+  const T$ = T;
+  T$.d[(directive << 5) + F_V_START] = start;
+  T$.d[(directive << 5) + F_V_END] = contentEnd;
   // `%TAG handle prefix`
   let i = start;
   let nPart = 0;
@@ -1202,24 +1228,26 @@ const candidatesVec = new I32Vec(8);
 /** The comments behind `content`, which is all that is in a document, as far as they are in the document for `yaml`.
  * Takes them (into `endCommentsVec`) that it has at the end of the document, and in nothing that is in it. */
 function takeEndComments(content: number): void {
-  endCommentsVec.reset();
+  const endCommentsVec$ = endCommentsVec;
+  endCommentsVec$.reset();
   if (content < 0) return;
-  const ckind = T.d[(content << 5) + F_KIND] | 0;
+  const T$ = T;
+  const ckind = T$.d[(content << 5) + F_KIND] | 0;
   const isBlock = ckind === K_MAPPING || ckind === K_SEQUENCE;
   // What is behind an item without a value is in that item.
   let isOpen = false;
   if (isBlock) {
-    if ((T.d[(content << 5) + F_CH_LEN] | 0) === 0) {
+    if ((T$.d[(content << 5) + F_CH_LEN] | 0) === 0) {
       isOpen = true;
     } else {
-      const item = T.d[(content << 5) + F_CH_LAST] | 0;
+      const item = T$.d[(content << 5) + F_CH_LAST] | 0;
       let it = item;
       let none = false;
-      if ((T.d[(item << 5) + F_KIND] | 0) === K_MAPPING_ITEM) {
-        if ((T.d[(item << 5) + F_CH_LEN] | 0) === 0) none = true;
-        else it = T.d[(item << 5) + F_CH_LAST] | 0;
+      if ((T$.d[(item << 5) + F_KIND] | 0) === K_MAPPING_ITEM) {
+        if ((T$.d[(item << 5) + F_CH_LEN] | 0) === 0) none = true;
+        else it = T$.d[(item << 5) + F_CH_LAST] | 0;
       }
-      isOpen = none || (T.d[(it << 5) + F_CH_LEN] | 0) === 0;
+      isOpen = none || (T$.d[(it << 5) + F_CH_LEN] | 0) === 0;
     }
   }
   let isBlockScalar = false;
@@ -1230,7 +1258,7 @@ function takeEndComments(content: number): void {
       isBlockScalar = b === 124 || b === 62;
     }
   }
-  let end = T.d[(content << 5) + F_E_OFF] | 0;
+  let end = T$.d[(content << 5) + F_E_OFF] | 0;
   if (!isBlockScalar && at < tkCount) {
     end = trimJsWhitespaceEnd(text, 0, tkStart[at] | 0);
   }
@@ -1243,8 +1271,8 @@ function takeEndComments(content: number): void {
     if (!isBlock && placeLine > lastLineOfContent + 1) break;
     at = at + 1;
     const comment = transformComment(ts, te);
-    if (placeLine > lastLineOfContent && !isOpen && (!isBlock || columnOf(ts, placeLine) === 1 || endCommentsVec.len > 0)) {
-      endCommentsVec.push(comment);
+    if (placeLine > lastLineOfContent && !isOpen && (!isBlock || columnOf(ts, placeLine) === 1 || endCommentsVec$.len > 0)) {
+      endCommentsVec$.push(comment);
     }
   }
 }
@@ -1263,11 +1291,14 @@ function transformDocument(rootIn: number): number {
   const root = rootIn >= 0 && (yamlNodeKind(rootIn) | 0) !== NK_NULL ? rootIn : -1;
   // `transformDocumentHead`
   tagsLen = 0;
-  directivesVec.reset();
-  candidatesVec.reset();
+  const directivesVec$ = directivesVec;
+  directivesVec$.reset();
+  const candidatesVec$ = candidatesVec;
+  candidatesVec$.reset();
   // Bun's parser takes it for a part of a directive that it does not know.
   let cdStart = -1;
   let cdEnd = -1;
+  const T$ = T;
   for (;;) {
     let haveComment = false;
     let cs = 0;
@@ -1286,24 +1317,24 @@ function transformDocument(rootIn: number): number {
     }
     if (haveComment) {
       const comment = transformComment(cs, ce);
-      const nd = directivesVec.len;
+      const nd = directivesVec$.len;
       let attached = false;
       if (nd > 0) {
-        const last = directivesVec.data[nd - 1] | 0;
-        if ((T.d[(last << 5) + F_E_LINE] | 0) === (T.d[(comment << 5) + F_S_LINE] | 0) && (T.d[(last << 5) + F_TRAILING] | 0) < 0) {
-          T.d[(last << 5) + F_TRAILING] = comment;
-          T.d[(last << 5) + F_FLAGS] = (T.d[(last << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
+        const last = directivesVec$.data[nd - 1] | 0;
+        if ((T$.d[(last << 5) + F_E_LINE] | 0) === (T$.d[(comment << 5) + F_S_LINE] | 0) && (T$.d[(last << 5) + F_TRAILING] | 0) < 0) {
+          T$.d[(last << 5) + F_TRAILING] = comment;
+          T$.d[(last << 5) + F_FLAGS] = (T$.d[(last << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
           copyEnd(last, comment);
           own(last, comment);
           attached = true;
         }
       }
-      if (!attached) candidatesVec.push(comment);
+      if (!attached) candidatesVec$.push(comment);
     } else if (at < tkCount && (tkKind[at] | 0) === TK_DIRECTIVE) {
       const tok = at;
       at = at + 1;
       const directive = transformDirective(tok);
-      directivesVec.push(directive);
+      directivesVec$.push(directive);
       cdStart = dirCommentStart;
       cdEnd = dirCommentEnd;
       // Unless the next token is that comment
@@ -1311,7 +1342,7 @@ function transformDocument(rootIn: number): number {
         cdStart = -1;
         cdEnd = -1;
       }
-      candidatesVec.reset();
+      candidatesVec$.reset();
     } else {
       break;
     }
@@ -1347,9 +1378,9 @@ function transformDocument(rootIn: number): number {
     headStart = tkStart[docStart] | 0;
     headEnd = tkEnd[docStart] | 0;
   }
-  if (directivesVec.len > 0) headStart = T.d[((directivesVec.data[0] | 0) << 5) + F_S_OFF] | 0;
+  if (directivesVec$.len > 0) headStart = T$.d[((directivesVec$.data[0] | 0) << 5) + F_S_OFF] | 0;
   const head = newNodeAt(K_DOCUMENT_HEAD, headStart, headEnd);
-  const headEndLine = T.d[(head << 5) + F_E_LINE] | 0;
+  const headEndLine = T$.d[(head << 5) + F_E_LINE] | 0;
   let headTrailingComment = -1;
   if (docStart >= 0 && pn > 0 && (tkKind[propTok[pb] | 0] | 0) === TK_COMMENT) {
     const first = propTok[pb] | 0;
@@ -1359,14 +1390,14 @@ function transformDocument(rootIn: number): number {
       pn = pn - 1;
     }
   }
-  const nDirectives = directivesVec.len;
-  for (let i = 0; i < nDirectives; i++) appendChild(head, directivesVec.data[i] | 0);
+  const nDirectives = directivesVec$.len;
+  for (let i = 0; i < nDirectives; i++) appendChild(head, directivesVec$.data[i] | 0);
   if (docStart >= 0) {
-    const nc = candidatesVec.len;
-    for (let i = 0; i < nc; i++) appendEnd(head, candidatesVec.data[i] | 0);
+    const nc = candidatesVec$.len;
+    for (let i = 0; i < nc; i++) appendEnd(head, candidatesVec$.data[i] | 0);
   }
-  T.d[(head << 5) + F_TRAILING] = headTrailingComment;
-  if (headTrailingComment >= 0) T.d[(head << 5) + F_FLAGS] = (T.d[(head << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
+  T$.d[(head << 5) + F_TRAILING] = headTrailingComment;
+  if (headTrailingComment >= 0) T$.d[(head << 5) + F_FLAGS] = (T$.d[(head << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
   if (headTrailingComment >= 0) own(head, headTrailingComment);
 
   // `transformDocumentBody`
@@ -1401,26 +1432,27 @@ function transformDocument(rootIn: number): number {
   } else if (at < tkCount) {
     bodyEnd = tkStart[at] | 0;
   }
-  let bodyStart = content >= 0 ? T.d[(content << 5) + F_S_OFF] | 0 : bodyEnd;
+  let bodyStart = content >= 0 ? T$.d[(content << 5) + F_S_OFF] | 0 : bodyEnd;
   if (docStart >= 0) {
     const docStartEnd = (tkEnd[docStart] | 0) + 1;
     if (bodyStart < docStartEnd && docStartEnd <= bodyEnd) bodyStart = docStartEnd;
   }
   const body = newNodeAt(K_DOCUMENT_BODY, bodyStart, bodyEnd);
   if (content >= 0) setOnlyChild(body, content);
-  const nEnd = endCommentsVec.len;
-  for (let i = 0; i < nEnd; i++) appendEnd(body, endCommentsVec.data[i] | 0);
+  const endCommentsVec$ = endCommentsVec;
+  const nEnd = endCommentsVec$.len;
+  for (let i = 0; i < nEnd; i++) appendEnd(body, endCommentsVec$.data[i] | 0);
   const document = newNode(K_DOCUMENT);
   // The start of the head as it was made
   copyStart(document, head);
   if (docEnd >= 0) setEnd(document, tkEnd[docEnd] | 0);
   else copyEnd(document, body);
-  T.d[(document << 5) + F_TRAILING] = documentTrailingComment;
-  if (documentTrailingComment >= 0) T.d[(document << 5) + F_FLAGS] = (T.d[(document << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
+  T$.d[(document << 5) + F_TRAILING] = documentTrailingComment;
+  if (documentTrailingComment >= 0) T$.d[(document << 5) + F_FLAGS] = (T$.d[(document << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
   let flags = 0;
   if (docStart >= 0) flags = flags | F_DIRECTIVES_END_MARKER;
   if (docEnd >= 0) flags = flags | F_DOCUMENT_END_MARKER;
-  T.d[(document << 5) + F_FLAGS] = (T.d[(document << 5) + F_FLAGS] | 0) | flags;
+  T$.d[(document << 5) + F_FLAGS] = (T$.d[(document << 5) + F_FLAGS] | 0) | flags;
   if (documentTrailingComment >= 0) own(document, documentTrailingComment);
   setTwoChildren(document, head, body);
   return document;
@@ -1432,12 +1464,13 @@ let sortKeys: Int32Array = new Int32Array(64);
 /** `transformDocuments`. For `yaml`, every `...` ends a document of its own. Returns false on `Unexpected`. */
 function transformDocuments(nDocuments: number): boolean {
   let nextRoot = 0;
-  documentChildren.reset();
+  const documentChildren$ = documentChildren;
+  documentChildren$.reset();
   for (;;) {
     const nextKind = nextNonCommentKind();
     let root = -1;
-    if (nextKind === -1 && documentChildren.len > 0) break;
-    if (nextKind === TK_DOCUMENT_END && documentChildren.len > 0) {
+    if (nextKind === -1 && documentChildren$.len > 0) break;
+    if (nextKind === TK_DOCUMENT_END && documentChildren$.len > 0) {
       root = -1;
     } else {
       if (nextRoot >= nDocuments) return false;
@@ -1446,7 +1479,7 @@ function transformDocuments(nDocuments: number): boolean {
     }
     const doc = transformDocument(root);
     if (doc < 0) return false;
-    documentChildren.push(doc);
+    documentChildren$.push(doc);
   }
   takeComments();
   return true;
@@ -1468,26 +1501,30 @@ let tabLen = 0;
 
 function columnOfStart(id: number): number {
   const b = id << 5;
-  return columnOf(T.d[b + F_S_OFF] | 0, T.d[b + F_S_LINE] | 0);
+  const T$ = T;
+  return columnOf(T$.d[b + F_S_OFF] | 0, T$.d[b + F_S_LINE] | 0);
 }
 
 function columnOfEnd(id: number): number {
   const b = id << 5;
-  return columnOf(T.d[b + F_E_OFF] | 0, T.d[b + F_E_LINE] | 0);
+  const T$ = T;
+  return columnOf(T$.d[b + F_E_OFF] | 0, T$.d[b + F_E_LINE] | 0);
 }
 
 function initNodeTable(id: number): void {
-  if (!stack.enter()) return;
+  const stack$ = stack;
+  if (!stack$.enter()) return;
   const b = id << 5;
-  const sOff = T.d[b + F_S_OFF] | 0;
-  const eOff = T.d[b + F_E_OFF] | 0;
+  const T$ = T;
+  const sOff = T$.d[b + F_S_OFF] | 0;
+  const eOff = T$.d[b + F_E_OFF] | 0;
   if (sOff === eOff) {
-    stack.leave();
+    stack$.leave();
     return;
   }
-  const kind = T.d[b + F_KIND] | 0;
-  const startLine = (T.d[b + F_S_LINE] | 0) - 1;
-  const endLine = (T.d[b + F_E_LINE] | 0) - 1;
+  const kind = T$.d[b + F_KIND] | 0;
+  const startLine = (T$.d[b + F_S_LINE] | 0) - 1;
+  const endLine = (T$.d[b + F_E_LINE] | 0) - 1;
   if ((HAS_LEADING[kind] | 0) !== 0 && startLine >= 0 && startLine < tabLen) {
     const it = tabLeading[startLine] | 0;
     const col = columnOfStart(id);
@@ -1524,35 +1561,37 @@ function initNodeTable(id: number): void {
       }
     }
   }
-  for (let c = T.d[b + F_CH_FIRST] | 0, n = T.d[b + F_CH_LEN] | 0; n > 0; n = n - 1) {
+  for (let c = T$.d[b + F_CH_FIRST] | 0, n = T$.d[b + F_CH_LEN] | 0; n > 0; n = n - 1) {
     initNodeTable(c);
-    c = T.d[(c << 5) + F_NEXT] | 0;
+    c = T$.d[(c << 5) + F_NEXT] | 0;
   }
-  stack.leave();
+  stack$.leave();
 }
 
 /** `isExplicitMappingKey` */
 function isExplicitMappingKey(id: number): boolean {
-  if ((T.d[(id << 5) + F_CH_LEN] | 0) === 0) return true;
-  return (T.d[(id << 5) + F_S_OFF] | 0) !== (T.d[((T.d[(id << 5) + F_CH_FIRST] | 0) << 5) + F_S_OFF] | 0);
+  const T$ = T;
+  if ((T$.d[(id << 5) + F_CH_LEN] | 0) === 0) return true;
+  return (T$.d[(id << 5) + F_S_OFF] | 0) !== (T$.d[((T$.d[(id << 5) + F_CH_FIRST] | 0) << 5) + F_S_OFF] | 0);
 }
 
 function shouldOwnEndComment(id: number, cSOff: number, cEOff: number, cSLine: number, cSCol: number): boolean {
-  const kind = T.d[(id << 5) + F_KIND] | 0;
-  if ((T.d[(id << 5) + F_S_OFF] | 0) < cSOff && (T.d[(id << 5) + F_E_OFF] | 0) > cEOff && (kind === K_FLOW_MAPPING || kind === K_FLOW_SEQUENCE)) {
-    if ((T.d[(id << 5) + F_CH_LEN] | 0) === 0) return true;
-    return cSLine > (T.d[((T.d[(id << 5) + F_CH_LAST] | 0) << 5) + F_E_LINE] | 0);
+  const T$ = T;
+  const kind = T$.d[(id << 5) + F_KIND] | 0;
+  if ((T$.d[(id << 5) + F_S_OFF] | 0) < cSOff && (T$.d[(id << 5) + F_E_OFF] | 0) > cEOff && (kind === K_FLOW_MAPPING || kind === K_FLOW_SEQUENCE)) {
+    if ((T$.d[(id << 5) + F_CH_LEN] | 0) === 0) return true;
+    return cSLine > (T$.d[((T$.d[(id << 5) + F_CH_LAST] | 0) << 5) + F_E_LINE] | 0);
   }
-  if (cEOff < (T.d[(id << 5) + F_E_OFF] | 0)) return false;
+  if (cEOff < (T$.d[(id << 5) + F_E_OFF] | 0)) return false;
   if (kind === K_SEQUENCE_ITEM) return cSCol > columnOfStart(id);
   if (kind === K_MAPPING_KEY || kind === K_MAPPING_VALUE) {
-    const parent = T.d[(id << 5) + F_PARENT] | 0;
+    const parent = T$.d[(id << 5) + F_PARENT] | 0;
     const parentColumn = parent >= 0 ? columnOfStart(parent) : 0;
     if (!(cSCol > parentColumn)) return false;
-    const len = T.d[(id << 5) + F_CH_LEN] | 0;
+    const len = T$.d[(id << 5) + F_CH_LEN] | 0;
     if (len > 1) return false;
     if (len === 1) {
-      const ck = T.d[((T.d[(id << 5) + F_CH_FIRST] | 0) << 5) + F_KIND] | 0;
+      const ck = T$.d[((T$.d[(id << 5) + F_CH_FIRST] | 0) << 5) + F_KIND] | 0;
       if (ck === K_BLOCK_FOLDED || ck === K_BLOCK_LITERAL) return false;
     }
     return kind === K_MAPPING_VALUE || isExplicitMappingKey(id);
@@ -1563,23 +1602,24 @@ function shouldOwnEndComment(id: number, cSOff: number, cEOff: number, cSLine: n
 /** Returns false on `Unexpected`. `next_leading[line]`: the first line from the one with the index `line` on that has a
  * `leadingAttachableNode`. */
 function attachComment(comment: number, document: number): boolean {
-  const cSOff = T.d[(comment << 5) + F_S_OFF] | 0;
-  const cEOff = T.d[(comment << 5) + F_E_OFF] | 0;
-  const cSLine = T.d[(comment << 5) + F_S_LINE] | 0;
+  const T$ = T;
+  const cSOff = T$.d[(comment << 5) + F_S_OFF] | 0;
+  const cEOff = T$.d[(comment << 5) + F_E_OFF] | 0;
+  const cSLine = T$.d[(comment << 5) + F_S_LINE] | 0;
   const cSCol = columnOfStart(comment);
   const commentLine = cSLine;
   if (commentLine - 1 >= 0 && commentLine - 1 < tabLen) {
     const node = tabTrailing[commentLine - 1] | 0;
     if (node >= 0) {
-      const had = T.d[(node << 5) + F_TRAILING] | 0;
-      T.d[(node << 5) + F_TRAILING] = comment;
-      T.d[(node << 5) + F_FLAGS] = (T.d[(node << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
+      const had = T$.d[(node << 5) + F_TRAILING] | 0;
+      T$.d[(node << 5) + F_TRAILING] = comment;
+      T$.d[(node << 5) + F_FLAGS] = (T$.d[(node << 5) + F_FLAGS] | 0) | F_HAS_COMMENTS;
       if (had >= 0) return false;
-      T.d[(comment << 5) + F_PARENT] = node;
+      T$.d[(comment << 5) + F_PARENT] = node;
       return true;
     }
   }
-  const docStartLine = T.d[(document << 5) + F_S_LINE] | 0;
+  const docStartLine = T$.d[(document << 5) + F_S_LINE] | 0;
   let line = commentLine;
   while (line >= docStartLine && line > 0) {
     const idx = line - 1;
@@ -1587,22 +1627,22 @@ function attachComment(comment: number, document: number): boolean {
     if (current < 0) {
       const other = line !== commentLine && idx < tabLen ? tabComment[idx] | 0 : -1;
       if (other >= 0) {
-        current = T.d[(other << 5) + F_PARENT] | 0;
+        current = T$.d[(other << 5) + F_PARENT] | 0;
         if (current < 0) return false;
       } else {
         line = line - 1;
         continue;
       }
     }
-    const ck = T.d[(current << 5) + F_KIND] | 0;
+    const ck = T$.d[(current << 5) + F_KIND] | 0;
     if (ck === K_SEQUENCE || ck === K_MAPPING) {
-      if ((T.d[(current << 5) + F_CH_LEN] | 0) === 0) return false;
-      current = T.d[(current << 5) + F_CH_FIRST] | 0;
+      if ((T$.d[(current << 5) + F_CH_LEN] | 0) === 0) return false;
+      current = T$.d[(current << 5) + F_CH_FIRST] | 0;
     }
-    if ((T.d[(current << 5) + F_KIND] | 0) === K_MAPPING_ITEM) {
-      if ((T.d[(current << 5) + F_CH_LEN] | 0) !== 2) return false;
-      const key = T.d[(current << 5) + F_CH_FIRST] | 0;
-      const value = T.d[(current << 5) + F_CH_LAST] | 0;
+    if ((T$.d[(current << 5) + F_KIND] | 0) === K_MAPPING_ITEM) {
+      if ((T$.d[(current << 5) + F_CH_LEN] | 0) !== 2) return false;
+      const key = T$.d[(current << 5) + F_CH_FIRST] | 0;
+      const value = T$.d[(current << 5) + F_CH_LAST] | 0;
       current = isExplicitMappingKey(key) ? key : value;
     }
     for (;;) {
@@ -1610,7 +1650,7 @@ function attachComment(comment: number, document: number): boolean {
         appendEnd(current, comment);
         return true;
       }
-      const parent = T.d[(current << 5) + F_PARENT] | 0;
+      const parent = T$.d[(current << 5) + F_PARENT] | 0;
       if (parent < 0) break;
       current = parent;
     }
@@ -1619,7 +1659,7 @@ function attachComment(comment: number, document: number): boolean {
   // The first line after that of the comment, in the document.
   if (commentLine < tabLen) {
     const index = nextLeading[commentLine] | 0;
-    if (index < (T.d[(document << 5) + F_E_LINE] | 0) && index < tabLen) {
+    if (index < (T$.d[(document << 5) + F_E_LINE] | 0) && index < tabLen) {
       const node = tabLeading[index] | 0;
       if (node >= 0) {
         appendLeading(node, comment);
@@ -1627,69 +1667,73 @@ function attachComment(comment: number, document: number): boolean {
       }
     }
   }
-  if ((T.d[(document << 5) + F_CH_LEN] | 0) <= 1) return false;
-  appendEnd(T.d[(document << 5) + F_CH_LAST] | 0, comment);
+  if ((T$.d[(document << 5) + F_CH_LEN] | 0) <= 1) return false;
+  appendEnd(T$.d[(document << 5) + F_CH_LAST] | 0, comment);
   return true;
 }
 
 /** `updatePositions`. `hasProps`: there are comments, tags or anchors. Without them, everything in the body of a document is
  * where it is said to be from the start. */
 function updatePositions(id: number, hasProps: boolean): void {
-  if (!stack.enter()) return;
-  const kind = T.d[(id << 5) + F_KIND] | 0;
+  const stack$ = stack;
+  if (!stack$.enter()) return;
+  const T$ = T;
+  const kind = T$.d[(id << 5) + F_KIND] | 0;
   if ((NO_CHILDREN_FIELD[kind] | 0) !== 0) {
-    stack.leave();
+    stack$.leave();
     return;
   }
-  const nChildren = T.d[(id << 5) + F_CH_LEN] | 0;
+  const nChildren = T$.d[(id << 5) + F_CH_LEN] | 0;
   if (nChildren > 0 && (hasProps || kind !== K_DOCUMENT_BODY)) {
-    let child = T.d[(id << 5) + F_CH_FIRST] | 0;
+    let child = T$.d[(id << 5) + F_CH_FIRST] | 0;
     while (child >= 0) {
       updatePositions(child, hasProps);
-      child = T.d[(child << 5) + F_NEXT] | 0;
+      child = T$.d[(child << 5) + F_NEXT] | 0;
     }
   }
   if (kind === K_DOCUMENT && nChildren === 2) {
-    const head = T.d[(id << 5) + F_CH_FIRST] | 0;
-    const body = T.d[(id << 5) + F_CH_LAST] | 0;
-    if ((T.d[(head << 5) + F_S_OFF] | 0) === (T.d[(head << 5) + F_E_OFF] | 0)) {
+    const head = T$.d[(id << 5) + F_CH_FIRST] | 0;
+    const body = T$.d[(id << 5) + F_CH_LAST] | 0;
+    if ((T$.d[(head << 5) + F_S_OFF] | 0) === (T$.d[(head << 5) + F_E_OFF] | 0)) {
       copyStart(head, body);
-      T.d[(head << 5) + F_E_OFF] = T.d[(body << 5) + F_S_OFF] | 0;
-      T.d[(head << 5) + F_E_LINE] = T.d[(body << 5) + F_S_LINE] | 0;
+      T$.d[(head << 5) + F_E_OFF] = T$.d[(body << 5) + F_S_OFF] | 0;
+      T$.d[(head << 5) + F_E_LINE] = T$.d[(body << 5) + F_S_LINE] | 0;
 
-    } else if ((T.d[(body << 5) + F_S_OFF] | 0) === (T.d[(body << 5) + F_E_OFF] | 0)) {
-      T.d[(body << 5) + F_S_OFF] = T.d[(head << 5) + F_E_OFF] | 0;
-      T.d[(body << 5) + F_S_LINE] = T.d[(head << 5) + F_E_LINE] | 0;
+    } else if ((T$.d[(body << 5) + F_S_OFF] | 0) === (T$.d[(body << 5) + F_E_OFF] | 0)) {
+      T$.d[(body << 5) + F_S_OFF] = T$.d[(head << 5) + F_E_OFF] | 0;
+      T$.d[(body << 5) + F_S_LINE] = T$.d[(head << 5) + F_E_LINE] | 0;
 
       copyEnd(body, head);
     }
   }
   // start
-  if ((T.d[(id << 5) + F_EN_LEN] | 0) > 0) updateStartFrom(id, T.d[(id << 5) + F_EN_FIRST] | 0);
+  if ((T$.d[(id << 5) + F_EN_LEN] | 0) > 0) updateStartFrom(id, T$.d[(id << 5) + F_EN_FIRST] | 0);
   if (nChildren > 0) {
-    const firstChild = T.d[(id << 5) + F_CH_FIRST] | 0;
+    const firstChild = T$.d[(id << 5) + F_CH_FIRST] | 0;
     updateStartFrom(id, firstChild);
-    if ((T.d[(firstChild << 5) + F_LD_LEN] | 0) > 0) updateStartFrom(id, T.d[(firstChild << 5) + F_LD_FIRST] | 0);
-    if ((T.d[(firstChild << 5) + F_TAG] | 0) >= 0) updateStartFrom(id, T.d[(firstChild << 5) + F_TAG] | 0);
-    if ((T.d[(firstChild << 5) + F_ANCHOR] | 0) >= 0) updateStartFrom(id, T.d[(firstChild << 5) + F_ANCHOR] | 0);
+    if ((T$.d[(firstChild << 5) + F_LD_LEN] | 0) > 0) updateStartFrom(id, T$.d[(firstChild << 5) + F_LD_FIRST] | 0);
+    if ((T$.d[(firstChild << 5) + F_TAG] | 0) >= 0) updateStartFrom(id, T$.d[(firstChild << 5) + F_TAG] | 0);
+    if ((T$.d[(firstChild << 5) + F_ANCHOR] | 0) >= 0) updateStartFrom(id, T$.d[(firstChild << 5) + F_ANCHOR] | 0);
   }
   // end
-  if ((T.d[(id << 5) + F_EN_LEN] | 0) > 0) updateEndFrom(id, T.d[(id << 5) + F_EN_LAST] | 0);
+  if ((T$.d[(id << 5) + F_EN_LEN] | 0) > 0) updateEndFrom(id, T$.d[(id << 5) + F_EN_LAST] | 0);
   if (nChildren > 0) {
-    const last = T.d[(id << 5) + F_CH_LAST] | 0;
+    const last = T$.d[(id << 5) + F_CH_LAST] | 0;
     updateEndFrom(id, last);
-    const trailing = T.d[(last << 5) + F_TRAILING] | 0;
+    const trailing = T$.d[(last << 5) + F_TRAILING] | 0;
     if (trailing >= 0) updateEndFrom(id, trailing);
   }
-  stack.leave();
+  stack$.leave();
 }
 
 function updateStartFrom(id: number, from: number): void {
-  if ((T.d[(from << 5) + F_S_OFF] | 0) < (T.d[(id << 5) + F_S_OFF] | 0)) copyStart(id, from);
+  const T$ = T;
+  if ((T$.d[(from << 5) + F_S_OFF] | 0) < (T$.d[(id << 5) + F_S_OFF] | 0)) copyStart(id, from);
 }
 
 function updateEndFrom(id: number, from: number): void {
-  if ((T.d[(from << 5) + F_E_OFF] | 0) > (T.d[(id << 5) + F_E_OFF] | 0)) copyEnd(id, from);
+  const T$ = T;
+  if ((T$.d[(from << 5) + F_E_OFF] | 0) > (T$.d[(id << 5) + F_E_OFF] | 0)) copyEnd(id, from);
 }
 
 // ---------------------------------------------------------------------------------------------- `parse`
@@ -1752,37 +1796,40 @@ export function build(src: Uint8Array, len: number): number {
   lastPlace = 0;
   lastPlaceCol = 0;
   colLine = 0;
-  comments.reset();
+  const comments$ = comments;
+  comments$.reset();
   pending.reset();
   hasProperties = false;
   propTop = 0;
   stack.reset();
-  T.n = 0;
-  T.root = -1;
+  const T$ = T;
+  T$.n = 0;
+  T$.root = -1;
   // A key, its `:` and its value are three tokens and five nodes.
-  T.ensure(nTokens * 2 + 16);
+  T$.ensure(nTokens * 2 + 16);
 
   if (!transformDocuments(nDocuments)) {
     // What has been made last is next to what cannot be.
-    const lastNode = T.n - 1;
-    return noteRefusal(MSG_CANNOT_BE_FORMATTED, lastNode >= 0 ? T.d[(lastNode << 5) + F_S_OFF] | 0 : 0);
+    const lastNode = T$.n - 1;
+    return noteRefusal(MSG_CANNOT_BE_FORMATTED, lastNode >= 0 ? T$.d[(lastNode << 5) + F_S_OFF] | 0 : 0);
   }
   const root = newNodeAt(K_ROOT, 0, len);
-  T.root = root;
-  const nDocs = documentChildren.len;
-  for (let i = 0; i < nDocs; i++) appendChild(root, documentChildren.data[i] | 0);
-  const nComments = comments.len;
-  if (sortKeys.length < T.n) sortKeys = new Int32Array(T.n + 64);
+  T$.root = root;
+  const documentChildren$ = documentChildren;
+  const nDocs = documentChildren$.len;
+  for (let i = 0; i < nDocs; i++) appendChild(root, documentChildren$.data[i] | 0);
+  const nComments = comments$.len;
+  if (sortKeys.length < T$.n) sortKeys = new Int32Array(T$.n + 64);
   for (let i = 0; i < nComments; i++) {
-    const c = comments.data[i] | 0;
-    sortKeys[c] = T.d[(c << 5) + F_S_OFF] | 0;
+    const c = comments$.data[i] | 0;
+    sortKeys[c] = T$.d[(c << 5) + F_S_OFF] | 0;
   }
-  sortInt32ByKey(comments.data, 0, nComments, sortKeys);
+  sortInt32ByKey(comments$.data, 0, nComments, sortKeys);
 
   // `attachComments`, if there are comments to attach.
   let allAttached = true;
   for (let i = 0; i < nComments; i++) {
-    if ((T.d[((comments.data[i] | 0) << 5) + F_PARENT] | 0) < 0) {
+    if ((T$.d[((comments$.data[i] | 0) << 5) + F_PARENT] | 0) < 0) {
       allAttached = false;
       break;
     }
@@ -1791,7 +1838,7 @@ export function build(src: Uint8Array, len: number): number {
     updatePositions(root, hasProperties || nComments > 0);
     return 0;
   }
-  const lines = T.d[(root << 5) + F_E_LINE] | 0;
+  const lines = T$.d[(root << 5) + F_E_LINE] | 0;
   growTable(lines + 2);
   tabLen = lines;
   for (let i = 0; i < lines; i++) {
@@ -1801,8 +1848,8 @@ export function build(src: Uint8Array, len: number): number {
     tabNode[i] = -1;
   }
   for (let i = 0; i < nComments; i++) {
-    const comment = comments.data[i] | 0;
-    const l = (T.d[(comment << 5) + F_S_LINE] | 0) - 1;
+    const comment = comments$.data[i] | 0;
+    const l = (T$.d[(comment << 5) + F_S_LINE] | 0) - 1;
     if (l >= 0 && l < lines) tabComment[l] = comment;
   }
   initNodeTable(root);
@@ -1812,13 +1859,13 @@ export function build(src: Uint8Array, len: number): number {
   }
   let restDocuments = 0;
   for (let i = 0; i < nComments; i++) {
-    const comment = comments.data[i] | 0;
-    if ((T.d[(comment << 5) + F_PARENT] | 0) >= 0) continue;
-    while (restDocuments + 1 < nDocs && (T.d[(comment << 5) + F_S_LINE] | 0) > (T.d[((documentChildren.data[restDocuments] | 0) << 5) + F_E_LINE] | 0)) {
+    const comment = comments$.data[i] | 0;
+    if ((T$.d[(comment << 5) + F_PARENT] | 0) >= 0) continue;
+    while (restDocuments + 1 < nDocs && (T$.d[(comment << 5) + F_S_LINE] | 0) > (T$.d[((documentChildren$.data[restDocuments] | 0) << 5) + F_E_LINE] | 0)) {
       restDocuments = restDocuments + 1;
     }
-    if (restDocuments >= nDocs || !attachComment(comment, documentChildren.data[restDocuments] | 0)) {
-      return noteRefusal(MSG_MISPLACED_COMMENT, T.d[(comment << 5) + F_S_OFF] | 0);
+    if (restDocuments >= nDocs || !attachComment(comment, documentChildren$.data[restDocuments] | 0)) {
+      return noteRefusal(MSG_MISPLACED_COMMENT, T$.d[(comment << 5) + F_S_OFF] | 0);
     }
   }
   updatePositions(root, true);

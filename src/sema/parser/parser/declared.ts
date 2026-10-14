@@ -361,50 +361,51 @@ export class Declared {
   hasOddExports(): boolean {
     let isUndeclared = false;
     let anyLocal = false;
-    for (let i = 0; i < hir.nExports; i++) {
+    const hir$ = hir;
+    for (let i = 0; i < hir$.nExports; i++) {
       if (isLocalExport(i)) {
         anyLocal = true;
         break;
       }
     }
-    const ids = hir.ids;
-    const bodyStart = hir.bodyStart | 0;
-    const bodyLen = hir.bodyLen | 0;
+    const ids = hir$.ids;
+    const bodyStart = hir$.bodyStart | 0;
+    const bodyLen = hir$.bodyLen | 0;
     if (anyLocal) {
       // The names that a statement of the file declares in plain sight. Any other may be undeclared.
       this.last = ((this.last | 0) + 1) | 0;
       const atTop = this.last;
       for (let k = 0; k < bodyLen; k++) {
         const s = ids[bodyStart + k] | 0;
-        if (s < 0 || s >= hir.nStmts) continue;
-        const tag = hir.stmtTag[s] | 0;
+        if (s < 0 || s >= hir$.nStmts) continue;
+        const tag = hir$.stmtTag[s] | 0;
         if (tag === STMT_FN) {
-          this.addTo(atTop, hir.fnName[hir.stmtA[s] | 0] | 0);
+          this.addTo(atTop, hir$.fnName[hir$.stmtA[s] | 0] | 0);
         } else if (tag === STMT_CLASS) {
-          this.addTo(atTop, hir.className[hir.stmtA[s] | 0] | 0);
+          this.addTo(atTop, hir$.className[hir$.stmtA[s] | 0] | 0);
         } else if (tag === STMT_VAR) {
-          const ls = hir.stmtA[s] | 0;
-          const ln = hir.stmtB[s] | 0;
+          const ls = hir$.stmtA[s] | 0;
+          const ln = hir$.stmtB[s] | 0;
           for (let j = 0; j < ln; j++) {
             const d = ids[ls + j] | 0;
-            const pat = hir.varDeclPat[d] | 0;
-            if (pat >= 0 && (hir.patTag[pat] | 0) === PAT_IDENT) this.addTo(atTop, hir.patA[pat] | 0);
+            const pat = hir$.varDeclPat[d] | 0;
+            if (pat >= 0 && (hir$.patTag[pat] | 0) === PAT_IDENT) this.addTo(atTop, hir$.patA[pat] | 0);
           }
         }
       }
-      for (let i = 0; i < hir.nImports; i++) {
-        this.addTo(atTop, hir.importDefault[i] | 0);
-        this.addTo(atTop, hir.importNamespace[i] | 0);
-        const ns = hir.importNamedStart[i] | 0;
-        const nl = hir.importNamedLen[i] | 0;
-        for (let j = 0; j < nl; j++) this.addTo(atTop, hir.importSpecLocal[ids[ns + j] | 0] | 0);
+      for (let i = 0; i < hir$.nImports; i++) {
+        this.addTo(atTop, hir$.importDefault[i] | 0);
+        this.addTo(atTop, hir$.importNamespace[i] | 0);
+        const ns = hir$.importNamedStart[i] | 0;
+        const nl = hir$.importNamedLen[i] | 0;
+        for (let j = 0; j < nl; j++) this.addTo(atTop, hir$.importSpecLocal[ids[ns + j] | 0] | 0);
       }
-      for (let i = 0; i < hir.nExports && !isUndeclared; i++) {
+      for (let i = 0; i < hir$.nExports && !isUndeclared; i++) {
         if (!isLocalExport(i)) continue;
-        const ns = hir.exportItemsStart[i] | 0;
-        const nl = hir.exportItemsLen[i] | 0;
+        const ns = hir$.exportItemsStart[i] | 0;
+        const nl = hir$.exportItemsLen[i] | 0;
         for (let j = 0; j < nl; j++) {
-          if (!this.isIn(atTop, hir.exportSpecLocal[ids[ns + j] | 0] | 0)) {
+          if (!this.isIn(atTop, hir$.exportSpecLocal[ids[ns + j] | 0] | 0)) {
             isUndeclared = true;
             break;
           }
@@ -416,40 +417,40 @@ export class Declared {
     let isTwice = false;
     for (let k = 0; k < bodyLen && !isTwice; k++) {
       const s = ids[bodyStart + k] | 0;
-      if (s < 0 || s >= hir.nStmts) continue;
-      const tag = hir.stmtTag[s] | 0;
+      if (s < 0 || s >= hir$.nStmts) continue;
+      const tag = hir$.stmtTag[s] | 0;
       if (tag === STMT_EXPORT_DEFAULT) {
         isTwice = this.exportOnce(A_default, names);
       } else if (tag === STMT_EXPORT_STAR) {
-        isTwice = this.exportOnce(hir.stmtB[s] | 0, names);
+        isTwice = this.exportOnce(hir$.stmtB[s] | 0, names);
       } else if (tag === STMT_EXPORT_NAMED) {
-        const e = hir.stmtA[s] | 0;
-        const ns = hir.exportItemsStart[e] | 0;
-        const nl = hir.exportItemsLen[e] | 0;
+        const e = hir$.stmtA[s] | 0;
+        const ns = hir$.exportItemsStart[e] | 0;
+        const nl = hir$.exportItemsLen[e] | 0;
         for (let j = 0; j < nl; j++) {
-          if (this.exportOnce(hir.exportSpecExported[ids[ns + j] | 0] | 0, names)) {
+          if (this.exportOnce(hir$.exportSpecExported[ids[ns + j] | 0] | 0, names)) {
             isTwice = true;
             break;
           }
         }
       } else if (tag === STMT_FN) {
-        const f = hir.stmtA[s] | 0;
-        const fl = hir.fnFlags[f] | 0;
-        isTwice = (fl & FLAG_EXPORT) !== 0 && this.exportOnce((fl & FLAG_DEFAULT) !== 0 ? A_default : hir.fnName[f] | 0, names);
+        const f = hir$.stmtA[s] | 0;
+        const fl = hir$.fnFlags[f] | 0;
+        isTwice = (fl & FLAG_EXPORT) !== 0 && this.exportOnce((fl & FLAG_DEFAULT) !== 0 ? A_default : hir$.fnName[f] | 0, names);
       } else if (tag === STMT_CLASS) {
-        const c = hir.stmtA[s] | 0;
-        const fl = hir.classFlags[c] | 0;
-        isTwice = (fl & FLAG_EXPORT) !== 0 && this.exportOnce((fl & FLAG_DEFAULT) !== 0 ? A_default : hir.className[c] | 0, names);
+        const c = hir$.stmtA[s] | 0;
+        const fl = hir$.classFlags[c] | 0;
+        isTwice = (fl & FLAG_EXPORT) !== 0 && this.exportOnce((fl & FLAG_DEFAULT) !== 0 ? A_default : hir$.className[c] | 0, names);
       } else if (tag === STMT_VAR) {
-        const ls = hir.stmtA[s] | 0;
-        const ln = hir.stmtB[s] | 0;
+        const ls = hir$.stmtA[s] | 0;
+        const ln = hir$.stmtB[s] | 0;
         for (let j = 0; j < ln; j++) {
           const d = ids[ls + j] | 0;
-          if (((hir.varDeclFlags[d] | 0) & FLAG_EXPORT) === 0) continue;
-          const pat = hir.varDeclPat[d] | 0;
+          if (((hir$.varDeclFlags[d] | 0) & FLAG_EXPORT) === 0) continue;
+          const pat = hir$.varDeclPat[d] | 0;
           // What a pattern binds is not looked at here.
-          if (pat >= 0 && (hir.patTag[pat] | 0) === PAT_IDENT) {
-            if (this.exportOnce(hir.patA[pat] | 0, names)) {
+          if (pat >= 0 && (hir$.patTag[pat] | 0) === PAT_IDENT) {
+            if (this.exportOnce(hir$.patA[pat] | 0, names)) {
               isTwice = true;
               break;
             }
@@ -469,7 +470,8 @@ export class Declared {
 }
 
 function isLocalExport(i: number): boolean {
-  return (hir.exportHasModuleSpecifier[i] | 0) === 0 && (hir.exportItemsLen[i] | 0) !== 0;
+  const hir$ = hir;
+  return (hir$.exportHasModuleSpecifier[i] | 0) === 0 && (hir$.exportItemsLen[i] | 0) !== 0;
 }
 
 // ───────────────────────────── the parser's side ─────────────────────────────
@@ -478,7 +480,8 @@ function isLocalExport(i: number): boolean {
 export const declared: Declared = new Declared();
 
 export function mayRedeclare(): void {
-  hir.rareSyntax = hir.rareSyntax | RARE_MAY_REDECLARE;
+  const hir$ = hir;
+  hir$.rareSyntax = hir$.rareSyntax | RARE_MAY_REDECLARE;
   declared.isOn = false;
 }
 
@@ -488,7 +491,8 @@ export function declare(name: number, kind: number): void {
 }
 
 function declareName(name: number, kind: number): void {
-  if (declared.isOn && declared.declareName(name, kind)) mayRedeclare();
+  const declared$ = declared;
+  if (declared$.isOn && declared$.declareName(name, kind)) mayRedeclare();
 }
 
 /** The same for the names that `pat` binds. */
@@ -497,8 +501,9 @@ export function declarePattern(pat: number, kind: number): void {
 }
 
 function declareNamesOf(pat: number, kind: number): void {
-  if (pat >= 0 && pat < hir.nPats && (hir.patTag[pat] | 0) === PAT_IDENT) {
-    if (declared.declareName(hir.patA[pat] | 0, kind)) mayRedeclare();
+  const hir$ = hir;
+  if (pat >= 0 && pat < hir$.nPats && (hir$.patTag[pat] | 0) === PAT_IDENT) {
+    if (declared.declareName(hir$.patA[pat] | 0, kind)) mayRedeclare();
   } else {
     declareNamesIn(pat, kind);
   }
@@ -506,23 +511,26 @@ function declareNamesOf(pat: number, kind: number): void {
 
 /** The parts of a pattern are right before it in the list. */
 function declareNamesIn(pat: number, kind: number): void {
-  if (pat < 0 || pat >= hir.nPats) return;
-  const start = hir.patPos[pat] | 0;
+  const hir$ = hir;
+  if (pat < 0 || pat >= hir$.nPats) return;
+  const start = hir$.patPos[pat] | 0;
   for (let index = (pat - 1) | 0; index >= 0; index = (index - 1) | 0) {
-    if ((hir.patPos[index] | 0) < start) break;
-    if ((hir.patTag[index] | 0) === PAT_IDENT) declareName(hir.patA[index] | 0, kind);
+    if ((hir$.patPos[index] | 0) < start) break;
+    if ((hir$.patTag[index] | 0) === PAT_IDENT) declareName(hir$.patA[index] | 0, kind);
   }
 }
 
 /** A block, the head and body of a `for`, the cases of a `switch`, a `catch` clause, the members of an enum. */
 export function openScope(): void {
-  declared.unopened = ((declared.unopened | 0) + 1) | 0;
+  const declared$ = declared;
+  declared$.unopened = ((declared$.unopened | 0) + 1) | 0;
 }
 
 /** The body of a namespace. */
 export function openScopeForVars(): void {
-  if (declared.isOn) openLevelForVars();
-  else declared.unopened = ((declared.unopened | 0) + 1) | 0;
+  const declared$ = declared;
+  if (declared$.isOn) openLevelForVars();
+  else declared$.unopened = ((declared$.unopened | 0) + 1) | 0;
 }
 
 function openLevelForVars(): void {
@@ -547,8 +555,9 @@ export function noteParameters(typesStart: number, typesLen: number, valuesStart
 
 /** The block of a function or a static block. A function without one has nothing that its parameters could clash with. */
 export function openFunction(): void {
-  if (declared.isOn) openLevelOfFunction();
-  else declared.unopened = ((declared.unopened | 0) + 1) | 0;
+  const declared$ = declared;
+  if (declared$.isOn) openLevelOfFunction();
+  else declared$.unopened = ((declared$.unopened | 0) + 1) | 0;
 }
 
 function openLevelOfFunction(): void {
@@ -562,13 +571,14 @@ function openLevelOfFunction(): void {
   d.paramTypesLen = 0;
   d.paramValuesStart = 0;
   d.paramValuesLen = 0;
+  const hir$ = hir;
   for (let i = 0; i < tl; i++) {
-    const tp = hir.ids[(ts + i) | 0] | 0;
-    if (tp >= 0 && tp < hir.nTypeParams) declareName(hir.typeParamName[tp] | 0, DECLARES_TYPE_PARAMETER);
+    const tp = hir$.ids[(ts + i) | 0] | 0;
+    if (tp >= 0 && tp < hir$.nTypeParams) declareName(hir$.typeParamName[tp] | 0, DECLARES_TYPE_PARAMETER);
   }
   for (let i = 0; i < vl; i++) {
-    const pr = hir.ids[(vs + i) | 0] | 0;
-    if (pr >= 0 && pr < hir.nParams && d.isOn) declareNamesOf(hir.paramPat[pr] | 0, DECLARES_PARAMETER);
+    const pr = hir$.ids[(vs + i) | 0] | 0;
+    if (pr >= 0 && pr < hir$.nParams && d.isOn) declareNamesOf(hir$.paramPat[pr] | 0, DECLARES_PARAMETER);
   }
 }
 
@@ -580,8 +590,9 @@ export function closeScope(): void {
 
 /** At the end of a JavaScript file: `rare::ODD_EXPORT`. */
 export function noteOddExports(): void {
-  if (!lx.isOxc || !p.isJavascript || !hir.hasModuleSyntax) return;
+  const hir$ = hir;
+  if (!lx.isOxc || !p.isJavascript || !hir$.hasModuleSyntax) return;
   // oxlint prints nothing but the parser's errors about a file that doesn't parse, and the tree has holes then.
-  if (hasFailed() || hir.hasParseDiagnostics) return;
-  if (declared.hasOddExports()) hir.rareSyntax = hir.rareSyntax | RARE_ODD_EXPORT;
+  if (hasFailed() || hir$.hasParseDiagnostics) return;
+  if (declared.hasOddExports()) hir$.rareSyntax = hir$.rareSyntax | RARE_ODD_EXPORT;
 }

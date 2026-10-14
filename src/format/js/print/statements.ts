@@ -218,13 +218,14 @@ export function expressionStatementNeedsSemicolon(statement: number, expression:
   const cm = cxOf(f).comments;
   let e = expression;
   let isTarget = false;
+  const hir$ = hir;
   while (true) {
     // `/** @type {T} */ (a).b` keeps its parentheses.
     if (cm.hasTypeCastComments && exprIsParenthesized(e)) {
       const first = exprParenFirst(e);
       const count = exprParenCount(e);
       for (let i = 0; i < count; i++) {
-        if (followsTypeCastComment(hir.parenStart[(first + i) | 0] | 0, f)) return true;
+        if (followsTypeCastComment(hir$.parenStart[(first + i) | 0] | 0, f)) return true;
       }
     }
     const tag = exprTag(e);
@@ -702,7 +703,8 @@ function writeForInOrOfHead(left: number, keyword: number, right: number, f: For
   const to = cm.to;
   commentPlacements(from, to, rightStart, f);
   const n = to - from;
-  const placements = PLACEMENTS.data;
+  const PLACEMENTS$ = PLACEMENTS;
+  const placements = PLACEMENTS$.data;
 
   let trailingCount = 0;
   while (trailingCount < n && !commentPlacementLeads(placements[trailingCount] | 0)) trailingCount = (trailingCount + 1) | 0;
@@ -722,13 +724,13 @@ function writeForInOrOfHead(left: number, keyword: number, right: number, f: For
     return;
   }
   for (let k = 0; k < n; k++) {
-    if (!commentPlacementLeads(PLACEMENTS.data[k] | 0)) formatTrailingCommentsRange((from + k) | 0, (from + k + 1) | 0, f);
+    if (!commentPlacementLeads(PLACEMENTS$.data[k] | 0)) formatTrailingCommentsRange((from + k) | 0, (from + k + 1) | 0, f);
   }
   f.space();
   f.token(keyword);
   f.space();
   for (let k = 0; k < n; k++) {
-    if (commentPlacementLeads(PLACEMENTS.data[k] | 0)) formatLeadingCommentsRange((from + k) | 0, (from + k + 1) | 0, f);
+    if (commentPlacementLeads(PLACEMENTS$.data[k] | 0)) formatLeadingCommentsRange((from + k) | 0, (from + k + 1) | 0, f);
   }
   fmtExpr(right, f);
 }
@@ -887,8 +889,9 @@ export function writeLabeledStatement(statement: number, body: number, f: Format
   commentPlacements(from, to, bodyStart, f);
   const n = to - from;
   let hasBeforeNode = false;
+  const PLACEMENTS$ = PLACEMENTS;
   for (let k = 0; k < n; k++) {
-    const p = PLACEMENTS.data[k] | 0;
+    const p = PLACEMENTS$.data[k] | 0;
     if (p === COMMENT_PLACEMENT_OWN_LINE || p === COMMENT_PLACEMENT_END_OF_LINE) {
       if (cm.isSuppressionComment((from + k) | 0)) {
         stmtSpan(statement);
@@ -901,17 +904,17 @@ export function writeLabeledStatement(statement: number, body: number, f: Format
     } else if (p === COMMENT_PLACEMENT_BEFORE_NODE) hasBeforeNode = true;
   }
   for (let k = 0; k < n; k++) {
-    const p = PLACEMENTS.data[k] | 0;
+    const p = PLACEMENTS$.data[k] | 0;
     if (p === COMMENT_PLACEMENT_OWN_LINE || p === COMMENT_PLACEMENT_END_OF_LINE) formatLeadingCommentsRange((from + k) | 0, (from + k + 1) | 0, f);
   }
   f.sourceText(labelStart, labelEnd);
   for (let k = 0; k < n; k++) {
-    if ((PLACEMENTS.data[k] | 0) === COMMENT_PLACEMENT_BEFORE_TOKEN) formatTrailingCommentsRange((from + k) | 0, (from + k + 1) | 0, f);
+    if ((PLACEMENTS$.data[k] | 0) === COMMENT_PLACEMENT_BEFORE_TOKEN) formatTrailingCommentsRange((from + k) | 0, (from + k + 1) | 0, f);
   }
   f.token(COLON_TOKEN);
   f.maybeSpace(!isEmpty || hasBeforeNode);
   for (let k = 0; k < n; k++) {
-    if ((PLACEMENTS.data[k] | 0) === COMMENT_PLACEMENT_BEFORE_NODE) formatLeadingCommentsRange((from + k) | 0, (from + k + 1) | 0, f);
+    if ((PLACEMENTS$.data[k] | 0) === COMMENT_PLACEMENT_BEFORE_NODE) formatLeadingCommentsRange((from + k) | 0, (from + k + 1) | 0, f);
   }
   fmtStmt(body, f);
 }

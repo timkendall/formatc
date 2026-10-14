@@ -43,8 +43,9 @@ function isSource(text: Uint8Array, s: number, e: number, lit: string): boolean 
  */
 function findNodeAtOffset(text: Uint8Array, offset: number, end: number, path: number[]): void {
   path.length = 0;
-  const nodes = tree.nodes;
-  const nodeCount = tree.nodeCount;
+  const tree$ = tree;
+  const nodes = tree$.nodes;
+  const nodeCount = tree$.nodeCount;
   if (!contains(offset, 0, text.length, end)) return;
   path.push(STEP_ROOT);
   // The nodes among which the next step is looked for.
@@ -126,6 +127,7 @@ function calculateRange(text: Uint8Array, startIn: number, endIn: number): boole
   }
   if (startPath.length === 0 || endPath.length === 0) return false;
   // Prettier's `findCommonAncestor`
+  const tree$ = tree;
   for (let i = startPath.length - 1; i >= 0; i--) {
     const step = startPath[i];
     if (step !== STEP_ROOT && step % 2 === 1) continue;
@@ -142,8 +144,8 @@ function calculateRange(text: Uint8Array, startIn: number, endIn: number): boole
       rangeB = text.length;
     } else {
       const b = (step / 2) << 3;
-      rangeA = tree.nodes[b + N_START] | 0;
-      rangeB = tree.nodes[b + N_END] | 0;
+      rangeA = tree$.nodes[b + N_START] | 0;
+      rangeB = tree$.nodes[b + N_END] | 0;
     }
     return true;
   }

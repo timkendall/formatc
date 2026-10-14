@@ -4,7 +4,8 @@ import { FOLD, caseFold } from "./unicode.ts";
 
 function fold(cp: number): number[] {
   caseFold(cp);
-  return [FOLD.c0, FOLD.c1, FOLD.c2].slice(0, FOLD.n);
+  const FOLD$ = FOLD;
+  return [FOLD$.c0, FOLD$.c1, FOLD$.c2].slice(0, FOLD$.n);
 }
 
 const tests: [string, () => void][] = [

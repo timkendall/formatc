@@ -2206,9 +2206,10 @@ export function printCaptureToText(st: Storage, handle: number, source: Uint8Arr
   const start = out.len;
   // It is written to the document again, where a line break is `\n` whatever the file gets, and where the printer
   // marks the line breaks of texts for Markdown. Prettier: `printDocToString(.., { endOfLine: "lf" })`.
-  const saved = printer.stack;
-  const r = printer.print(st, handle + 1, handle + 1 + (st.a[handle] | 0), source, options, 0, false, out);
-  printer.stack = saved;
+  const printer$ = printer;
+  const saved = printer$.stack;
+  const r = printer$.print(st, handle + 1, handle + 1 + (st.a[handle] | 0), source, options, 0, false, out);
+  printer$.stack = saved;
   if (r < 0) out.len = start;
   return r;
 }

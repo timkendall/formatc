@@ -67,17 +67,19 @@ export function identifierOrPattern(): number {
 /** `parseBindingIdentifier` */
 export function bindingIdentifier(): number {
   if (!isBindingIdentifier()) return missingBindingIdentifier(0);
-  const name = lx.atom | 0;
-  noteIdentifier(name, lx.start);
-  const pat = pushPatIdent(lx.start, lx.end, name);
+  const lx$ = lx;
+  const name = lx$.atom | 0;
+  noteIdentifier(name, lx$.start);
+  const pat = pushPatIdent(lx$.start, lx$.end, name);
   nextAfterName();
   return pat;
 }
 
 /** `parseBindingIdentifierWithDiagnostic`, at a token that is none. Without recovery: NONE. */
 export function missingBindingIdentifier(codeOfPrivateName: number): number {
-  const full = lx.fullStart | 0;
-  const end = lx.end | 0;
+  const lx$ = lx;
+  const full = lx$.fullStart | 0;
+  const end = lx$.end | 0;
   const name = missingIdentifier(0, codeOfPrivateName);
   const pos_ = p.outPos | 0;
   if (name === ATOM_NONE) return NONE;
@@ -94,36 +96,40 @@ function arrayBindingPattern(): number {
 }
 
 function arrayBindingPatternBody(): number {
-  const start = lx.start | 0;
+  const lx$ = lx;
+  const start = lx$.start | 0;
   next();
   const saved = enterContext(0, disallowInIfBracketsEndIt());
-  const base = s.patElems.len;
+  const s$ = s;
+  const base = s$.patElems.len;
   const lists = enterList(LK_ARRAY_BINDING_ELEMENTS);
+  const hir$ = hir;
   while (isInList(T_CLOSE_BRACKET) && isAtElement(LK_ARRAY_BINDING_ELEMENTS)) {
-    const element = lx.fullStart | 0;
+    const element = lx$.fullStart | 0;
     // `parseArrayBindingElement`
-    if (lx.token === T_COMMA) {
+    if (lx$.token === T_COMMA) {
       // `finishNode(NewOmittedExpression(), nodePos())`
-      const comma = lx.start | 0;
-      const full = lx.fullStart | 0;
+      const comma = lx$.start | 0;
+      const full = lx$.fullStart | 0;
       const pat = pushPatMissing(comma, full);
-      s.patElems.push(hir.pushPatElem(pat, NONE, 0, comma, full));
+      s$.patElems.push(hir$.pushPatElem(pat, NONE, 0, comma, full));
     } else {
-      const elStart = lx.start | 0;
+      const elStart = lx$.start | 0;
       const isRest = eat(T_DOT_DOT_DOT);
       const pat = identifierOrPattern();
       const def = optionalInitializer();
-      s.patElems.push(hir.pushPatElem(pat, def, isRest ? 1 : 0, elStart, lx.fullStart));
+      s$.patElems.push(hir$.pushPatElem(pat, def, isRest ? 1 : 0, elStart, lx$.fullStart));
       // `checkGrammarBindingElement`
-      if (isRest && lx.token === T_COMMA && peek() === T_CLOSE_BRACKET) flag(DK_GRAMMAR, 1013, lx.start, lx.end);
+      if (isRest && lx$.token === T_COMMA && peek() === T_CLOSE_BRACKET) flag(DK_GRAMMAR, 1013, lx$.start, lx$.end);
     }
     if (!eat(T_COMMA) && !goesOnWithoutComma(LK_ARRAY_BINDING_ELEMENTS, element)) break;
   }
   leaveList(lists);
-  p.context = saved;
+  const p$ = p;
+  p$.context = saved;
   expect(T_CLOSE_BRACKET);
-  const elements = takeList(s.patElems, base);
-  return pushPatArray(start, lx.fullStart, elements, p.outLen);
+  const elements = takeList(s$.patElems, base);
+  return pushPatArray(start, lx$.fullStart, elements, p$.outLen);
 }
 
 /** `parseObjectBindingPattern` */
@@ -135,52 +141,57 @@ function objectBindingPattern(): number {
 }
 
 function objectBindingPatternBody(): number {
-  const start = lx.start | 0;
+  const lx$ = lx;
+  const start = lx$.start | 0;
   next();
   const saved = enterContext(0, disallowInIfBracketsEndIt());
-  const base = s.patProps.len;
+  const s$ = s;
+  const base = s$.patProps.len;
   const lists = enterList(LK_OBJECT_BINDING_ELEMENTS);
+  const p$ = p;
+  const hir$ = hir;
   while (isInList(T_CLOSE_BRACE) && isAtElement(LK_OBJECT_BINDING_ELEMENTS)) {
-    const element = lx.fullStart | 0;
+    const element = lx$.fullStart | 0;
     // `parseObjectBindingElement`
-    const pos_ = lx.start | 0;
+    const pos_ = lx$.start | 0;
     let property: number;
     if (!eat(T_DOT_DOT_DOT)) {
       property = objectBindingElement(pos_);
-    } else if (p.recovers) {
+    } else if (p$.recovers) {
       property = restBindingElement(pos_);
     } else {
-      const keyPos = lx.start | 0;
+      const keyPos = lx$.start | 0;
       const value = bindingIdentifier();
-      property = hir.pushPatProp(PK_NONE, NONE, NK_IDENTIFIER, value, NONE, 1, pos_, keyPos, lx.fullStart);
+      property = hir$.pushPatProp(PK_NONE, NONE, NK_IDENTIFIER, value, NONE, 1, pos_, keyPos, lx$.fullStart);
     }
-    s.patProps.push(property);
+    s$.patProps.push(property);
     if (!eat(T_COMMA)) {
       if (goesOnWithoutComma(LK_OBJECT_BINDING_ELEMENTS, element)) continue;
       break;
     }
-    if ((hir.patPropIsRest[property] | 0) !== 0 && lx.token === T_CLOSE_BRACE) {
-      const end = lx.fullStart | 0;
+    if ((hir$.patPropIsRest[property] | 0) !== 0 && lx$.token === T_CLOSE_BRACE) {
+      const end = lx$.fullStart | 0;
       flag(DK_GRAMMAR, 1013, end - 1, end);
     }
   }
   leaveList(lists);
-  p.context = saved;
+  p$.context = saved;
   expect(T_CLOSE_BRACE);
-  const properties = takeList(s.patProps, base);
-  return pushPatObject(start, lx.fullStart, properties, p.outLen);
+  const properties = takeList(s$.patProps, base);
+  return pushPatObject(start, lx$.fullStart, properties, p$.outLen);
 }
 
 /** The same after `...`, where `checkGrammarBindingElement` reports a property name and an initializer. */
 function restBindingElement(pos_: number): number {
   const isIdentifier = isBindingIdentifier();
   const property = objectBindingElement(pos_);
-  hir.patPropIsRest[property] = 1;
+  const hir$ = hir;
+  hir$.patPropIsRest[property] = 1;
   // `...a`: the identifier is the binding, and there is no property name.
-  const value = hir.patPropValue[property] | 0;
-  if (isIdentifier && value >= 0 && (hir.patPos[value] | 0) === (hir.patPropKeyPos[property] | 0)) {
-    hir.patPropKeyKind[property] = PK_NONE;
-    hir.patPropKeyVal[property] = NONE;
+  const value = hir$.patPropValue[property] | 0;
+  if (isIdentifier && value >= 0 && (hir$.patPos[value] | 0) === (hir$.patPropKeyPos[property] | 0)) {
+    hir$.patPropKeyKind[property] = PK_NONE;
+    hir$.patPropKeyVal[property] = NONE;
   }
   return property;
 }
@@ -188,25 +199,28 @@ function restBindingElement(pos_: number): number {
 /** `parseObjectBindingElement`, after its `...` if it has one. `pos_`: its first token. Returns the row. */
 function objectBindingElement(pos_: number): number {
   const isIdent = isBindingIdentifier();
-  const isBigint = lx.token === T_BIG_INT;
-  const bigintStart = lx.start | 0;
-  const bigintEnd = lx.end | 0;
-  const nameEnd = lx.end | 0;
+  const lx$ = lx;
+  const isBigint = lx$.token === T_BIG_INT;
+  const bigintStart = lx$.start | 0;
+  const bigintEnd = lx$.end | 0;
+  const nameEnd = lx$.end | 0;
   propertyName();
-  let keyKind = p.keyKind | 0;
-  let keyVal = p.keyVal | 0;
-  let nameKind = p.nameKind | 0;
-  const keyPos = p.namePos | 0;
-  if (keyKind === PK_PRIVATE) hir.rareSyntax = hir.rareSyntax | RARE_ODD_PRIVATE_NAME;
+  const p$ = p;
+  let keyKind = p$.keyKind | 0;
+  let keyVal = p$.keyVal | 0;
+  let nameKind = p$.nameKind | 0;
+  const keyPos = p$.namePos | 0;
+  const hir$ = hir;
+  if (keyKind === PK_PRIVATE) hir$.rareSyntax = hir$.rareSyntax | RARE_ODD_PRIVATE_NAME;
   // In a type nothing asks whether the name is in quotes.
-  if (nameKind === NK_STRING_LITERAL && (p.context & CTX_TYPE) !== 0) nameKind = NK_IDENTIFIER;
+  if (nameKind === NK_STRING_LITERAL && (p$.context & CTX_TYPE) !== 0) nameKind = NK_IDENTIFIER;
   // `name.Text()` ends with the `n`.
   if (isBigint) {
     keyKind = PK_NAME;
     keyVal = names.atomOfString(bigintTokenValue(bigintStart, bigintEnd));
   }
   let value: number;
-  if (isIdent && lx.token !== T_COLON) {
+  if (isIdent && lx$.token !== T_COLON) {
     if (keyKind === PK_NAME) {
       noteIdentifier(keyVal, keyPos);
       value = pushPatIdent(keyPos, nameEnd, keyVal);
@@ -218,7 +232,7 @@ function objectBindingElement(pos_: number): number {
     value = identifierOrPattern();
   }
   const def = optionalInitializer_();
-  return hir.pushPatProp(keyKind, keyVal, nameKind, value, def, 0, pos_, keyPos, lx.fullStart);
+  return hir$.pushPatProp(keyKind, keyVal, nameKind, value, def, 0, pos_, keyPos, lx$.fullStart);
 }
 
 function optionalInitializer_(): number {

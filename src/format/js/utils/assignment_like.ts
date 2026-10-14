@@ -493,24 +493,25 @@ function plainExpressionWidth(e: number, f: Formatter): number {
  * is that of the type as it is written. -1 if it is not.
  */
 function plainTypeWidth(ty: number, f: Formatter): number {
-  const base = typeStack.len;
-  typeStack.push(ty);
+  const typeStack$ = typeStack;
+  const base = typeStack$.len;
+  typeStack$.push(ty);
   let ok = true;
-  while (typeStack.len > base) {
-    const current = typeStack.pop();
+  while (typeStack$.len > base) {
+    const current = typeStack$.pop();
     switch (typeTag(current)) {
       case TYPE_ARRAY:
-        typeStack.push(typeArrayElem(current));
+        typeStack$.push(typeArrayElem(current));
         break;
       case TYPE_KEYOF:
-        typeStack.push(typeKeyofTy(current));
+        typeStack$.push(typeKeyofTy(current));
         break;
       case TYPE_READONLY:
-        typeStack.push(typeReadonlyTy(current));
+        typeStack$.push(typeReadonlyTy(current));
         break;
       case TYPE_INDEXED_ACCESS:
-        typeStack.push(typeIndexedAccessObj(current));
-        typeStack.push(typeIndexedAccessIndex(current));
+        typeStack$.push(typeIndexedAccessObj(current));
+        typeStack$.push(typeIndexedAccessIndex(current));
         break;
       case TYPE_UNIQUE_SYMBOL:
         break;
@@ -531,7 +532,7 @@ function plainTypeWidth(ty: number, f: Formatter): number {
     }
     if (!ok) break;
   }
-  typeStack.len = base;
+  typeStack$.len = base;
   if (!ok) return -1;
   return cxOf(f).src.spanWidth(typeStart(ty), typeEnd(ty));
 }
@@ -1359,7 +1360,8 @@ function isPoorlyBreakableMemberOrCallChain(expression: number, f: Formatter): b
   }
   const threshold = (f.options.lineWidth / 4) >>> 0;
   let isChain = false;
-  const base = callExpressions.len;
+  const callExpressions$ = callExpressions;
+  const base = callExpressions$.len;
   let current = expression;
   let ok = true;
   for (;;) {
@@ -1383,7 +1385,7 @@ function isPoorlyBreakableMemberOrCallChain(expression: number, f: Formatter): b
         }
         if (!ok) break;
         isChain = true;
-        callExpressions.push(current);
+        callExpressions$.push(current);
         next = exprCallee(current);
         break;
       }
@@ -1406,12 +1408,12 @@ function isPoorlyBreakableMemberOrCallChain(expression: number, f: Formatter): b
     }
     current = next;
   }
-  const count = (callExpressions.len - base) | 0;
+  const count = (callExpressions$.len - base) | 0;
   let result = false;
   if (ok && isChain) {
     result = chainHasNoMemberChain(base, count, f);
   }
-  callExpressions.len = base;
+  callExpressions$.len = base;
   return result;
 }
 
@@ -1421,10 +1423,11 @@ function chainHasNoMemberChain(base: number, count: number, f: Formatter): boole
   const cx = cxOf(f);
   const cm = cx.comments;
   const isOxfmt = f.options.flavor === FLAVOR_OXFMT;
-  const firstCall = callExpressions.data[base] | 0;
+  const callExpressions$ = callExpressions;
+  const firstCall = callExpressions$.data[base] | 0;
   if (isOxfmt && cm.hasCommentInRange(exprStart(firstCall), exprEnd(firstCall))) return false;
   for (let i = 0; i < count; i++) {
-    const callExpression = callExpressions.data[base + i] | 0;
+    const callExpression = callExpressions$.data[base + i] | 0;
     const call = exprAsCallLike(callExpression);
     if (call < 0) continue;
     const hasCommentAroundArgument =
@@ -1435,7 +1438,7 @@ function chainHasNoMemberChain(base: number, count: number, f: Formatter): boole
   // second from the right.
   const asked = isOxfmt ? 1 : count;
   for (let i = 0; i < asked; i++) {
-    const callExpression = callExpressions.data[base + i] | 0;
+    const callExpression = callExpressions$.data[base + i] | 0;
     const callee = exprCallee(callExpression);
     if (callee < 0) continue;
     const t = anTag(exprAsAstNodes(callee));

@@ -34,21 +34,22 @@ import { LINE_COMMENT, LINE_EMPTY, LINE_IMPORT, Line, OP_EMPTY, OP_HARD, Written
 /** `ImportRun::new`: whether imports are sorted this way, and nothing here does anything if not. */
 export function importRunBegin(f: Formatter): boolean {
   const handle = f.options.sortImports;
+  const state$ = state;
   if (handle < 0) {
-    state.options = null;
+    state$.options = null;
     return false;
   }
   const how = sortImportsOf(handle);
   if (how !== null && (how.how === HOW_OXFMT || how.how === HOW_NATIVE) && how.oxfmt !== null) {
-    state.options = how.oxfmt;
-    state.slot = -1;
-    state.isNextSortable = -1;
-    state.lines = [];
-    state.imports = [];
-    state.lineStart = 0;
+    state$.options = how.oxfmt;
+    state$.slot = -1;
+    state$.isNextSortable = -1;
+    state$.lines = [];
+    state$.imports = [];
+    state$.lineStart = 0;
     return true;
   }
-  state.options = null;
+  state$.options = null;
   return false;
 }
 
@@ -85,18 +86,20 @@ export function importRunFinish(f: Formatter): void {
 
 function endStatement(next: number, f: Formatter): void {
   const isNextSortable = next >= 0 && isSortable(next, f);
-  state.isNextSortable = isNextSortable ? 1 : 0;
-  const slot = state.slot;
+  const state$ = state;
+  state$.isNextSortable = isNextSortable ? 1 : 0;
+  const slot = state$.slot;
   if (slot < 0) return;
-  state.lines.push(new Line(LINE_IMPORT, state.lineStart, f.len() > state.lineStart ? f.len() : state.lineStart, state.imports.length > 0 ? state.imports.length - 1 : 0));
+  state$.lines.push(new Line(LINE_IMPORT, state$.lineStart, f.len() > state$.lineStart ? f.len() : state$.lineStart, state$.imports.length > 0 ? state$.imports.length - 1 : 0));
   if (isNextSortable) return;
-  state.slot = -1;
+  state$.slot = -1;
   const run = f.endCapture(slot);
-  const options = state.options as OxfmtOptions;
-  if (state.imports.length >= 2) {
-    plan.ops.len = 0;
-    transform(state.lines, state.imports, options, plan);
-    const ops = plan.ops;
+  const options = state$.options as OxfmtOptions;
+  const plan$ = plan;
+  if (state$.imports.length >= 2) {
+    plan$.ops.len = 0;
+    transform(state$.lines, state$.imports, options, plan$);
+    const ops = plan$.ops;
     for (let i = 0; i < ops.len; i = i + 3) {
       const kind = ops.data[i] | 0;
       if (kind === OP_HARD) f.hardLineBreak();
@@ -106,8 +109,8 @@ function endStatement(next: number, f: Formatter): void {
   } else {
     f.writeInterned(run);
   }
-  state.lines = [];
-  state.imports = [];
+  state$.lines = [];
+  state$.imports = [];
 }
 
 /** Writes a copy of the elements `[start, end)` of the pool: what is written there, but for the content of captures, which stays where it is. */
@@ -127,23 +130,24 @@ function copyRange(start: number, end: number, f: Formatter): void {
 
 function startStatement(statement: number, f: Formatter): void {
   let sortable = false;
-  if (state.isNextSortable >= 0) {
-    sortable = state.isNextSortable === 1;
-    state.isNextSortable = -1;
+  const state$ = state;
+  if (state$.isNextSortable >= 0) {
+    sortable = state$.isNextSortable === 1;
+    state$.isNextSortable = -1;
   } else {
     sortable = isSortable(statement, f);
   }
   if (!sortable) return;
   const imp = stmtImportImport(statement);
   const st = f.st;
-  if (state.slot < 0) {
-    state.slot = f.startCapture();
+  if (state$.slot < 0) {
+    state$.slot = f.startCapture();
   } else {
     const last = f.len() - 1;
-    if (last >= 0 && (st.tag[last] | 0) === E_LINE && (st.a[last] | 0) === LM_EMPTY) state.lines.push(new Line(LINE_EMPTY, 0, 0, 0));
+    if (last >= 0 && (st.tag[last] | 0) === E_LINE && (st.a[last] | 0) === LM_EMPTY) state$.lines.push(new Line(LINE_EMPTY, 0, 0, 0));
   }
-  state.imports.push(newWritten(statement, imp, f));
-  state.lineStart = f.len();
+  state$.imports.push(newWritten(statement, imp, f));
+  state$.lineStart = f.len();
 
   // One line at a time. What is left for the statement to write is its own line.
   const cx = cxOf(f);
@@ -174,9 +178,9 @@ function startStatement(statement: number, f: Formatter): void {
     last = f.len() - 1;
     if (last >= 0 && (st.tag[last] | 0) === E_LINE && ((st.a[last] | 0) === LM_HARD || (st.a[last] | 0) === LM_EMPTY)) {
       const mode = st.a[last] | 0;
-      state.lines.push(new Line(LINE_COMMENT, state.lineStart, last > state.lineStart ? last : state.lineStart, 0));
-      if (mode === LM_EMPTY) state.lines.push(new Line(LINE_EMPTY, 0, 0, 0));
-      state.lineStart = f.len();
+      state$.lines.push(new Line(LINE_COMMENT, state$.lineStart, last > state$.lineStart ? last : state$.lineStart, 0));
+      if (mode === LM_EMPTY) state$.lines.push(new Line(LINE_EMPTY, 0, 0, 0));
+      state$.lineStart = f.len();
     }
   }
 }

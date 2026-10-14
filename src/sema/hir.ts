@@ -2984,8 +2984,9 @@ export function stmtClassClass(id: number): number {
 }
 /** Stmt::Interface(InterfaceId). */
 export function pushStmtInterface(start: number, interface_: number): number {
-  const id = hir.pushStmt(STMT_INTERFACE, start, 0, 0, 0, 0, interface_, 0, 0, 0, 0);
-  hir.interfaceStmt[interface_] = id; // Rust: set_stmt_kind records the statement in the declaration
+  const hir$ = hir;
+  const id = hir$.pushStmt(STMT_INTERFACE, start, 0, 0, 0, 0, interface_, 0, 0, 0, 0);
+  hir$.interfaceStmt[interface_] = id; // Rust: set_stmt_kind records the statement in the declaration
   return id;
 }
 /** Interface.interface */
@@ -2994,8 +2995,9 @@ export function stmtInterfaceInterface(id: number): number {
 }
 /** Stmt::TypeAlias(AliasId). */
 export function pushStmtTypeAlias(start: number, alias: number): number {
-  const id = hir.pushStmt(STMT_TYPE_ALIAS, start, 0, 0, 0, 0, alias, 0, 0, 0, 0);
-  hir.aliasStmt[alias] = id; // Rust: set_stmt_kind records the statement in the declaration
+  const hir$ = hir;
+  const id = hir$.pushStmt(STMT_TYPE_ALIAS, start, 0, 0, 0, 0, alias, 0, 0, 0, 0);
+  hir$.aliasStmt[alias] = id; // Rust: set_stmt_kind records the statement in the declaration
   return id;
 }
 /** TypeAlias.alias */
@@ -3004,8 +3006,9 @@ export function stmtTypeAliasAlias(id: number): number {
 }
 /** Stmt::Enum(EnumId). */
 export function pushStmtEnum(start: number, enum_: number): number {
-  const id = hir.pushStmt(STMT_ENUM, start, 0, 0, 0, 0, enum_, 0, 0, 0, 0);
-  hir.enumStmt[enum_] = id; // Rust: set_stmt_kind records the statement in the declaration
+  const hir$ = hir;
+  const id = hir$.pushStmt(STMT_ENUM, start, 0, 0, 0, 0, enum_, 0, 0, 0, 0);
+  hir$.enumStmt[enum_] = id; // Rust: set_stmt_kind records the statement in the declaration
   return id;
 }
 /** Enum.enum */
@@ -3014,8 +3017,9 @@ export function stmtEnumEnum(id: number): number {
 }
 /** Stmt::Module(ModuleId). */
 export function pushStmtModule(start: number, module: number): number {
-  const id = hir.pushStmt(STMT_MODULE, start, 0, 0, 0, 0, module, 0, 0, 0, 0);
-  hir.moduleStmt[module] = id; // Rust: set_stmt_kind records the statement in the declaration
+  const hir$ = hir;
+  const id = hir$.pushStmt(STMT_MODULE, start, 0, 0, 0, 0, module, 0, 0, 0, 0);
+  hir$.moduleStmt[module] = id; // Rust: set_stmt_kind records the statement in the declaration
   return id;
 }
 /** Module.module */
@@ -3226,8 +3230,9 @@ export function stmtLabeledBody(id: number): number {
 }
 /** Stmt::Import(ImportId). */
 export function pushStmtImport(start: number, import_: number): number {
-  const id = hir.pushStmt(STMT_IMPORT, start, 0, 0, 0, 0, import_, 0, 0, 0, 0);
-  hir.importStmt[import_] = id; // Rust: set_stmt_kind records the statement in the declaration
+  const hir$ = hir;
+  const id = hir$.pushStmt(STMT_IMPORT, start, 0, 0, 0, 0, import_, 0, 0, 0, 0);
+  hir$.importStmt[import_] = id; // Rust: set_stmt_kind records the statement in the declaration
   return id;
 }
 /** Import.import */
@@ -3236,8 +3241,9 @@ export function stmtImportImport(id: number): number {
 }
 /** Stmt::ImportEquals(ImportEqualsId). */
 export function pushStmtImportEquals(start: number, importEquals: number): number {
-  const id = hir.pushStmt(STMT_IMPORT_EQUALS, start, 0, 0, 0, 0, importEquals, 0, 0, 0, 0);
-  hir.importEqualsStmt[importEquals] = id; // Rust: set_stmt_kind records the statement in the declaration
+  const hir$ = hir;
+  const id = hir$.pushStmt(STMT_IMPORT_EQUALS, start, 0, 0, 0, 0, importEquals, 0, 0, 0, 0);
+  hir$.importEqualsStmt[importEquals] = id; // Rust: set_stmt_kind records the statement in the declaration
   return id;
 }
 /** ImportEquals.importEquals */
@@ -3246,8 +3252,9 @@ export function stmtImportEqualsImportEquals(id: number): number {
 }
 /** Stmt::ExportNamed(ExportId). */
 export function pushStmtExportNamed(start: number, export_: number): number {
-  const id = hir.pushStmt(STMT_EXPORT_NAMED, start, 0, 0, 0, 0, export_, 0, 0, 0, 0);
-  hir.exportStmt[export_] = id; // Rust: set_stmt_kind records the statement in the declaration
+  const hir$ = hir;
+  const id = hir$.pushStmt(STMT_EXPORT_NAMED, start, 0, 0, 0, 0, export_, 0, 0, 0, 0);
+  hir$.exportStmt[export_] = id; // Rust: set_stmt_kind records the statement in the declaration
   return id;
 }
 /** ExportNamed.export */

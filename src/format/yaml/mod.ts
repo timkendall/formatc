@@ -180,17 +180,19 @@ function refusal(error: number, at: number): number {
  * Returns a `FORMAT_*` code. */
 function writeDocument(text: Uint8Array, options: FormatOptions, els: Elements, hasNul: boolean): number {
   const len = text.length;
-  treeStack.reset();
+  const treeStack$ = treeStack;
+  treeStack$.reset();
   // For `yaml`, U+0000 is a character like another.
   let parseText = text;
+  const withoutNul$ = withoutNul;
   if (hasNul) {
-    withoutNul.reset();
-    withoutNul.reserve(len);
+    withoutNul$.reset();
+    withoutNul$.reserve(len);
     for (let i = 0; i < len; i++) {
       const b = text[i] | 0;
-      withoutNul.push(b === 0 ? 1 : b);
+      withoutNul$.push(b === 0 ? 1 : b);
     }
-    parseText = withoutNul.data;
+    parseText = withoutNul$.data;
   }
   const error = yamlParseAsWritten(parseText, len);
   if (error !== 0) {
@@ -199,7 +201,7 @@ function writeDocument(text: Uint8Array, options: FormatOptions, els: Elements, 
   }
   if (build(text, len) !== 0) {
     // Whatever else is said to be wrong where the stack has run out.
-    return treeStack.ranOut() ? FORMAT_NESTED_TOO_DEEPLY : FORMAT_SYNTAX_ERROR_AT;
+    return treeStack$.ranOut() ? FORMAT_NESTED_TOO_DEEPLY : FORMAT_SYNTAX_ERROR_AT;
   }
   const oxfmt = options.flavor === FLAVOR_OXFMT;
   // Without indentation there is no structure, so for oxfmt there is some.
@@ -221,11 +223,12 @@ function writeDocument(text: Uint8Array, options: FormatOptions, els: Elements, 
 
 /** The document for src[0, len), whose line breaks are `\n`, as a tree. A `Doc` handle, or `-FORMAT_*`. */
 export function yamlDocument(src: Uint8Array, len: number, options: FormatOptions): number {
-  documentElements.clear();
+  const documentElements$ = documentElements;
+  documentElements$.clear();
   const text = len === src.length ? src : src.subarray(0, len);
-  const r = writeDocument(text, options, documentElements, (scanSpecial(text) & 1) !== 0);
+  const r = writeDocument(text, options, documentElements$, (scanSpecial(text) & 1) !== 0);
   if (r !== FORMAT_OK) return -r;
-  const doc = documentElements.toTree();
+  const doc = documentElements$.toTree();
   return doc < 0 ? -FORMAT_NESTED_TOO_DEEPLY : doc;
 }
 
@@ -272,21 +275,22 @@ export function formatYaml(src: Uint8Array, len: number, options: FormatOptions,
   const special = scanSpecial(textNoBom);
   const hasCr = (special & 2) !== 0;
   let text = textNoBom;
+  const normalized$ = normalized;
   if (hasCr) {
     const n = textNoBom.length;
-    normalized.reset();
-    normalized.reserve(n);
+    normalized$.reset();
+    normalized$.reserve(n);
     let runStart = 0;
     for (let i = 0; i < n; i++) {
       if ((textNoBom[i] | 0) === 13) {
-        normalized.append(textNoBom, runStart, i);
-        normalized.push(10);
+        normalized$.append(textNoBom, runStart, i);
+        normalized$.push(10);
         if (i + 1 < n && (textNoBom[i + 1] | 0) === 10) i = i + 1;
         runStart = i + 1;
       }
     }
-    normalized.append(textNoBom, runStart, n);
-    text = normalized.view();
+    normalized$.append(textNoBom, runStart, n);
+    text = normalized$.view();
   }
   if (
     (start >= end && text.length > 0) ||
@@ -298,11 +302,12 @@ export function formatYaml(src: Uint8Array, len: number, options: FormatOptions,
   }
   // Nothing in YAML is something that Prettier formats on its own.
   const isRange = start > first || end < original.length;
+  const withPragma$ = withPragma;
   if (options.insertPragma && !options.requirePragma && !isRange && !hasPragmaInHashComment(text, "format", "prettier")) {
-    withPragma.reset();
-    withPragma.appendAscii("# @format\n\n");
-    withPragma.append(text, 0, text.length);
-    text = withPragma.view();
+    withPragma$.reset();
+    withPragma$.appendAscii("# @format\n\n");
+    withPragma$.append(text, 0, text.length);
+    text = withPragma$.view();
   }
   const outStart = out.len;
   if (hasBom) {
@@ -319,8 +324,9 @@ export function formatYaml(src: Uint8Array, len: number, options: FormatOptions,
   }
   if (blank) return FORMAT_OK;
   // It has to be YAML in any case.
-  elements.clear();
-  const r = writeDocument(text, options, elements, (special & 1) !== 0);
+  const elements$ = elements;
+  elements$.clear();
+  const r = writeDocument(text, options, elements$, (special & 1) !== 0);
   if (r !== FORMAT_OK) {
     out.truncate(outStart);
     if (r === FORMAT_SYNTAX_ERROR_AT) {
@@ -342,9 +348,10 @@ export function formatYaml(src: Uint8Array, len: number, options: FormatOptions,
     if (formatJson(text, text.length, PARSER_JSON, options, out) === FORMAT_OK) return FORMAT_OK;
     out.truncate(jsonEnd);
   }
-  printer.init(options, original, out);
-  printer.print(elements, 0, 0);
-  return printer.result();
+  const printer$ = printer;
+  printer$.init(options, original, out);
+  printer$.print(elements$, 0, 0);
+  return printer$.result();
 }
 
 /** `SyntaxError::before_normalizing_end_of_line` of `original`, which has `\r`. */

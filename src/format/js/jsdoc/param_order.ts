@@ -146,11 +146,12 @@ function positionOf(functionParams: string[], tag: EffTag): number {
 
 /** The function whose head starts with what follows the comment that ends at `commentEnd`; -1 if there is none. */
 function functionBehind(commentEnd: number): number {
-  const len = hir.sourceLen | 0;
+  const hir$ = hir;
+  const len = hir$.sourceLen | 0;
   if (commentEnd > len) return -1;
   let start = commentEnd;
   while (start < len) {
-    const b = hir.text[start] | 0;
+    const b = hir$.text[start] | 0;
     if (b < 0x80) {
       if (b === 32 || (b >= 9 && b <= 13)) {
         start = start + 1;
@@ -162,10 +163,10 @@ function functionBehind(commentEnd: number): number {
     let cp = 0;
     let size = 1;
     if (b >= 0xc2 && b <= 0xdf && start + 1 < len) {
-      cp = ((b & 0x1f) << 6) | ((hir.text[start + 1] | 0) & 0x3f);
+      cp = ((b & 0x1f) << 6) | ((hir$.text[start + 1] | 0) & 0x3f);
       size = 2;
     } else if (b >= 0xe0 && b <= 0xef && start + 2 < len) {
-      cp = ((b & 0x0f) << 12) | (((hir.text[start + 1] | 0) & 0x3f) << 6) | ((hir.text[start + 2] | 0) & 0x3f);
+      cp = ((b & 0x0f) << 12) | (((hir$.text[start + 1] | 0) & 0x3f) << 6) | ((hir$.text[start + 2] | 0) & 0x3f);
       size = 3;
     }
     if (cp !== 0 && isUnicodeWhitespace(cp)) {
@@ -175,16 +176,17 @@ function functionBehind(commentEnd: number): number {
     break;
   }
   let node = NODE_FILE;
+  const kids$ = kids;
   while (true) {
     let child = -1;
-    const base = kids.len;
-    nodeChildren(node, start, kids);
-    for (let i = base; i < kids.len; i++) {
-      const c = kids.data[i] | 0;
+    const base = kids$.len;
+    nodeChildren(node, start, kids$);
+    for (let i = base; i < kids$.len; i++) {
+      const c = kids$.data[i] | 0;
       nodeSpan(c);
       if (child < 0 && (SP[0] | 0) <= start && start < (SP[1] | 0)) child = c;
     }
-    kids.len = base;
+    kids$.len = base;
     if (child < 0) return -1;
     node = child;
     nodeSpan(node);
@@ -306,16 +308,17 @@ function parameterNames(func: number): string[] {
   const thisParam = funcThisParam(func);
   const n = funcParamsLen(func);
   const s = funcParamsStart(func);
+  const hir$ = hir;
   for (let i = -1; i < n; i++) {
     const p = i < 0 ? thisParam : listAt(s, i);
     if (p < 0) continue;
     paramSpan(p);
     let from = SP[0] | 0;
     const to = SP[1] | 0;
-    if (to - from >= 3 && (hir.text[from] | 0) === 46 && (hir.text[from + 1] | 0) === 46 && (hir.text[from + 2] | 0) === 46) from = from + 3;
+    if (to - from >= 3 && (hir$.text[from] | 0) === 46 && (hir$.text[from + 1] | 0) === 46 && (hir$.text[from + 2] | 0) === 46) from = from + 3;
     let e = from;
-    while (e < to && isIdentifierByte(hir.text[e] | 0)) e = e + 1;
-    if (e > from) out.push(decodeBytes(hir.text, from, e));
+    while (e < to && isIdentifierByte(hir$.text[e] | 0)) e = e + 1;
+    if (e > from) out.push(decodeBytes(hir$.text, from, e));
   }
   return out;
 }

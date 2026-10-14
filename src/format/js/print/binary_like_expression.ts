@@ -355,23 +355,24 @@ function writeChain(e: number, f: Formatter): void {
 
   const inlineLogicalExpression = shouldInlineLogicalExpression(e, f);
   const shouldIndentIfInlines = !isInTypeCast && shouldIndentIfParentInlines(parent, f);
-  const base = parts.len;
+  const parts$ = parts;
+  const base = parts$.len;
   splitIntoLeftAndRightSides(e, false, f);
-  const n = ((parts.len - base) >> 1) | 0;
+  const n = ((parts$.len - base) >> 1) | 0;
   const flattened = n > 2 || rightWithSameOperator(e, f) >= 0;
 
   if ((inlineLogicalExpression && !flattened) || (!inlineLogicalExpression && shouldIndentIfInlines)) {
     f.startGroup();
-    for (let i = 0; i < n; i++) writePart(parts.data[base + 2 * i] | 0, parts.data[base + 2 * i + 1] | 0, f);
+    for (let i = 0; i < n; i++) writePart(parts$.data[base + 2 * i] | 0, parts$.data[base + 2 * i + 1] | 0, f);
     f.endGroup();
-    parts.len = base;
+    parts$.len = base;
     return;
   }
 
   // `parts[0]` is the left side that the chain starts with, `parts[1..]` are the right sides.
   // A JSX element at the end has a group of its own, so that it does not break the chain.
-  const lastExpr = parts.data[base + 2 * (n - 1)] | 0;
-  const lastCode = parts.data[base + 2 * (n - 1) + 1] | 0;
+  const lastExpr = parts$.data[base + 2 * (n - 1)] | 0;
+  const lastCode = parts$.data[base + 2 * (n - 1) + 1] | 0;
   let jsxElement = -1;
   let beforeJsxElement = -1;
   if (n > 1 && (lastCode & PART_RIGHT) !== 0 && exprTag(lastOperand(lastExpr, lastCode, f)) === EXPR_JSX) {
@@ -398,10 +399,10 @@ function writeChain(e: number, f: Formatter): void {
 
   if (jsxElement >= 0) f.startGroup();
   f.startGroupWith(groupId, shouldExpandChain);
-  writePart(parts.data[base] | 0, parts.data[base + 1] | 0, f);
+  writePart(parts$.data[base] | 0, parts$.data[base + 1] | 0, f);
   if (tailEnd > 1 || beforeJsxElement >= 0) {
     f.startIndent();
-    for (let i = 1; i < tailEnd; i++) writePart(parts.data[base + 2 * i] | 0, parts.data[base + 2 * i + 1] | 0, f);
+    for (let i = 1; i < tailEnd; i++) writePart(parts$.data[base + 2 * i] | 0, parts$.data[base + 2 * i + 1] | 0, f);
     if (beforeJsxElement >= 0) writePart(beforeJsxElement, PART_RIGHT | (OPERANDS_ALL_BUT_LAST << PART_OPERANDS_SHIFT), f);
     f.endIndent();
   }
@@ -412,18 +413,19 @@ function writeChain(e: number, f: Formatter): void {
     f.endIndentIfGroupBreaks(groupId);
     f.endGroup();
   }
-  parts.len = base;
+  parts$.len = base;
 }
 
 /** Writes all operands of a chain one after the other. */
 function writeFlattenedLogicalExpression(e: number, insideCondition: boolean, f: Formatter): void {
   // `a && ((b && ((c && ..) && d)) && e)`: it is not written by way of `Expr`.
   if (!f.stack.enter()) return;
-  const base = parts.len;
+  const parts$ = parts;
+  const base = parts$.len;
   splitIntoLeftAndRightSides(e, insideCondition, f);
-  const n = ((parts.len - base) >> 1) | 0;
-  for (let i = 0; i < n; i++) writePart(parts.data[base + 2 * i] | 0, parts.data[base + 2 * i + 1] | 0, f);
-  parts.len = base;
+  const n = ((parts$.len - base) >> 1) | 0;
+  for (let i = 0; i < n; i++) writePart(parts$.data[base + 2 * i] | 0, parts$.data[base + 2 * i + 1] | 0, f);
+  parts$.len = base;
   f.stack.leave();
 }
 
@@ -432,22 +434,23 @@ function writeFlattenedLogicalExpression(e: number, insideCondition: boolean, f:
  * expression on the way up.
  */
 function splitIntoLeftAndRightSides(binary: number, insideCondition: boolean, f: Formatter): void {
-  const base = parts.len;
+  const parts$ = parts;
+  const base = parts$.len;
   const code = PART_RIGHT | (insideCondition ? PART_INSIDE_CONDITION : 0);
   let current = binary;
   for (;;) {
-    parts.push(current);
-    parts.push(code);
+    parts$.push(current);
+    parts$.push(code);
     const left = canFlatten(current, f);
     if (left < 0) break;
     current = left;
   }
-  parts.push(current);
-  parts.push(0);
+  parts$.push(current);
+  parts$.push(0);
   // Reverse the pairs.
   let i = base;
-  let j = (parts.len - 2) | 0;
-  const data = parts.data;
+  let j = (parts$.len - 2) | 0;
+  const data = parts$.data;
   while (i < j) {
     const a = data[i] | 0;
     const b = data[i + 1] | 0;

@@ -175,8 +175,9 @@ export function commentsWithin(start: number, end: number): number {
   }
   let to = lo;
   while (to < n && commentEndAt(to) <= end) to = to + 1;
-  commentRange.from = lo;
-  commentRange.to = to;
+  const commentRange$ = commentRange;
+  commentRange$.from = lo;
+  commentRange$.to = to;
   return to - lo;
 }
 

@@ -259,6 +259,7 @@ export function fmtStatements(start: number, len: number, f: Formatter): void {
   let previous = -1;
   const lastIndex = len > 0 ? len - 1 : 0;
   importRunBegin(f);
+  const PLACEMENTS$ = PLACEMENTS;
   for (let index = 0; index < len; index++) {
     const statement = listAt(start, index);
     if (stmtTag(statement) === STMT_EMPTY) continue;
@@ -304,7 +305,7 @@ export function fmtStatements(start: number, len: number, f: Formatter): void {
     importRunBeforeStatement(statement, f);
     if (hasPlacements) {
       for (let k = 0; k < to - from; k++) {
-        if (commentPlacementLeads(PLACEMENTS.data[k] | 0)) formatLeadingCommentsRange((from + k) | 0, (from + k + 1) | 0, f);
+        if (commentPlacementLeads(PLACEMENTS$.data[k] | 0)) formatLeadingCommentsRange((from + k) | 0, (from + k + 1) | 0, f);
       }
     }
     writeSemicolonBeforeTypeCastComment(statement, f);
@@ -420,8 +421,9 @@ function writeMoreTrailingComments(previous: number, from: number, to: number, n
     isAfterLineComment = ok;
   }
   let hasLineSuffix = isAfterLineComment;
+  const PLACEMENTS$ = PLACEMENTS;
   for (let k = 0; k < n; k++) {
-    if (commentPlacementLeads(PLACEMENTS.data[k] | 0)) continue;
+    if (commentPlacementLeads(PLACEMENTS$.data[k] | 0)) continue;
     const i = (from + k) | 0;
     cm.incrementPrintedCount();
     if (isAfterLineComment) {
@@ -444,9 +446,9 @@ function writeMoreTrailingComments(previous: number, from: number, to: number, n
   }
 
   let trailingCount = 0;
-  while (trailingCount < n && !commentPlacementLeads(PLACEMENTS.data[trailingCount] | 0)) trailingCount = (trailingCount + 1) | 0;
+  while (trailingCount < n && !commentPlacementLeads(PLACEMENTS$.data[trailingCount] | 0)) trailingCount = (trailingCount + 1) | 0;
   for (let k = trailingCount; k < n; k++) {
-    if (!commentPlacementLeads(PLACEMENTS.data[k] | 0)) return true;
+    if (!commentPlacementLeads(PLACEMENTS$.data[k] | 0)) return true;
   }
   return false;
 }

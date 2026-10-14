@@ -107,21 +107,24 @@ function partsCount(): number {
 }
 
 function push(type: number, a: number, b: number): void {
-  ITEMS.push(type);
-  ITEMS.push(a);
-  ITEMS.push(b);
-  if (PARTS.len > B.pb && (PARTS.data[PARTS.len - 3] | 0) === PART_CONTENT) PARTS.data[PARTS.len - 1] = itemCount();
+  const ITEMS$ = ITEMS;
+  ITEMS$.push(type);
+  ITEMS$.push(a);
+  ITEMS$.push(b);
+  const PARTS$ = PARTS;
+  if (PARTS$.len > B.pb && (PARTS$.data[PARTS$.len - 3] | 0) === PART_CONTENT) PARTS$.data[PARTS$.len - 1] = itemCount();
 }
 
 function pushLine(separator0: number): void {
   const separator = separator0 === SEP_LINE && B.isMdx ? SEP_JSX_WHITESPACE : separator0;
-  PARTS.push(PART_SEPARATOR);
-  PARTS.push(separator);
-  PARTS.push(0);
+  const PARTS$ = PARTS;
+  PARTS$.push(PART_SEPARATOR);
+  PARTS$.push(separator);
+  PARTS$.push(0);
   const at = itemCount();
-  PARTS.push(PART_CONTENT);
-  PARTS.push(at);
-  PARTS.push(at);
+  PARTS$.push(PART_CONTENT);
+  PARTS$.push(at);
+  PARTS$.push(at);
 }
 
 function skipWhitespace(buf: Uint8Array, start: number, end: number): number {
@@ -195,14 +198,15 @@ function pushText(buf: Uint8Array, start: number, end: number, nextType: number,
     if (countNewlines(buf, start, end) >= 2) pushLine(SEP_HARD_LINE);
     return;
   }
-  B.containsText = true;
+  const B$ = B;
+  B$.containsText = true;
   const isBeforeSelfClosingElement = nextType === CH_NODE && nextIsSelfClosing;
 
   const restStart0 = skipWhitespace(buf, start, end);
   let rest = restStart0;
   if (restStart0 > start) {
     if (hasLineBreak(buf, start, restStart0)) {
-      if (B.isOxfmt && !B.isFbt) {
+      if (B$.isOxfmt && !B$.isFbt) {
         pushLine(isJoinedToWhatIsBeforeIt(buf, rest, end, isBeforeSelfClosingElement) ? SEP_SOFT_LINE : SEP_HARD_LINE);
       } else {
         pushSeparatorWithWhitespace(buf, rest, skipWord(buf, rest, end), isBeforeSelfClosingElement);
@@ -273,22 +277,24 @@ function isEmptyContentOrAnyLine(kind: number, a: number, b: number): boolean {
  * looked at.
  */
 function removeRedundantSeparators(): void {
-  const containsText = B.containsText;
+  const B$ = B;
+  const containsText = B$.containsText;
   const n = partsCount();
-  KEPT.len = 0;
+  const KEPT$ = KEPT;
+  KEPT$.len = 0;
   for (let i = n - 1; i >= 0; i--) {
     const kind = partKind(i);
     const a = partA(i);
     const b = partB(i);
-    const kl = KEPT.len;
+    const kl = KEPT$.len;
     let handled = false;
-    if (kind === PART_SEPARATOR && kl >= 6 && (KEPT.data[kl - 6] | 0) === PART_SEPARATOR) {
+    if (kind === PART_SEPARATOR && kl >= 6 && (KEPT$.data[kl - 6] | 0) === PART_SEPARATOR) {
       // (part, Some(next), Some(Separator(after_next)))
-      const nextKind = KEPT.data[kl - 3] | 0;
-      const nextA = KEPT.data[kl - 2] | 0;
-      const nextB = KEPT.data[kl - 1] | 0;
+      const nextKind = KEPT$.data[kl - 3] | 0;
+      const nextA = KEPT$.data[kl - 2] | 0;
+      const nextB = KEPT$.data[kl - 1] | 0;
       if (isEmptyContent(nextKind, nextA, nextB)) {
-        const afterNext = KEPT.data[kl - 5] | 0;
+        const afterNext = KEPT$.data[kl - 5] | 0;
         const separator = a;
         if (separator === SEP_HARD_LINE && afterNext === SEP_HARD_LINE && !containsText) {
           // kept.push(part)
@@ -299,127 +305,133 @@ function removeRedundantSeparators(): void {
           (separator === SEP_SOFT_LINE && afterNext === SEP_HARD_LINE) ||
           (separator === SEP_HARD_LINE && afterNext === SEP_SOFT_LINE)
         ) {
-          KEPT.len = kl - 3;
+          KEPT$.len = kl - 3;
           handled = true;
         } else if (separator === SEP_JSX_WHITESPACE && (afterNext === SEP_SOFT_LINE || afterNext === SEP_HARD_LINE)) {
-          KEPT.len = kl - 6;
+          KEPT$.len = kl - 6;
           // kept.push(part)
         }
       }
     }
     if (!handled) {
-      KEPT.push(kind);
-      KEPT.push(a);
-      KEPT.push(b);
+      KEPT$.push(kind);
+      KEPT$.push(a);
+      KEPT$.push(b);
     }
   }
   // `kept.reverse()`: the forward order is from the end of KEPT to its start.
-  let count = (KEPT.len / 3) | 0;
+  let count = (KEPT$.len / 3) | 0;
   // `while let [rest @ .., last] = parts && last.is_empty_content_or_any_line()`: the last forward part is KEPT[0].
   let lo = 0;
   while (count > 0) {
     const at = 3 * lo;
-    if (isEmptyContentOrAnyLine(KEPT.data[at] | 0, KEPT.data[at + 1] | 0, KEPT.data[at + 2] | 0)) {
+    if (isEmptyContentOrAnyLine(KEPT$.data[at] | 0, KEPT$.data[at + 1] | 0, KEPT$.data[at + 2] | 0)) {
       lo = lo + 1;
       count = count - 1;
     } else break;
   }
   // `while let [first, second, rest @ ..] = parts && both are`: the first forward part is the last of KEPT.
-  let hi = (KEPT.len / 3) | 0; // forward part j is KEPT[hi - 1 - j]
+  let hi = (KEPT$.len / 3) | 0; // forward part j is KEPT[hi - 1 - j]
   while (hi - lo >= 2) {
     const f1 = 3 * (hi - 1);
     const f2 = 3 * (hi - 2);
     if (
-      isEmptyContentOrAnyLine(KEPT.data[f1] | 0, KEPT.data[f1 + 1] | 0, KEPT.data[f1 + 2] | 0) &&
-      isEmptyContentOrAnyLine(KEPT.data[f2] | 0, KEPT.data[f2 + 1] | 0, KEPT.data[f2 + 2] | 0)
+      isEmptyContentOrAnyLine(KEPT$.data[f1] | 0, KEPT$.data[f1 + 1] | 0, KEPT$.data[f1 + 2] | 0) &&
+      isEmptyContentOrAnyLine(KEPT$.data[f2] | 0, KEPT$.data[f2 + 1] | 0, KEPT$.data[f2 + 2] | 0)
     ) {
       hi = hi - 2;
     } else break;
   }
-  PARTS.len = B.pb;
+  const PARTS$ = PARTS;
+  PARTS$.len = B$.pb;
   for (let k = hi - 1; k >= lo; k--) {
-    PARTS.push(KEPT.data[3 * k] | 0);
-    PARTS.push(KEPT.data[3 * k + 1] | 0);
-    PARTS.push(KEPT.data[3 * k + 2] | 0);
+    PARTS$.push(KEPT$.data[3 * k] | 0);
+    PARTS$.push(KEPT$.data[3 * k + 1] | 0);
+    PARTS$.push(KEPT$.data[3 * k + 2] | 0);
   }
 }
 
 /** Fills `CH` from the children of `e` (rows of `jsxChildrenWithWhitespace`). */
 function classifyChildren(e: number, f: Formatter): void {
-  ROWS.len = 0;
-  CH.len = 0;
-  jsxChildrenWithWhitespace(e, ROWS);
-  for (let i = 0; i < ROWS.len; i = i + 3) {
-    const kind = ROWS.data[i] | 0;
-    const a = ROWS.data[i + 1] | 0;
-    const b = ROWS.data[i + 2] | 0;
+  const ROWS$ = ROWS;
+  ROWS$.len = 0;
+  const CH$ = CH;
+  CH$.len = 0;
+  jsxChildrenWithWhitespace(e, ROWS$);
+  for (let i = 0; i < ROWS$.len; i = i + 3) {
+    const kind = ROWS$.data[i] | 0;
+    const a = ROWS$.data[i + 1] | 0;
+    const b = ROWS$.data[i + 2] | 0;
     if (kind !== JC_EXPR) {
-      CH.push(CH_TEXT);
-      CH.push(a);
-      CH.push(b);
-      CH.push(0);
+      CH$.push(CH_TEXT);
+      CH$.push(a);
+      CH$.push(b);
+      CH$.push(0);
     } else if (exprIsJsxText(a)) {
       exprSpan(a);
-      CH.push(CH_TEXT);
-      CH.push(SP[0] | 0);
-      CH.push(SP[1] | 0);
-      CH.push(0);
+      CH$.push(CH_TEXT);
+      CH$.push(SP[0] | 0);
+      CH$.push(SP[1] | 0);
+      CH$.push(0);
     } else if (isWhitespaceJsxExpression(a, f)) {
-      CH.push(CH_TEXT);
-      CH.push(0);
-      CH.push(1);
-      CH.push(1);
+      CH$.push(CH_TEXT);
+      CH$.push(0);
+      CH$.push(1);
+      CH$.push(1);
     } else {
-      CH.push(CH_NODE);
-      CH.push(a);
-      CH.push(0);
-      CH.push(0);
+      CH$.push(CH_NODE);
+      CH$.push(a);
+      CH$.push(0);
+      CH$.push(0);
     }
   }
 }
 
 /** Prettier's `printJsxChildren`, before anything is formatted. Leaves the items and the parts above the bases `B.ib`, `B.pb`. */
 function buildChildren(e: number, isMdxBlock: boolean, f: Formatter): void {
-  B.ib = ITEMS.len;
-  B.pb = PARTS.len;
-  B.src = f.source;
-  B.isMdx = isMdxBlock;
-  B.isOxfmt = f.options.flavor === FLAVOR_OXFMT;
-  B.containsTag = false;
-  B.containsMultipleExpressions = false;
-  B.containsText = false;
+  const B$ = B;
+  B$.ib = ITEMS.len;
+  const PARTS$ = PARTS;
+  B$.pb = PARTS$.len;
+  B$.src = f.source;
+  B$.isMdx = isMdxBlock;
+  B$.isOxfmt = f.options.flavor === FLAVOR_OXFMT;
+  B$.containsTag = false;
+  B$.containsMultipleExpressions = false;
+  B$.containsText = false;
   // `<fbt>`: Facebook's translation tag, in which white space is kept as it is.
   const tag = jsxTag(e);
-  B.isFbt = false;
+  B$.isFbt = false;
   if (tag >= 0) {
     exprSpan(tag);
     const ts = SP[0] | 0;
     const te = SP[1] | 0;
     const src = f.source;
-    B.isFbt = te - ts === 3 && (src[ts] | 0) === 102 && (src[ts + 1] | 0) === 98 && (src[ts + 2] | 0) === 116;
+    B$.isFbt = te - ts === 3 && (src[ts] | 0) === 102 && (src[ts + 1] | 0) === 98 && (src[ts + 2] | 0) === 116;
   }
-  PARTS.push(PART_CONTENT);
-  PARTS.push(0);
-  PARTS.push(0);
+  PARTS$.push(PART_CONTENT);
+  PARTS$.push(0);
+  PARTS$.push(0);
 
   classifyChildren(e, f);
-  const n = (CH.len / 4) | 0;
+  const CH$ = CH;
+  const n = (CH$.len / 4) | 0;
   let expressionCount = 0;
   for (let r = 0; r < n; r++) {
-    const type = CH.data[4 * r] | 0;
-    const a = CH.data[4 * r + 1] | 0;
-    const b = CH.data[4 * r + 2] | 0;
-    const sel = CH.data[4 * r + 3] | 0;
+    const type = CH$.data[4 * r] | 0;
+    const a = CH$.data[4 * r + 1] | 0;
+    const b = CH$.data[4 * r + 2] | 0;
+    const sel = CH$.data[4 * r + 3] | 0;
     let nextType = 0;
     let nextSel = 0;
     let nextA = 0;
     let nextB = 0;
     let nextIsSelfClosing = false;
     if (r + 1 < n) {
-      nextType = CH.data[4 * r + 4] | 0;
-      nextA = CH.data[4 * r + 5] | 0;
-      nextB = CH.data[4 * r + 6] | 0;
-      nextSel = CH.data[4 * r + 7] | 0;
+      nextType = CH$.data[4 * r + 4] | 0;
+      nextA = CH$.data[4 * r + 5] | 0;
+      nextB = CH$.data[4 * r + 6] | 0;
+      nextSel = CH$.data[4 * r + 7] | 0;
       if (nextType === CH_NODE) nextIsSelfClosing = isSelfClosingElement(nextA);
     }
     if (type === CH_TEXT) {
@@ -430,7 +442,7 @@ function buildChildren(e: number, isMdxBlock: boolean, f: Formatter): void {
       pushNode(a, nextType, nextSel, nextA, nextB);
     }
   }
-  B.containsMultipleExpressions = expressionCount > 1;
+  B$.containsMultipleExpressions = expressionCount > 1;
   removeRedundantSeparators();
 }
 
@@ -442,44 +454,47 @@ export function formatChildren(e: number, forcedBreak0: boolean, isMdxBlock: boo
   const cx = cxOf(f);
   const cm = cx.comments;
   buildChildren(e, isMdxBlock, f);
-  const ib = B.ib;
-  const pb = B.pb;
-  const containsText = B.containsText;
-  const isOxfmt = B.isOxfmt;
+  const B$ = B;
+  const ib = B$.ib;
+  const pb = B$.pb;
+  const containsText = B$.containsText;
+  const isOxfmt = B$.isOxfmt;
   const nParts = partsCount();
-  let forcedBreak = forcedBreak0 || B.containsTag || B.containsMultipleExpressions;
+  let forcedBreak = forcedBreak0 || B$.containsTag || B$.containsMultipleExpressions;
   const res = childrenResult;
 
+  const ITEMS$ = ITEMS;
+  const PARTS$ = PARTS;
   if (nParts === 1 && partKind(0) === PART_CONTENT && partB(0) - partA(0) === 1 && !isMdxBlock) {
     const at = ib + 3 * partA(0);
     res.kind = CHILDREN_SINGLE_CHILD;
-    res.itemType = ITEMS.data[at] | 0;
-    res.itemA = ITEMS.data[at + 1] | 0;
-    res.itemB = ITEMS.data[at + 2] | 0;
+    res.itemType = ITEMS$.data[at] | 0;
+    res.itemA = ITEMS$.data[at + 1] | 0;
+    res.itemB = ITEMS$.data[at + 2] | 0;
     res.forcedBreak = forcedBreak;
-    PARTS.len = pb;
-    ITEMS.len = ib;
+    PARTS$.len = pb;
+    ITEMS$.len = ib;
     return CHILDREN_SINGLE_CHILD;
   }
 
   // Pass 1: the nodes are formatted, in source order. The last child that is not white space with a line break is `{/* prettier-ignore */}`.
   let isAfterIgnoreComment = false;
   for (let p = 0; p < nParts; p++) {
-    const kind = PARTS.data[pb + 3 * p] | 0;
-    const a = PARTS.data[pb + 3 * p + 1] | 0;
+    const kind = PARTS$.data[pb + 3 * p] | 0;
+    const a = PARTS$.data[pb + 3 * p + 1] | 0;
     if (kind === PART_SEPARATOR) {
       if (a === SEP_JSX_WHITESPACE) isAfterIgnoreComment = false;
       else if (a === SEP_HARD_LINE) forcedBreak = true;
       continue;
     }
-    const end = PARTS.data[pb + 3 * p + 2] | 0;
+    const end = PARTS$.data[pb + 3 * p + 2] | 0;
     for (let i = a; i < end; i++) {
       const at = ib + 3 * i;
-      if ((ITEMS.data[at] | 0) === ITEM_WORD) {
+      if ((ITEMS$.data[at] | 0) === ITEM_WORD) {
         isAfterIgnoreComment = false;
         continue;
       }
-      const node = ITEMS.data[at + 1] | 0;
+      const node = ITEMS$.data[at + 1] | 0;
       // For Prettier it is about an element or a fragment. For oxfmt about `{e}` too.
       const isSuppressed = isAfterIgnoreComment && (exprTag(node) === EXPR_JSX || isOxfmt);
       if (!exprJsxContainerSpan(node)) exprSpan(node);
@@ -492,7 +507,7 @@ export function formatChildren(e: number, forcedBreak0: boolean, isMdxBlock: boo
       const h = f.endCapture(slot);
       if (!forcedBreak) forcedBreak = f.willBreak(h);
       // The items may have been moved by a nested element: they are above the bases of this call only.
-      ITEMS.data[ib + 3 * i + 2] = h | 0;
+      ITEMS$.data[ib + 3 * i + 2] = h | 0;
     }
   }
 
@@ -509,8 +524,8 @@ export function formatChildren(e: number, forcedBreak0: boolean, isMdxBlock: boo
   res.multiline = multiline;
   res.flat = flat;
   res.forcedBreak = forcedBreak;
-  PARTS.len = pb;
-  ITEMS.len = ib;
+  PARTS$.len = pb;
+  ITEMS$.len = ib;
   return res.kind;
 }
 
@@ -532,20 +547,22 @@ function writeSeparator(separator: number, f: Formatter): void {
 }
 
 function writeItems(first: number, end: number, ib: number, f: Formatter): void {
+  const ITEMS$ = ITEMS;
   for (let i = first; i < end; i++) {
     const at = ib + 3 * i;
-    if ((ITEMS.data[at] | 0) === ITEM_WORD) f.textSourceNoWs(ITEMS.data[at + 1] | 0, ITEMS.data[at + 2] | 0);
-    else f.writeInterned(ITEMS.data[at + 2] | 0);
+    if ((ITEMS$.data[at] | 0) === ITEM_WORD) f.textSourceNoWs(ITEMS$.data[at + 1] | 0, ITEMS$.data[at + 2] | 0);
+    else f.writeInterned(ITEMS$.data[at + 2] | 0);
   }
 }
 
 /** The flat layout: everything in order. */
 function writeFlatEntries(nParts: number, ib: number, pb: number, f: Formatter): number {
   const slot = f.startCapture();
+  const PARTS$ = PARTS;
   for (let p = 0; p < nParts; p++) {
-    const kind = PARTS.data[pb + 3 * p] | 0;
-    if (kind === PART_SEPARATOR) writeSeparator(PARTS.data[pb + 3 * p + 1] | 0, f);
-    else writeItems(PARTS.data[pb + 3 * p + 1] | 0, PARTS.data[pb + 3 * p + 2] | 0, ib, f);
+    const kind = PARTS$.data[pb + 3 * p] | 0;
+    if (kind === PART_SEPARATOR) writeSeparator(PARTS$.data[pb + 3 * p + 1] | 0, f);
+    else writeItems(PARTS$.data[pb + 3 * p + 1] | 0, PARTS$.data[pb + 3 * p + 2] | 0, ib, f);
   }
   return f.endCapture(slot);
 }
@@ -554,17 +571,18 @@ function writeFlatEntries(nParts: number, ib: number, pb: number, f: Formatter):
 function writeMultilineEntries(nParts: number, ib: number, pb: number, isFill: boolean, isMdxBlock: boolean, f: Formatter): number {
   const slot = f.startCapture();
   if (isFill) f.startEntry();
+  const PARTS$ = PARTS;
   for (let index = 0; index < nParts; index++) {
-    const kind = PARTS.data[pb + 3 * index] | 0;
-    const a = PARTS.data[pb + 3 * index + 1] | 0;
+    const kind = PARTS$.data[pb + 3 * index] | 0;
+    const a = PARTS$.data[pb + 3 * index + 1] | 0;
     if (kind === PART_CONTENT) {
-      writeItems(a, PARTS.data[pb + 3 * index + 2] | 0, ib, f);
+      writeItems(a, PARTS$.data[pb + 3 * index + 2] | 0, ib, f);
       continue;
     }
     const separator = a;
     // previous(1), previous(2)
-    const p1IsEmpty = index >= 1 && (PARTS.data[pb + 3 * (index - 1)] | 0) === PART_CONTENT && (PARTS.data[pb + 3 * (index - 1) + 1] | 0) === (PARTS.data[pb + 3 * (index - 1) + 2] | 0);
-    const p2IsHard = index >= 2 && (PARTS.data[pb + 3 * (index - 2)] | 0) === PART_SEPARATOR && (PARTS.data[pb + 3 * (index - 2) + 1] | 0) === SEP_HARD_LINE;
+    const p1IsEmpty = index >= 1 && (PARTS$.data[pb + 3 * (index - 1)] | 0) === PART_CONTENT && (PARTS$.data[pb + 3 * (index - 1) + 1] | 0) === (PARTS$.data[pb + 3 * (index - 1) + 2] | 0);
+    const p2IsHard = index >= 2 && (PARTS$.data[pb + 3 * (index - 2)] | 0) === PART_SEPARATOR && (PARTS$.data[pb + 3 * (index - 2) + 1] | 0) === SEP_HARD_LINE;
     const isAfterLineBreak = p1IsEmpty && p2IsHard;
     if (separator === SEP_JSX_WHITESPACE) {
       if (index === 1 && p1IsEmpty) {

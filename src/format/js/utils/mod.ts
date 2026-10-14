@@ -27,8 +27,9 @@ export function isLongCurriedCall(call: number, f: Formatter): boolean {
 /** Whether what is behind `callee` can be between a callee and its arguments: whitespace, a comment, a `)`, or the start of `(`, `<T>(` or `?.(`. */
 function mayBeFollowedByArguments(callee: number): boolean {
   const end = exprEnd(callee);
-  if (end >= (hir.sourceLen | 0)) return false;
-  const next = hir.text[end] | 0;
+  const hir$ = hir;
+  if (end >= (hir$.sourceLen | 0)) return false;
+  const next = hir$.text[end] | 0;
   return next <= 32 || next >= 128 || next === 40 || next === 41 || next === 60 || next === 63 || next === 47;
 }
 

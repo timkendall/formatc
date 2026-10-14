@@ -133,7 +133,8 @@ const whole = new ByteBuf(1024);
  * is set. Returns a `FORMAT_*` code.
  */
 export function formatWithCursor(text: Uint8Array, options: FormatOptions, out: ByteBuf, parse: ParseSlice | null): number {
-  cursorResult.value = -1;
+  const cursorResult$ = cursorResult;
+  cursorResult$.value = -1;
   if (options.isMdxEsSyntax && !allImportsOrExports()) return FORMAT_SYNTAX_ERROR;
   const first = startsWithBom(text) ? BOM_LEN : 0;
   offsets(text, first, options);
@@ -141,7 +142,7 @@ export function formatWithCursor(text: Uint8Array, options: FormatOptions, out: 
   const end0 = OFFSETS[1] | 0;
   if (start0 >= end0 && text.length > first) {
     out.append(text, 0, text.length);
-    cursorResult.value = options.cursorOffset;
+    cursorResult$.value = options.cursorOffset;
     return FORMAT_OK;
   }
   if (start0 <= first && end0 >= text.length) return formatWith(text, options, out, 0);
@@ -155,7 +156,8 @@ export function formatWithCursor(text: Uint8Array, options: FormatOptions, out: 
   }
   // Everything is put together with `\n`, which is replaced at the end.
   const lineEnding = resolveLineEnding(options.lineEnding, text.subarray(first));
-  formatted.reset();
+  const formatted$ = formatted;
+  formatted$.reset();
   const cursor = OFFSETS[2] | 0;
   // Where the cursor is in `formatted`, if it is in the range.
   let cursorInFormatted = -1;
@@ -169,27 +171,28 @@ export function formatWithCursor(text: Uint8Array, options: FormatOptions, out: 
     // The text of the slice is copied: the parse of the slice replaces the HIR, and the text of the file is not the HIR's.
     const slice = text.slice(rangeStart, rangeEnd);
     if (!parse(slice)) return FORMAT_SYNTAX_ERROR;
-    const code = formatWith(slice, sliceOptions, formatted, alignment);
+    const code = formatWith(slice, sliceOptions, formatted$, alignment);
     if (code !== FORMAT_OK) return code;
-    if (cursorResult.value >= 0 && cursorResult.value <= utf16Len(formatted.data, 0, formatted.len)) {
-      cursorInFormatted = byteOffsetOfUtf16(formatted.data, 0, formatted.len, cursorResult.value);
+    if (cursorResult$.value >= 0 && cursorResult$.value <= utf16Len(formatted$.data, 0, formatted$.len)) {
+      cursorInFormatted = byteOffsetOfUtf16(formatted$.data, 0, formatted$.len, cursorResult$.value);
     }
-    formatted.len = trimJsWhitespaceEnd(formatted.data, 0, formatted.len);
+    formatted$.len = trimJsWhitespaceEnd(formatted$.data, 0, formatted$.len);
   }
-  whole.reset();
+  const whole$ = whole;
+  whole$.reset();
   let cursorInWhole = -1;
-  writeWithLineEnding(text, 0, rangeStart, LINE_ENDING_LF, whole);
-  if (cursor >= 0 && cursor <= rangeStart) cursorInWhole = whole.len - normalizedLen(text, cursor, rangeStart);
-  if (cursorInFormatted >= 0) cursorInWhole = whole.len + cursorInFormatted;
-  whole.append(formatted.data, 0, formatted.len);
-  if (cursor >= 0 && cursor > rangeEnd) cursorInWhole = whole.len + normalizedLen(text, rangeEnd, cursor);
-  writeWithLineEnding(text, rangeEnd, text.length, LINE_ENDING_LF, whole);
-  if (cursorInWhole > whole.len) cursorInWhole = whole.len;
+  writeWithLineEnding(text, 0, rangeStart, LINE_ENDING_LF, whole$);
+  if (cursor >= 0 && cursor <= rangeStart) cursorInWhole = whole$.len - normalizedLen(text, cursor, rangeStart);
+  if (cursorInFormatted >= 0) cursorInWhole = whole$.len + cursorInFormatted;
+  whole$.append(formatted$.data, 0, formatted$.len);
+  if (cursor >= 0 && cursor > rangeEnd) cursorInWhole = whole$.len + normalizedLen(text, rangeEnd, cursor);
+  writeWithLineEnding(text, rangeEnd, text.length, LINE_ENDING_LF, whole$);
+  if (cursorInWhole > whole$.len) cursorInWhole = whole$.len;
   const upTo = cursorInWhole >= 0 ? cursorInWhole : 0;
   const outStart = out.len;
-  writeWithLineEnding(whole.data, 0, upTo, lineEnding, out);
-  cursorResult.value = cursorInWhole >= 0 ? utf16Len(out.data, outStart, out.len) : -1;
-  writeWithLineEnding(whole.data, upTo, whole.len, lineEnding, out);
+  writeWithLineEnding(whole$.data, 0, upTo, lineEnding, out);
+  cursorResult$.value = cursorInWhole >= 0 ? utf16Len(out.data, outStart, out.len) : -1;
+  writeWithLineEnding(whole$.data, upTo, whole$.len, lineEnding, out);
   return FORMAT_OK;
 }
 
@@ -494,12 +497,13 @@ const kids = new SemaVec(32);
 function findNodeAtOffset(offset: number, edge: number, path: I32Vec): boolean {
   // Siblings do not overlap, so there is one way down.
   let innermost = NODE_FILE;
+  const kids$ = kids;
   while (true) {
-    const base = kids.len;
-    nodeChildren(innermost, -1, kids);
+    const base = kids$.len;
+    nodeChildren(innermost, -1, kids$);
     let next = -1;
-    for (let i = base; i < kids.len; i++) {
-      const child = kids.data[i] | 0;
+    for (let i = base; i < kids$.len; i++) {
+      const child = kids$.data[i] | 0;
       nodeSpan(child);
       let s = SP[0] | 0;
       let e = SP[1] | 0;
@@ -510,7 +514,7 @@ function findNodeAtOffset(offset: number, edge: number, path: I32Vec): boolean {
       if (fe > e) e = fe;
       if (next < 0 && edgeIsIn(edge, offset, s, e)) next = child;
     }
-    kids.len = base;
+    kids$.len = base;
     if (next >= 0) innermost = next;
     else break;
   }
@@ -619,12 +623,15 @@ function calculateRange(text: Uint8Array, flavor: number, start0: number, end0: 
     start = trimmed;
     end = trimJsWhitespaceEnd(text, start, end);
   }
-  startPath.reset();
-  if (!findNodeAtOffset(start, EDGE_START, startPath)) return false;
-  endPath.reset();
+  const startPath$ = startPath;
+  startPath$.reset();
+  if (!findNodeAtOffset(start, EDGE_START, startPath$)) return false;
+  const endPath$ = endPath;
+  endPath$.reset();
   if (isAllWhiteSpace) {
-    for (let i = 0; i < startPath.len; i++) endPath.push(startPath.data[i] | 0);
-  } else if (!findNodeAtOffset(end, EDGE_END, endPath)) return false;
-  collectComments(rangeComments, text, flavor, fileIsJavascript());
-  return findSiblingAncestors(startPath, endPath, rangeComments);
+    for (let i = 0; i < startPath$.len; i++) endPath$.push(startPath$.data[i] | 0);
+  } else if (!findNodeAtOffset(end, EDGE_END, endPath$)) return false;
+  const rangeComments$ = rangeComments;
+  collectComments(rangeComments$, text, flavor, fileIsJavascript());
+  return findSiblingAncestors(startPath$, endPath$, rangeComments$);
 }

@@ -50,10 +50,11 @@ function parseAndBuild(path: string, code: string, options: FormatOptions): stri
   if (formatJavascript === null) return null;
   const bytes = encodeString(code);
   const out = new ByteBuf(bytes.length + 64);
-  nested.dirty = true;
+  const nested$ = nested;
+  nested$.dirty = true;
   const ok = formatJavascript(path, bytes, 0, bytes.length, options, out);
   // The nested format has replaced the HIR of the file that is being formatted.
-  if (nested.restore !== null) nested.restore();
+  if (nested$.restore !== null) nested$.restore();
   if (!ok) return null;
   return trimUnicodeWhitespaceEnd(decodeBytes(out.data, 0, out.len));
 }

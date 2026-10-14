@@ -188,8 +188,9 @@ function classify(written: Written, source: string, options: OxfmtOptions): void
   if (importNamespace(imp) >= 0) modifiers = modifiers | modifierBit(MOD_WILDCARD);
   if (importNamedLen(imp) > 0) modifiers = modifiers | modifierBit(MOD_NAMED);
 
-  classified.isIgnored = !options.sortSideEffects && isSideEffect && !options.regroupsSideEffect && !(style && options.regroupsSideEffectStyle);
-  classified.group = options.groupOf(source, selectors, modifiers);
+  const classified$ = classified;
+  classified$.isIgnored = !options.sortSideEffects && isSideEffect && !options.regroupsSideEffect && !(style && options.regroupsSideEffectStyle);
+  classified$.group = options.groupOf(source, selectors, modifiers);
 }
 
 /** `sort_within_group`: sorts `indices[from..to)`. */
@@ -275,6 +276,7 @@ function writeSorted(lines: Line[], from: number, to: number, imports: Written[]
   // The lines since the last import up to the last empty line, and where those after it start.
   let orphanPending: Line[] = [];
   let currentPending = from;
+  const classified$ = classified;
   for (let at = from; at < to; at++) {
     const line = lines[at] as Line;
     if (line.kind === LINE_IMPORT) {
@@ -294,7 +296,7 @@ function writeSorted(lines: Line[], from: number, to: number, imports: Written[]
       const written = imports[line.index] as Written;
       const source = sourcePath(written.source);
       classify(written, source, options);
-      units.push(new Unit(currentPending, at, line, classified.group, source, importIsSideEffect(written.import), classified.isIgnored));
+      units.push(new Unit(currentPending, at, line, classified$.group, source, importIsSideEffect(written.import), classified$.isIgnored));
       currentPending = at + 1;
     } else if (line.kind === LINE_EMPTY) {
       for (let k = currentPending; k <= at; k++) orphanPending.push(lines[k] as Line);

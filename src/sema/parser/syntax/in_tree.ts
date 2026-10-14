@@ -6,9 +6,10 @@ import { isImportAttributesObject } from "../../../lint/ast/index.ts";
 
 export function exprInTree(i: number): boolean {
   if ((bound.exprParentTag[i] | 0) === P_NONE) return false;
-  const t = hir.exprTag[i] | 0;
+  const hir$ = hir;
+  const t = hir$.exprTag[i] | 0;
   if (t === EXPR_MISSING) return false;
-  if (hir.importAttributesLen !== 0 && t === EXPR_OBJECT && isImportAttributesObject(i)) return false;
+  if (hir$.importAttributesLen !== 0 && t === EXPR_OBJECT && isImportAttributesObject(i)) return false;
   return true;
 }
 

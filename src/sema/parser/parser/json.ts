@@ -35,24 +35,27 @@ function isNoName(): boolean {
  * What is no JSON is left to `bun_sema::json::validate_json`. Returns the StmtId.
  */
 export function jsonText(): number {
-  const start = lx.start | 0;
-  const base = s.ids.len;
+  const lx$ = lx;
+  const start = lx$.start | 0;
+  const s$ = s;
+  const base = s$.ids.len;
   // No list of statements is open.
-  p.lists = 0;
-  while (lx.token !== T_EOF) {
+  const p$ = p;
+  p$.lists = 0;
+  while (lx$.token !== T_EOF) {
     let isValue = false;
-    const t = lx.token | 0;
+    const t = lx$.token | 0;
     if (t === T_OPEN_BRACKET || t === T_TRUE || t === T_FALSE || t === T_NULL) {
       isValue = true;
     } else if (t === T_MINUS) {
-      const m = lx.mark();
-      const had = lx.refusal | 0;
+      const m = lx$.mark();
+      const had = lx$.refusal | 0;
       next();
-      isValue = lx.token === T_NUMBER && isNoName();
+      isValue = lx$.token === T_NUMBER && isNoName();
       lookAheadEnd(m, had);
     } else if (t === T_NUMBER || t === T_STRING) {
-      const m = lx.mark();
-      const had = lx.refusal | 0;
+      const m = lx$.mark();
+      const had = lx$.refusal | 0;
       isValue = isNoName();
       lookAheadEnd(m, had);
     }
@@ -61,27 +64,27 @@ export function jsonText(): number {
       const minus = pos();
       next();
       const operand = leftHandSideExpression();
-      expr = pushExprUnary(minus, lx.fullStart, operand, UN_MINUS);
+      expr = pushExprUnary(minus, lx$.fullStart, operand, UN_MINUS);
     } else if (isValue) {
       expr = primaryExpression();
     } else {
       expr = objectLiteral();
     }
     if (hasFailed()) break;
-    s.ids.push(expr);
+    s$.ids.push(expr);
     // "Error recovery: collect multiple top-level expressions"
-    if (s.ids.len === base + 1 && lx.token !== T_EOF) errorAtToken(1012);
+    if (s$.ids.len === base + 1 && lx$.token !== T_EOF) errorAtToken(1012);
   }
-  const count = s.ids.len - base;
+  const count = s$.ids.len - base;
   let value: number;
   if (count === 1) {
-    value = s.ids.data[base] | 0;
-    s.ids.len = base;
+    value = s$.ids.data[base] | 0;
+    s$.ids.len = base;
   } else if (count === 0) {
     value = pushExprObject(start, start, 0, 0);
   } else {
     const elements = takeIds(base);
-    value = pushExprArray(start, lx.fullStart, elements, p.outLen);
+    value = pushExprArray(start, lx$.fullStart, elements, p$.outLen);
   }
   // It is written nowhere.
   const id = pushStmtExportAssign(0, value);

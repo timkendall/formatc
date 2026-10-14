@@ -108,7 +108,8 @@ const NO_WORD = -2;
 
 /** Whether the text is read as acorn or Babel read it: what TypeScript's parser leaves to the checker is an error of their parsers. */
 function isReadAsByOtherParsers(): boolean {
-  return p.isEcmascript || p.isBabel;
+  const p$ = p;
+  return p$.isEcmascript || p$.isBabel;
 }
 
 // ExportName register: the text (atom), the position and the token of the last `moduleExportName`.
@@ -135,16 +136,18 @@ let spEnd = 0;
  * `isTypeOnly`: after `import type` or `export type`, the only declarations whose `resolution-mode` is honored.
  */
 function moduleSpecifier(isExport: boolean, isTypeOnly: boolean): number {
-  if (lx.token !== T_STRING) {
+  const lx$ = lx;
+  const p$ = p;
+  if (lx$.token !== T_STRING) {
     expressionAsModuleSpecifier(isExport);
-    p.outA = RM_NONE;
+    p$.outA = RM_NONE;
     return ATOM_NONE;
   }
-  const spec = lx.atom;
-  lx.next();
+  const spec = lx$.atom;
+  lx$.next();
   let mode = importAttributesOfDeclaration(isExport);
   if (!isTypeOnly) mode = RM_NONE;
-  p.outA = mode;
+  p$.outA = mode;
   return spec;
 }
 
@@ -156,21 +159,23 @@ function expressionAsModuleSpecifier(isExport: boolean): void {
     return;
   }
   const at = lx.start;
-  const importsBefore = hir.nImports;
-  const exportsBefore = hir.nExports;
+  const hir$ = hir;
+  const importsBefore = hir$.nImports;
+  const exportsBefore = hir$.nExports;
   // `parseExportDeclaration` has `setAwaitContext(true)`.
-  const saved = p.context;
-  if (isExport) p.context = p.context | CTX_AWAIT;
+  const p$ = p;
+  const saved = p$.context;
+  if (isExport) p$.context = p$.context | CTX_AWAIT;
   const e = expression();
-  p.context = saved;
+  p$.context = saved;
   if (hasFailed()) return;
   stringLiteralExpected(e, at);
-  hir.pushSpecifierExpressions(e);
+  hir$.pushSpecifierExpressions(e);
   afterExpressionsOfDeclaration(at, importsBefore, exportsBefore);
   importAttributesOfDeclaration(isExport);
   if (isExport) {
     // The declaration is the next statement that is added.
-    hir.pushExportsFromExpressions(hir.nStmts, e);
+    hir$.pushExportsFromExpressions(hir$.nStmts, e);
   }
 }
 
@@ -193,13 +198,15 @@ function stringLiteralExpected(e: number, at: number): boolean {
  */
 function afterExpressionsOfDeclaration(from: number, importsBefore: number, exportsBefore: number): void {
   // The specifiers of the declaration hold the index that it was going to get.
-  const hasDeclarations = importsBefore !== hir.nImports || exportsBefore !== hir.nExports;
+  const hir$ = hir;
+  const hasDeclarations = importsBefore !== hir$.nImports || exportsBefore !== hir$.nExports;
   // For an `await` that is a name, `reparseTopLevelAwait` parses the names of an import again too.
   const topLevel = CTX_TOP_LEVEL | CTX_AWAIT;
   let hasAwait = false;
+  const lx$ = lx;
   if ((p.context & topLevel) === topLevel) {
-    const src = lx.src;
-    const end = lx.fullStart | 0;
+    const src = lx$.src;
+    const end = lx$.fullStart | 0;
     for (let i = from; i + 5 <= end; i++) {
       if (
         (src[i] | 0) === 97 &&
@@ -220,12 +227,14 @@ function afterExpressionsOfDeclaration(from: number, importsBefore: number, expo
 function importAttributesOfDeclaration(isExport: boolean): number {
   // After an import, `with` can be on the next line. After an export it starts a statement there for TypeScript, and for nobody else.
   // TODO(oxc): `&& !dialect.oxc`
-  const isStatement = isExport && lx.newlineBefore && !p.isEcmascript;
-  if (lx.token === T_WITH && !isStatement) return importAttributesAfterSpecifier(isExport);
-  if (lx.token === T_ASSERT && !lx.newlineBefore) {
+  const lx$ = lx;
+  const p$ = p;
+  const isStatement = isExport && lx$.newlineBefore && !p$.isEcmascript;
+  if (lx$.token === T_WITH && !isStatement) return importAttributesAfterSpecifier(isExport);
+  if (lx$.token === T_ASSERT && !lx$.newlineBefore) {
     // An error of the native parser.
-    if (p.isTypescript5) flag(DK_GRAMMAR, 2880, lx.start, lx.end);
-    else errorAndGoOn(2880, lx.start, lx.start === lx.end ? -1 : lx.end);
+    if (p$.isTypescript5) flag(DK_GRAMMAR, 2880, lx$.start, lx$.end);
+    else errorAndGoOn(2880, lx$.start, lx$.start === lx$.end ? -1 : lx$.end);
     return importAttributesAfterSpecifier(isExport);
   }
   return RM_NONE;
@@ -234,10 +243,11 @@ function importAttributesOfDeclaration(isExport: boolean): number {
 /** `parseImportAttributes`, at the keyword after a module specifier. */
 function importAttributesAfterSpecifier(isExport: boolean): number {
   // `parseExportDeclaration` has `setAwaitContext(true)`.
-  const saved = p.context;
-  if (isExport && !p.isEcmascript) p.context = p.context | CTX_AWAIT;
+  const p$ = p;
+  const saved = p$.context;
+  if (isExport && !p$.isEcmascript) p$.context = p$.context | CTX_AWAIT;
   const mode = importAttributes(false);
-  p.context = saved;
+  p$.context = saved;
   return mode;
 }
 
@@ -247,57 +257,62 @@ function importAttributesAfterSpecifier(isExport: boolean): number {
  * keyword.
  */
 export function importAttributes(isInType: boolean): number {
-  const keyword = lx.start;
-  if (!isInType || lx.token === T_WITH || lx.token === T_ASSERT) lx.next();
+  const lx$ = lx;
+  const keyword = lx$.start;
+  if (!isInType || lx$.token === T_WITH || lx$.token === T_ASSERT) lx$.next();
   if (isInType) expect(T_COLON);
-  const open = lx.start;
+  const open = lx$.start;
+  const hir$ = hir;
   if (!expect(T_OPEN_BRACE)) {
     // `parseEmptyNodeList`
     const object = pushExprObject(open, open, 0, 0);
-    hir.pushImportAttributes(keyword, object);
+    hir$.pushImportAttributes(keyword, object);
     return RM_NONE;
   }
-  const importsBefore = hir.nImports;
-  const exportsBefore = hir.nExports;
-  const base = s.props.len;
+  const importsBefore = hir$.nImports;
+  const exportsBefore = hir$.nExports;
+  const s$ = s;
+  const base = s$.props.len;
   let mode = RM_NONE;
   let hasOnlyStrings = true;
   const lists = enterList(LK_IMPORT_ATTRIBUTES);
+  const names$ = names;
   while (isInList(T_CLOSE_BRACE) && isAtElement(LK_IMPORT_ATTRIBUTES)) {
     // `parseImportAttribute`
-    const pos = lx.start;
-    const element = lx.fullStart;
-    const token = lx.token;
+    const pos = lx$.start;
+    const element = lx$.fullStart;
+    const token = lx$.token;
     // `tokenIsIdentifierOrKeyword` is true of a private name.
     if (token !== T_STRING && (token < T_IDENTIFIER || (token === T_PRIVATE_IDENTIFIER && isReadAsByOtherParsers()))) {
       fail();
       break;
     }
-    const key = lx.atom;
+    const key = lx$.atom;
     nextAfterName();
     expect(T_COLON);
     // The checker reports all but a string.
-    const isAtString = lx.token === T_STRING;
+    const isAtString = lx$.token === T_STRING;
     const value = assignmentExpression();
     // A template without substitutions is one too.
     let text = NONE;
-    if (value >= 0 && (hir.exprTag[value] | 0) === EXPR_STRING) text = hir.exprA[value] | 0;
+    if (value >= 0 && (hir$.exprTag[value] | 0) === EXPR_STRING) text = hir$.exprA[value] | 0;
     hasOnlyStrings = hasOnlyStrings && isAtString && text >= 0;
-    if (token === T_STRING && names.atomIs(key, "resolution-mode")) {
+    if (token === T_STRING && names$.atomIs(key, "resolution-mode")) {
       // `IsStringLiteralLike`
       if (text >= 0 && isParenthesized(value)) text = NONE;
-      if (text >= 0 && names.atomIs(text, "import")) mode = RM_IMPORT;
-      else if (text >= 0 && names.atomIs(text, "require")) mode = RM_REQUIRE;
+      if (text >= 0 && names$.atomIs(text, "import")) mode = RM_IMPORT;
+      else if (text >= 0 && names$.atomIs(text, "require")) mode = RM_REQUIRE;
       else mode = RM_NONE;
     }
-    s.props.push(hir.pushProp(PROP_INIT, PK_NAME, key, NK_IDENTIFIER, value, pos, pos, lx.fullStart, 0, 0, 0));
+    s$.props.push(hir$.pushProp(PROP_INIT, PK_NAME, key, NK_IDENTIFIER, value, pos, pos, lx$.fullStart, 0, 0, 0));
     if (!eat(T_COMMA) && !goesOnWithoutComma(LK_IMPORT_ATTRIBUTES, element)) break;
   }
   leaveList(lists);
   if (!eat(T_CLOSE_BRACE)) unclosedImportAttributes(open);
+  const p$ = p;
   if (!hasOnlyStrings && !hasFailed()) {
     // In a TypeScript file Prettier asks typescript-estree, which takes any expression.
-    if (p.isEcmascript) {
+    if (p$.isEcmascript) {
       // TODO(oxc): the linter has oxc's words for it.
       refuse(R_REPORTED);
     } else if (!isInType) {
@@ -305,10 +320,10 @@ export function importAttributes(isInType: boolean): number {
     }
   }
   // Only if it is the only attribute.
-  if (s.props.len !== base + 1) mode = RM_NONE;
-  const props = takeList(s.props, base);
-  const object = pushExprObject(open, lx.fullStart, props, p.outLen);
-  hir.pushImportAttributes(keyword, object);
+  if (s$.props.len !== base + 1) mode = RM_NONE;
+  const props = takeList(s$.props, base);
+  const object = pushExprObject(open, lx$.fullStart, props, p$.outLen);
+  hir$.pushImportAttributes(keyword, object);
   return mode;
 }
 
@@ -329,23 +344,26 @@ export function unclosedImportAttributes(open: number): void {
  * Returns the context to restore.
  */
 function leaveAwaitContextOfTopLevel(): number {
-  const saved = p.context;
-  if ((saved & CTX_TOP_LEVEL) !== 0 && !p.isEcmascript) p.context = saved & ~CTX_AWAIT;
+  const p$ = p;
+  const saved = p$.context;
+  if ((saved & CTX_TOP_LEVEL) !== 0 && !p$.isEcmascript) p$.context = saved & ~CTX_AWAIT;
   return saved;
 }
 
 /** `parseIdentifier`: the name, which is not noted; the position is `p.outPos`. */
 function identifierOfDeclaration(): number {
   if (!isIdentifier()) return missingName();
-  const atom = lx.atom;
-  p.outPos = lx.start;
+  const lx$ = lx;
+  const atom = lx$.atom;
+  p.outPos = lx$.start;
   nextAfterName();
   return atom;
 }
 
 /** `canParseModuleExportName` */
 function canParseModuleExportName(): boolean {
-  return lx.token >= T_IDENTIFIER || lx.token === T_STRING;
+  const lx$ = lx;
+  return lx$.token >= T_IDENTIFIER || lx$.token === T_STRING;
 }
 
 /** `parseModuleExportName`: the result is in `mText`, `mPos`, `mTok`. */
@@ -356,15 +374,17 @@ function moduleExportName(): void {
     mTok = T_IDENTIFIER;
     return;
   }
-  mText = lx.atom;
-  mPos = lx.start;
-  mTok = lx.token;
+  const lx$ = lx;
+  mText = lx$.atom;
+  mPos = lx$.start;
+  mTok = lx$.token;
   nextAfterName();
 }
 
 /** `parseImportOrExportSpecifier`, but for the error about the name. The result is in the `sp*` registers. */
 function importOrExportSpecifier(): void {
-  spStart = lx.start;
+  const lx$ = lx;
+  spStart = lx$.start;
   let isTypeOnly = false;
   let hasProp = false;
   let propText = 0;
@@ -378,12 +398,12 @@ function importOrExportSpecifier(): void {
   let nameTok = mTok;
   if (nameTok === T_TYPE || (nameTok === T_TYPE_OF && p.isFlow)) {
     // "If the first token of an import specifier is 'type', there are a lot of possibilities"
-    if (lx.token === T_AS) {
+    if (lx$.token === T_AS) {
       moduleExportName();
       const faText = mText;
       const faPos = mPos;
       const faTok = mTok;
-      if (lx.token === T_AS) {
+      if (lx$.token === T_AS) {
         moduleExportName();
         const saText = mText;
         const saPos = mPos;
@@ -437,13 +457,13 @@ function importOrExportSpecifier(): void {
       nameTok = mTok;
     }
   }
-  if (canParseAs && lx.token === T_AS) {
+  if (canParseAs && lx$.token === T_AS) {
     hasProp = true;
     propText = nameText;
     propPos = namePos;
     propTok = nameTok;
-    propEnd = lx.fullStart;
-    lx.next();
+    propEnd = lx$.fullStart;
+    lx$.next();
     moduleExportName();
     nameText = mText;
     namePos = mPos;
@@ -458,7 +478,7 @@ function importOrExportSpecifier(): void {
   spNameText = nameText;
   spNamePos = namePos;
   spNameTok = nameTok;
-  spEnd = lx.fullStart;
+  spEnd = lx$.fullStart;
 }
 
 /**
@@ -469,9 +489,10 @@ function unusualNameOfImportSpecifier(imported: number): number {
   // "disallowKeywords && ast.IsKeyword(p.token) && !p.isIdentifier()"
   const token = spNameTok;
   let isIdent = false;
+  const p$ = p;
   if (token === T_STRING) isIdent = false;
-  else if (token === T_YIELD && !p.isEcmascript) isIdent = !hasContext(CTX_YIELD);
-  else if (token === T_AWAIT && !p.isEcmascript) isIdent = !hasContext(CTX_AWAIT);
+  else if (token === T_YIELD && !p$.isEcmascript) isIdent = !hasContext(CTX_YIELD);
+  else if (token === T_AWAIT && !p$.isEcmascript) isIdent = !hasContext(CTX_AWAIT);
   else isIdent = !isReservedWord(token);
   if (!isIdent) errorAndGoOn(1003, spNamePos, spEnd);
   // `ImportSpec::is_name_missing`
@@ -495,35 +516,39 @@ function unusualLocalOfExportSpecifier(): void {
     // `checkModuleExportName(node.PropertyName(), hasModuleSpecifier)`
     isReported = localTok === T_STRING && spHasProp;
   }
+  const s$ = s;
   if (isReported) {
-    s.ids.push(localPos);
-    s.ids.push(spPropEnd);
+    s$.ids.push(localPos);
+    s$.ids.push(spPropEnd);
   }
 }
 
 /** Pops what `unusualLocalOfExportSpecifier` has pushed from `base` on, and reports it. */
 function reportLocalsOfExport(base: number, hasModuleSpecifier: boolean): void {
+  const s$ = s;
   if (!hasModuleSpecifier && isReadAsByOtherParsers()) {
     refuse(R_REPORTED);
   } else if (!hasModuleSpecifier) {
-    for (let i = base; i + 1 < s.ids.len; i += 2) flag(DK_GRAMMAR, 1003, s.ids.data[i] | 0, s.ids.data[i + 1] | 0);
+    for (let i = base; i + 1 < s$.ids.len; i += 2) flag(DK_GRAMMAR, 1003, s$.ids.data[i] | 0, s$.ids.data[i + 1] | 0);
   }
-  s.ids.truncate(base);
+  s$.ids.truncate(base);
 }
 
 /** `parseImportDeclarationOrImportEqualsDeclaration` */
 export function importDeclarationOrImportEquals(startPos: number, startFull: number, base: number, flags: number): number {
-  lx.next();
+  const lx$ = lx;
+  lx$.next();
   const saved = leaveAwaitContextOfTopLevel();
-  const clauseStart = lx.start;
+  const clauseStart = lx$.start;
   let hasId = false;
   let idAtom = 0;
   let idPos = 0;
   let idTok = 0;
-  if (isIdentifier() || (lx.token === T_TYPE_OF && p.isFlow)) {
-    idAtom = lx.atom;
-    idPos = lx.start;
-    idTok = lx.token;
+  const p$ = p;
+  if (isIdentifier() || (lx$.token === T_TYPE_OF && p$.isFlow)) {
+    idAtom = lx$.atom;
+    idPos = lx$.start;
+    idTok = lx$.token;
     hasId = true;
     nextAfterName();
   }
@@ -531,45 +556,45 @@ export function importDeclarationOrImportEquals(startPos: number, startFull: num
   let isDeferred = false;
   if (hasId && (idTok === T_TYPE || idTok === T_TYPE_OF)) {
     const isModifier =
-      (lx.token !== T_FROM || (isIdentifier() && (peek() === T_FROM || peek() === T_EQUALS))) &&
-      (isIdentifier() || lx.token === T_ASTERISK || lx.token === T_OPEN_BRACE);
+      (lx$.token !== T_FROM || (isIdentifier() && (peek() === T_FROM || peek() === T_EQUALS))) &&
+      (isIdentifier() || lx$.token === T_ASTERISK || lx$.token === T_OPEN_BRACE);
     if (isModifier) {
       typeOnly = true;
       hasId = false;
       if (isIdentifier()) {
-        idAtom = lx.atom;
-        idPos = lx.start;
-        idTok = lx.token;
+        idAtom = lx$.atom;
+        idPos = lx$.start;
+        idTok = lx$.token;
         hasId = true;
         nextAfterName();
       }
     }
-  } else if (hasId && (idTok === T_DEFER || (p.isBabel && names.atomIs(idAtom, "source")))) {
+  } else if (hasId && (idTok === T_DEFER || (p$.isBabel && names.atomIs(idAtom, "source")))) {
     // For Babel and oxc `source` is a phase too. It is kept like `defer`: the text tells them apart.
-    if (lx.token === T_FROM) isDeferred = peek() !== T_STRING;
-    else isDeferred = !(lx.token === T_COMMA || lx.token === T_EQUALS);
+    if (lx$.token === T_FROM) isDeferred = peek() !== T_STRING;
+    else isDeferred = !(lx$.token === T_COMMA || lx$.token === T_EQUALS);
     if (isDeferred) {
       // Only `import source x from "a"`.
       if (idTok !== T_DEFER && !isIdentifier()) report();
       hasId = false;
       if (isIdentifier()) {
-        idAtom = lx.atom;
-        idPos = lx.start;
-        idTok = lx.token;
+        idAtom = lx$.atom;
+        idPos = lx$.start;
+        idTok = lx$.token;
         hasId = true;
         nextAfterName();
       }
     }
   }
   // Without a `=` oxc goes on with the clause, and misses the `from`. TODO(oxc): `(token === T_EQUALS || !dialect.oxc)`
-  if (hasId && !isDeferred && !(lx.token === T_COMMA || lx.token === T_FROM)) {
+  if (hasId && !isDeferred && !(lx$.token === T_COMMA || lx$.token === T_FROM)) {
     const st = importEquals(startPos, startFull, base, flags, idAtom, idPos, typeOnly);
-    p.context = saved;
+    p$.context = saved;
     return st;
   }
   // The checker reports them.
   const modStart = takeModifiers(base);
-  const modLen = p.outLen | 0;
+  const modLen = p$.outLen | 0;
   // `parseImportClause`
   let defaultAtom = ATOM_NONE;
   let defaultPos = 0;
@@ -580,25 +605,27 @@ export function importDeclarationOrImportEquals(startPos: number, startFull: num
   let namespace = ATOM_NONE;
   let namespacePos = 0;
   let namespaceStart = 0;
-  const specs = s.importSpecs.len;
+  const s$ = s;
+  const specs = s$.importSpecs.len;
   let hasNamedImports = false;
-  const declaration = hir.nImports | 0;
-  const hasClause = hasId || lx.token === T_ASTERISK || lx.token === T_OPEN_BRACE;
+  const hir$ = hir;
+  const declaration = hir$.nImports | 0;
+  const hasClause = hasId || lx$.token === T_ASTERISK || lx$.token === T_OPEN_BRACE;
   if (hasClause && (!hasId || eat(T_COMMA))) {
     // TODO(oxc): `type_only_import_of_both`
-    if (lx.token === T_ASTERISK) {
+    if (lx$.token === T_ASTERISK) {
       // `parseNamespaceImport`
-      namespaceStart = lx.start;
-      lx.next();
+      namespaceStart = lx$.start;
+      lx$.next();
       expect(T_AS);
       namespace = identifierOfDeclaration();
-      namespacePos = p.outPos | 0;
+      namespacePos = p$.outPos | 0;
     } else {
       hasNamedImports = true;
       const hasList = expect(T_OPEN_BRACE);
       const lists = enterList(LK_IMPORT_OR_EXPORT_SPECIFIERS);
       while (hasList && isInList(T_CLOSE_BRACE) && isAtElement(LK_IMPORT_OR_EXPORT_SPECIFIERS)) {
-        const element = lx.fullStart;
+        const element = lx$.fullStart;
         importOrExportSpecifier();
         let importedText = spHasProp ? spPropText : spNameText;
         const importedPos = spHasProp ? spPropPos : spNamePos;
@@ -612,35 +639,35 @@ export function importDeclarationOrImportEquals(startPos: number, startFull: num
           jsError(st0, en0, 8006, "import...type");
           // TODO(oxc): `type_modifier_twice`
         }
-        s.importSpecs.push(hir.pushImportSpec(st0, importedText, nameText, namePos, spTypeOnly ? 1 : 0, importedPos, en0, declaration));
+        s$.importSpecs.push(hir$.pushImportSpec(st0, importedText, nameText, namePos, spTypeOnly ? 1 : 0, importedPos, en0, declaration));
         if (!eat(T_COMMA) && !goesOnWithoutComma(LK_IMPORT_OR_EXPORT_SPECIFIERS, element)) break;
       }
       leaveList(lists);
       if (hasList) expect(T_CLOSE_BRACE);
     }
   }
-  p.context = saved;
+  p$.context = saved;
   // `tryParseImportClause`: without a clause there is nothing that the modifier is of.
   if (isDeferred && !hasClause) {
     if (isReadAsByOtherParsers()) report();
     else isDeferred = false;
   }
-  const clauseEnd = hasClause ? lx.fullStart : clauseStart;
+  const clauseEnd = hasClause ? lx$.fullStart : clauseStart;
   if (hasClause) expect(T_FROM);
   const spec = moduleSpecifier(false, typeOnly);
-  const mode = p.outA | 0;
+  const mode = p$.outA | 0;
   semicolon();
   // The reference notes the names in this order.
-  for (let i = specs; i < s.importSpecs.len; i++) {
-    const sp = s.importSpecs.data[i] | 0;
-    noteIdentifier(hir.importSpecLocal[sp] | 0, hir.importSpecPos[sp] | 0);
+  for (let i = specs; i < s$.importSpecs.len; i++) {
+    const sp = s$.importSpecs.data[i] | 0;
+    noteIdentifier(hir$.importSpecLocal[sp] | 0, hir$.importSpecPos[sp] | 0);
     // TODO(oxc): `declare(local, DECLARES_IMPORT)`
   }
   if (defaultAtom >= 0) noteIdentifier(defaultAtom, defaultPos);
   if (namespace >= 0) noteIdentifier(namespace, namespacePos);
-  const named = takeList(s.importSpecs, specs);
-  const namedLen = p.outLen | 0;
-  const imp = hir.pushImport(
+  const named = takeList(s$.importSpecs, specs);
+  const namedLen = p$.outLen | 0;
+  const imp = hir$.pushImport(
     spec,
     defaultAtom,
     defaultPos,
@@ -670,14 +697,18 @@ function importEquals(startPos: number, startFull: number, base: number, flags0:
   let targetA = ATOM_NONE;
   let targetB = 0;
   // `parseModuleReference`
-  if (lx.token === T_REQUIRE && peek() === T_OPEN_PAREN) {
+  const lx$ = lx;
+  const s$ = s;
+  const p$ = p;
+  const hir$ = hir;
+  if (lx$.token === T_REQUIRE && peek() === T_OPEN_PAREN) {
     // `parseExternalModuleReference`
-    lx.next();
-    lx.next();
+    lx$.next();
+    lx$.next();
     let spec = ATOM_NONE;
-    if (lx.token === T_STRING) {
-      spec = lx.atom;
-      lx.next();
+    if (lx$.token === T_STRING) {
+      spec = lx$.atom;
+      lx$.next();
     } else {
       expr = expressionAsRequiredModule();
     }
@@ -686,27 +717,27 @@ function importEquals(startPos: number, startFull: number, base: number, flags0:
     targetA = spec;
   } else {
     // `parseEntityName`
-    const nbase = s.names.len;
+    const nbase = s$.names.len;
     const first = identifierOfDeclaration();
-    const firstPos = p.outPos | 0;
+    const firstPos = p$.outPos | 0;
     noteIdentifier(first, firstPos);
-    s.names.push(hir.pushName(first, firstPos, 0));
+    s$.names.push(hir$.pushName(first, firstPos, 0));
     while (eat(T_DOT)) {
       const part = rightSideOfDotInModuleReference();
       if (part === NO_WORD) break;
-      s.names.push(hir.pushName(part, p.outPos, 1));
+      s$.names.push(hir$.pushName(part, p$.outPos, 1));
     }
-    targetA = takeList(s.names, nbase);
-    targetB = p.outLen | 0;
+    targetA = takeList(s$.names, nbase);
+    targetB = p$.outLen | 0;
     targetKind = IET_ENTITY;
   }
   semicolon();
   // TODO(oxc): `type_only_import_alias`
   noteIdentifier(name, namePos);
   // TODO(oxc): `declare(name, DECLARES_IMPORT)`
-  const declaration = hir.pushImportEquals(name, namePos, targetKind, targetA, targetB, expr, flags, NONE);
+  const declaration = hir$.pushImportEquals(name, namePos, targetKind, targetA, targetB, expr, flags, NONE);
   const modStart = takeModifiers(base);
-  const modLen = p.outLen | 0;
+  const modLen = p$.outLen | 0;
   return finishStmt(pushStmtImportEquals(startPos, declaration), startFull, modStart, modLen);
 }
 
@@ -721,7 +752,8 @@ function expressionAsRequiredModule(): number {
   if (hasFailed()) return NONE;
   if (stringLiteralExpected(e, at)) return e;
   // Nothing stands for it.
-  if (hir.nExprs === e + 1) hir.nExprs = e;
+  const hir$ = hir;
+  if (hir$.nExprs === e + 1) hir$.nExprs = e;
   return NONE;
 }
 
@@ -730,9 +762,10 @@ function expressionAsRequiredModule(): number {
  * before which `parseEntityName` ends. The position is `p.outPos`.
  */
 function rightSideOfDotInModuleReference(): number {
-  if (!isIdentifier() || lx.newlineBefore) return rightSideOfDotInModuleReferenceInGeneral();
-  const atom = lx.atom;
-  const pos = lx.start;
+  const lx$ = lx;
+  if (!isIdentifier() || lx$.newlineBefore) return rightSideOfDotInModuleReferenceInGeneral();
+  const atom = lx$.atom;
+  const pos = lx$.start;
   noteIdentifier(atom, pos);
   nextAfterName();
   p.outPos = pos;
@@ -740,23 +773,25 @@ function rightSideOfDotInModuleReference(): number {
 }
 
 function rightSideOfDotInModuleReferenceInGeneral(): number {
-  const token = lx.token;
+  const lx$ = lx;
+  const token = lx$.token;
   // "The entity is part of a JSDoc-style generic."
   if (token === T_LESS_THAN) {
     failUnlessRecovering();
     return NO_WORD;
   }
   // A name on the next line that a word follows on its line starts the next statement.
-  const isNextStatement = lx.newlineBefore && token >= T_IDENTIFIER && isFollowedByWordOnSameLine();
-  if (token === T_PRIVATE_IDENTIFIER && !isNextStatement) lx.next();
+  const isNextStatement = lx$.newlineBefore && token >= T_IDENTIFIER && isFollowedByWordOnSameLine();
+  if (token === T_PRIVATE_IDENTIFIER && !isNextStatement) lx$.next();
+  const p$ = p;
   if (token === T_PRIVATE_IDENTIFIER || isNextStatement) {
-    const at = lx.fullStart | 0;
+    const at = lx$.fullStart | 0;
     error(1003, at, -1);
-    p.outPos = at;
+    p$.outPos = at;
     return A_empty;
   }
   const name = identifierOfDeclaration();
-  noteIdentifier(name, p.outPos | 0);
+  noteIdentifier(name, p$.outPos | 0);
   return name;
 }
 
@@ -764,13 +799,15 @@ function rightSideOfDotInModuleReferenceInGeneral(): number {
 export function exportDeclaration(startPos: number, startFull: number, base: number): number {
   // The checker reports them. In Flow: `declare`
   const modStart = takeModifiers(base);
-  const modLen = p.outLen | 0;
+  const p$ = p;
+  const modLen = p$.outLen | 0;
   const typeOnly = eat(T_TYPE);
-  if (lx.token === T_ASTERISK) {
-    const starPos = lx.start;
-    lx.next();
+  const lx$ = lx;
+  if (lx$.token === T_ASTERISK) {
+    const starPos = lx$.start;
+    lx$.next();
     let alias = ATOM_NONE;
-    let aliasPos = lx.start;
+    let aliasPos = lx$.start;
     if (eat(T_AS)) {
       moduleExportName();
       alias = mText;
@@ -778,19 +815,21 @@ export function exportDeclaration(startPos: number, startFull: number, base: num
     }
     expect(T_FROM);
     const spec = moduleSpecifier(true, typeOnly);
-    const mode = p.outA | 0;
+    const mode = p$.outA | 0;
     semicolon();
     if (alias >= 0) noteIdentifier(alias, aliasPos);
     const st = pushStmtExportStar(startPos, spec, alias, starPos, aliasPos, (typeOnly ? 1 : 0) | (mode << 1));
     return finishStmt(st, startFull, modStart, modLen);
   }
-  const declaration = hir.nExports | 0;
-  const specs = s.exportSpecs.len;
+  const hir$ = hir;
+  const declaration = hir$.nExports | 0;
+  const s$ = s;
+  const specs = s$.exportSpecs.len;
   const hasList = expect(T_OPEN_BRACE);
-  const unusualLocals = s.ids.len;
+  const unusualLocals = s$.ids.len;
   const lists = enterList(LK_IMPORT_OR_EXPORT_SPECIFIERS);
   while (hasList && isInList(T_CLOSE_BRACE) && isAtElement(LK_IMPORT_OR_EXPORT_SPECIFIERS)) {
-    const element = lx.fullStart;
+    const element = lx$.fullStart;
     importOrExportSpecifier();
     const localText = spHasProp ? spPropText : spNameText;
     const localPos = spHasProp ? spPropPos : spNamePos;
@@ -805,43 +844,46 @@ export function exportDeclaration(startPos: number, startFull: number, base: num
       jsError(st0, en0, 8006, "export...type");
       // TODO(oxc): `type_modifier_twice`
     }
-    s.exportSpecs.push(hir.pushExportSpec(st0, localText, exported, exportedPos, isTypeOnlySpec ? 1 : 0, localPos, en0, declaration));
+    s$.exportSpecs.push(hir$.pushExportSpec(st0, localText, exported, exportedPos, isTypeOnlySpec ? 1 : 0, localPos, en0, declaration));
     if (!eat(T_COMMA) && !goesOnWithoutComma(LK_IMPORT_OR_EXPORT_SPECIFIERS, element)) break;
   }
   leaveList(lists);
   if (hasList) expect(T_CLOSE_BRACE);
   // "If we don't have a 'from' keyword, see if we have a string literal such that ASI won't take effect."
-  const hasModuleSpecifier = lx.token === T_FROM || (lx.token === T_STRING && !lx.newlineBefore);
-  if (s.ids.len !== unusualLocals) reportLocalsOfExport(unusualLocals, hasModuleSpecifier);
+  const hasModuleSpecifier = lx$.token === T_FROM || (lx$.token === T_STRING && !lx$.newlineBefore);
+  if (s$.ids.len !== unusualLocals) reportLocalsOfExport(unusualLocals, hasModuleSpecifier);
   let spec = ATOM_NONE;
   let mode = RM_NONE;
   if (hasModuleSpecifier) {
     expect(T_FROM);
     spec = moduleSpecifier(true, typeOnly);
-    mode = p.outA | 0;
+    mode = p$.outA | 0;
   }
   semicolon();
-  const items = takeList(s.exportSpecs, specs);
-  const itemsLen = p.outLen | 0;
-  const exp = hir.pushExport(spec, hasModuleSpecifier ? 1 : 0, items, itemsLen, typeOnly ? 1 : 0, mode, NONE);
+  const items = takeList(s$.exportSpecs, specs);
+  const itemsLen = p$.outLen | 0;
+  const exp = hir$.pushExport(spec, hasModuleSpecifier ? 1 : 0, items, itemsLen, typeOnly ? 1 : 0, mode, NONE);
   return finishStmt(pushStmtExportNamed(startPos, exp), startFull, modStart, modLen);
 }
 
 /** `parseExportAssignment`, at the `default` or the `=` after `export`. */
 export function exportAssignment(startPos: number, startFull: number, base: number): number {
   const modStart = takeModifiers(base);
-  const modLen = p.outLen | 0;
-  const isExportEquals = lx.token === T_EQUALS;
-  lx.next();
+  const p$ = p;
+  const modLen = p$.outLen | 0;
+  const lx$ = lx;
+  const isExportEquals = lx$.token === T_EQUALS;
+  lx$.next();
   // `parseExportAssignment` has `setAwaitContext(true)`.
   // TODO(oxc): for oxc only that of the file is in the await context.
-  const saved = p.isEcmascript ? enterContext(0, CTX_DISALLOW_IN) : enterContext(CTX_AWAIT, CTX_DISALLOW_IN);
+  const saved = p$.isEcmascript ? enterContext(0, CTX_DISALLOW_IN) : enterContext(CTX_AWAIT, CTX_DISALLOW_IN);
   const e = assignmentExpression();
-  p.context = saved;
+  p$.context = saved;
   semicolon();
   let st = 0;
+  const hir$ = hir;
   if (isExportEquals) {
-    hir.rareSyntax = hir.rareSyntax | RARE_EXPORT_ASSIGNMENT;
+    hir$.rareSyntax = hir$.rareSyntax | RARE_EXPORT_ASSIGNMENT;
     st = pushStmtExportAssign(startPos, e);
   } else {
     st = pushStmtExportDefault(startPos, e);
@@ -852,12 +894,13 @@ export function exportAssignment(startPos: number, startFull: number, base: numb
 /** `parseNamespaceExportDeclaration`, at the `as` after `export`. */
 export function namespaceExportDeclaration(startPos: number, startFull: number, base: number): number {
   const modStart = takeModifiers(base);
-  const modLen = p.outLen | 0;
+  const p$ = p;
+  const modLen = p$.outLen | 0;
   lx.next();
   expect(T_NAMESPACE);
   const saved = leaveAwaitContextOfTopLevel();
   const name = identifierOfDeclaration();
-  p.context = saved;
+  p$.context = saved;
   semicolon();
   return finishStmt(pushStmtExportAsNamespace(startPos, name), startFull, modStart, modLen);
 }

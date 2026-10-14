@@ -67,8 +67,10 @@ function withoutBom(text: Uint8Array, len: number, at: number): number {
 }
 
 function setError(message: string, at: number): void {
-  state.errorMessage = message;
-  state.errorOffset = withoutBom(scriptText.src, scriptText.len | 0, at);
+  const state$ = state;
+  state$.errorMessage = message;
+  const scriptText$ = scriptText;
+  state$.errorOffset = withoutBom(scriptText$.src, scriptText$.len | 0, at);
 }
 
 /** `options.parser` is a parser that takes types in JavaScript files. */
@@ -88,14 +90,15 @@ function isFlowFile(options: FormatOptions, name: string, text: Uint8Array): boo
 }
 
 export function formatScript(path: string, name: string, before: Uint8Array, options: FormatOptions, out: ByteBuf): number {
-  state.errorOffset = -1;
-  state.errorMessage = "Unexpected token";
+  const state$ = state;
+  state$.errorOffset = -1;
+  state$.errorMessage = "Unexpected token";
   jsState.path = path;
   const isFlow = isFlowFile(options, name, before);
   const toBabel = goesToBabel(options.parser, path);
   const tolerated = takesTypes(options.parser);
-  state.isFlow = isFlow;
-  state.goesToBabel = toBabel;
+  state$.isFlow = isFlow;
+  state$.goesToBabel = toBabel;
   prepareScriptText(before, before.length, path, isFlow, toBabel);
   // What the file is parsed as, one after the other until there is no error: a module, then a script. The first syntax error counts.
   const kinds = scriptKinds(name);
@@ -103,6 +106,9 @@ export function formatScript(path: string, name: string, before: Uint8Array, opt
   let usedSorted = false;
   const start = out.len;
   const hasRange = options.rangeStart >= 0 || options.rangeEnd >= 0;
+  const scriptError$ = scriptError;
+  const scriptText$ = scriptText;
+  const hir$ = hir;
   for (let attempt = 0; attempt <= 1; attempt++) {
     const isScript = attempt === 1;
     if (isScript ? (kinds & 2) === 0 : (kinds & 1) === 0) continue;
@@ -113,7 +119,7 @@ export function formatScript(path: string, name: string, before: Uint8Array, opt
     if (parseAttempt(isScript, path, isFlow, toBabel, tolerated) !== PS_OK) {
       if (!failed) {
         failed = true;
-        setError(scriptError.message, scriptError.at);
+        setError(scriptError$.message, scriptError$.at);
       }
       continue;
     }
@@ -128,14 +134,14 @@ export function formatScript(path: string, name: string, before: Uint8Array, opt
         if (parseAttempt(isScript, path, isFlow, toBabel, tolerated) !== PS_OK) {
           if (!failed) {
             failed = true;
-            setError(scriptError.message, scriptError.at);
+            setError(scriptError$.message, scriptError$.at);
           }
           continue;
         }
       }
     }
     // The tree is bound (`fileBegin` was called). The text is the text that was parsed (without comment types for `babel-flow`).
-    const text = scriptText.src.subarray(0, scriptText.len | 0);
+    const text = scriptText$.src.subarray(0, scriptText$.len | 0);
     out.len = start;
     const parseSlice = hasRange ? (slice: Uint8Array): boolean => reparse(slice, path, isScript) : null;
     if (options.jsdoc !== null) setJsdocReparse((t: Uint8Array): boolean => reparse(t, path, isScript));
@@ -146,9 +152,9 @@ export function formatScript(path: string, name: string, before: Uint8Array, opt
       // The parser accepted it, but it has errors the formatter cannot print: the first one is the error.
       if (!failed) {
         failed = true;
-        if (hir.diagnosticsLen >= 5) {
-          const argsId = hir.diagnostics[4] | 0;
-          setError(diagnosticMessage(hir.diagnostics[3] | 0, argsId >= 0 ? hir.diagArgs[argsId] : []), hir.diagnostics[1] | 0);
+        if (hir$.diagnosticsLen >= 5) {
+          const argsId = hir$.diagnostics[4] | 0;
+          setError(diagnosticMessage(hir$.diagnostics[3] | 0, argsId >= 0 ? hir$.diagArgs[argsId] : []), hir$.diagnostics[1] | 0);
         } else {
           setError("Unexpected token", 0);
         }
@@ -163,9 +169,11 @@ export function formatScript(path: string, name: string, before: Uint8Array, opt
 
 /** Parses a part of the file like the file was parsed (range formatting): no refusal, only the tree. */
 function reparse(slice: Uint8Array, path: string, isScript: boolean): boolean {
-  const dialect = state.isFlow ? (state.goesToBabel ? dialectFlow(isScript) : dialectFlowParser(isScript)) : dialectBabel(isScript);
+  const state$ = state;
+  const dialect = state$.isFlow ? (state$.goesToBabel ? dialectFlow(isScript) : dialectFlowParser(isScript)) : dialectBabel(isScript);
   if (readFile(slice, slice.length, path, dialect) !== READ_PARSED) return false;
-  if (hir.hasErrors || hir.hasParseDiagnostics) return false;
+  const hir$ = hir;
+  if (hir$.hasErrors || hir$.hasParseDiagnostics) return false;
   fileBegin(names, isTypeScriptPath(path), !isScript);
   return true;
 }

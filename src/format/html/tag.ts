@@ -286,24 +286,28 @@ const lenScratch = new ByteBuf(64);
 
 /** The length of what `openingTagStartMarker` writes. */
 export function lenOfOpeningTagStartMarker(t: HTree, o: HOptions, id: number): number {
-  lenScratch.reset();
-  openingTagStartMarker(t, o, id, lenScratch);
-  return lenScratch.len;
+  const lenScratch$ = lenScratch;
+  lenScratch$.reset();
+  openingTagStartMarker(t, o, id, lenScratch$);
+  return lenScratch$.len;
 }
 export function lenOfClosingTagEndMarker(t: HTree, o: HOptions, id: number): number {
-  lenScratch.reset();
-  closingTagEndMarker(t, o, id, lenScratch);
-  return lenScratch.len;
+  const lenScratch$ = lenScratch;
+  lenScratch$.reset();
+  closingTagEndMarker(t, o, id, lenScratch$);
+  return lenScratch$.len;
 }
 function lenOfOpeningTagEndMarker(t: HTree, o: HOptions, id: number): number {
-  lenScratch.reset();
-  openingTagEndMarker(t, o, id, lenScratch);
-  return lenScratch.len;
+  const lenScratch$ = lenScratch;
+  lenScratch$.reset();
+  openingTagEndMarker(t, o, id, lenScratch$);
+  return lenScratch$.len;
 }
 function lenOfClosingTagStartMarker(t: HTree, o: HOptions, id: number): number {
-  lenScratch.reset();
-  closingTagStartMarker(t, o, id, lenScratch);
-  return lenScratch.len;
+  const lenScratch$ = lenScratch;
+  lenScratch$.reset();
+  closingTagStartMarker(t, o, id, lenScratch$);
+  return lenScratch$.len;
 }
 
 /** `getNodeContent`: the range of `o.originalText` goes into `NODE_CONTENT[0]`, `NODE_CONTENT[1]`. */

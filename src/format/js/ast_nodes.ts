@@ -1548,10 +1548,11 @@ export function anSpan(an: number): void {
     exprSpan(id);
     return;
   }
+  const hir$ = hir;
   switch (tag) {
     case AN_PROGRAM:
       SP[0] = 0;
-      SP[1] = hir.sourceLen | 0;
+      SP[1] = hir$.sourceLen | 0;
       return;
     case AN_JSX_EXPRESSION_CONTAINER:
     case AN_JSX_SPREAD_CHILD:
@@ -1565,7 +1566,7 @@ export function anSpan(an: number): void {
       exprOuterSpan(id);
       const outerStart = SP[0] | 0;
       const outerEnd = SP[1] | 0;
-      const back = skipTriviaBack(hir.text, hir.sourceLen | 0, outerStart);
+      const back = skipTriviaBack(hir$.text, hir$.sourceLen | 0, outerStart);
       SP[0] = back > 0 ? back - 1 : 0;
       SP[1] = outerEnd;
       return;

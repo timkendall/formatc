@@ -212,16 +212,17 @@ function signature(text: Uint8Array, parser: number): Signature | null {
     }
     fmLen = fm.end;
   }
-  tree.reset(content);
-  if (parseTree(tree, fmLen, parser) !== PARSE_OK) return null;
+  const tree$ = tree;
+  tree$.reset(content);
+  if (parseTree(tree$, fmLen, parser) !== PARSE_OK) return null;
   const reader = new Reader();
   // What is in a node comes behind it.
-  const root = tree.root;
-  let next = firstChild(tree, root);
+  const root = tree$.root;
+  let next = firstChild(tree$, root);
   while (next >= 0) {
     const id = next;
-    reader.enter(tree, id, text);
-    const fc = firstChild(tree, id);
+    reader.enter(tree$, id, text);
+    const fc = firstChild(tree$, id);
     if (fc >= 0) {
       next = fc;
       continue;
@@ -229,14 +230,14 @@ function signature(text: Uint8Array, parser: number): Signature | null {
     let at = id;
     next = -1;
     for (;;) {
-      const k = kindOf(tree, at);
+      const k = kindOf(tree$, at);
       if (k !== K_TEXT && k !== K_CDATA) reader.writeU8(0);
-      const nx = nextOf(tree, at);
+      const nx = nextOf(tree$, at);
       if (nx >= 0) {
         next = nx;
         break;
       }
-      const p = parentOf(tree, at);
+      const p = parentOf(tree$, at);
       if (p < 0 || p === root) break;
       at = p;
     }

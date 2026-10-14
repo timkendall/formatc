@@ -31,20 +31,21 @@ const withPragma = new ByteBuf(1024);
 
 /** `text` with `\n` for every `\r\n` and `\r`. Valid until the next call. */
 function normalize(text: Uint8Array): Uint8Array {
-  normalized.reset();
-  normalized.reserve(text.length);
+  const normalized$ = normalized;
+  normalized$.reset();
+  normalized$.reserve(text.length);
   let runStart = 0;
   const n = text.length;
   for (let i = 0; i < n; i++) {
     if ((text[i] | 0) === 13) {
-      normalized.append(text, runStart, i);
-      normalized.push(10);
+      normalized$.append(text, runStart, i);
+      normalized$.push(10);
       if (i + 1 < n && (text[i + 1] | 0) === 10) i = i + 1;
       runStart = i + 1;
     }
   }
-  normalized.append(text, runStart, n);
-  return normalized.view();
+  normalized$.append(text, runStart, n);
+  return normalized$.view();
 }
 
 /**
@@ -53,11 +54,13 @@ function normalize(text: Uint8Array): Uint8Array {
  */
 export function formatJson(src: Uint8Array, len: number, parser: number, options: FormatOptions, out: ByteBuf): number {
   const original = len === src.length ? src : src.subarray(0, len);
-  cfg.set(parser, options, original);
+  const cfg$ = cfg;
+  cfg$.set(parser, options, original);
   const hasBom = startsWithBom(original, 0);
   let text = hasBom ? original.subarray(3) : original;
 
   // For Prettier, every `json` document has a pragma and none has one that says to ignore it.
+  const withPragma$ = withPragma;
   if (parser !== PARSER_JSON && (options.requirePragma || options.checkIgnorePragma || options.insertPragma)) {
     if ((options.requirePragma && !hasPragma(text)) || (options.checkIgnorePragma && hasIgnorePragma(text))) {
       out.append(original, 0, original.length);
@@ -66,9 +69,9 @@ export function formatJson(src: Uint8Array, len: number, parser: number, options
     const isWhole = (options.rangeStart < 0 || options.rangeStart === 0) && options.rangeEnd < 0;
     // What writes `json-stringify` cannot write a comment.
     if (options.insertPragma && !options.requirePragma && isWhole && parser !== PARSER_STRINGIFY && !hasPragma(text)) {
-      withPragma.reset();
-      insertPragma(text, withPragma);
-      text = withPragma.view();
+      withPragma$.reset();
+      insertPragma(text, withPragma$);
+      text = withPragma$.view();
     }
   }
 
@@ -78,7 +81,7 @@ export function formatJson(src: Uint8Array, len: number, parser: number, options
   if (hasRange) {
     // The offsets of the range count the text as it is.
     hasCarriageReturn = hasCr(text);
-    r = formatRange(original, hasCarriageReturn ? normalize(text) : text, cfg, options, out);
+    r = formatRange(original, hasCarriageReturn ? normalize(text) : text, cfg$, options, out);
   } else {
     // It stays, even if nothing but white space follows, which is nothing.
     if (hasBom) {
@@ -87,12 +90,12 @@ export function formatJson(src: Uint8Array, len: number, parser: number, options
       out.push(0xbf);
     }
     const mark = out.len;
-    r = formatNormalized(text, cfg, options, out, true);
+    r = formatNormalized(text, cfg$, options, out, true);
     if (r === FORMAT_RETRY) {
       // The parser has met a `\r`: `\r\n` and `\r` are `\n`.
       hasCarriageReturn = true;
       out.len = mark;
-      r = formatNormalized(normalize(text), cfg, options, out, false);
+      r = formatNormalized(normalize(text), cfg$, options, out, false);
     }
   }
   if (r === FORMAT_SYNTAX_ERROR_AT && hasCarriageReturn) {

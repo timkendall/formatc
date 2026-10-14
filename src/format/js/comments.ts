@@ -1110,9 +1110,10 @@ class NodeFinder {
     if (this.castParentheses.len === 0 || !exprIsParenthesized(e)) return false;
     const first = exprParenFirst(e);
     const n = exprParenCount(e);
+    const hir$ = hir;
     for (let i = 0; i < n; i++) {
       const row = (first + i) | 0;
-      if ((hir.parenEnd[row] | 0) >= commentEnd && this.hasCastParen(hir.parenStart[row] | 0)) return true;
+      if ((hir$.parenEnd[row] | 0) >= commentEnd && this.hasCastParen(hir$.parenStart[row] | 0)) return true;
     }
     return false;
   }
@@ -1122,21 +1123,23 @@ class NodeFinder {
     if (this.castParentheses.len === 0 || !exprIsParenthesized(e)) return false;
     const first = exprParenFirst(e);
     const n = exprParenCount(e);
+    const hir$ = hir;
     for (let i = 0; i < n; i++) {
-      if (this.hasCastParen(hir.parenStart[(first + i) | 0] | 0)) return true;
+      if (this.hasCastParen(hir$.parenStart[(first + i) | 0] | 0)) return true;
     }
     return false;
   }
 
   /** Where `e` starts, with the parentheses around it that follow a type cast comment. */
   startWithCastParentheses(e: number): number {
+    const hir$ = hir;
     if (this.castParentheses.len > 0 && exprIsParenthesized(e)) {
       // `e.parens().rev().find(..)`: the outermost first
       const first = exprParenFirst(e);
       const n = exprParenCount(e);
       for (let i = n - 1; i >= 0; i--) {
         const row = (first + i) | 0;
-        if (this.hasCastParen(hir.parenStart[row] | 0)) return hir.parenStart[row] | 0;
+        if (this.hasCastParen(hir$.parenStart[row] | 0)) return hir$.parenStart[row] | 0;
       }
     }
     return exprStart(e);

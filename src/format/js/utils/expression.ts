@@ -67,14 +67,15 @@ export function expressionLeftSideLeft(expr: number, isTarget: boolean): boolean
         return false;
     }
   }
+  const scratch$ = scratch;
   switch (exprTag(expr)) {
     case EXPR_BINARY: {
       const op = exprBinaryOpOf(expr);
       if (op === BIN_COMMA) {
-        const base = scratch.len;
-        exprSequence(expr, scratch);
-        const first = scratch.len > base ? scratch.data[base] | 0 : -1;
-        scratch.len = base;
+        const base = scratch$.len;
+        exprSequence(expr, scratch$);
+        const first = scratch$.len > base ? scratch$.data[base] | 0 : -1;
+        scratch$.len = base;
         return first >= 0 && setLeft(first, 0);
       }
       const left = exprBinaryLeft(expr);

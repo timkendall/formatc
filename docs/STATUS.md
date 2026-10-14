@@ -801,3 +801,9 @@ Instructions 157.8G -> 153.6G (second run of the same binary: 155.1G, noise), ga
 - Gate (full): vscode byte mismatches 0, no GATE FAILED, conformance ok.
 - Tried and dropped: DataView key reads in `name` (158.7G, worse); same fast path in `scanAfterLineFeed` and a space shortcut in `scan` (no gain).
 - Files: src/sema/parser/lexer.ts
+
+### perf R4 tls
+tools/codemod/hoist-globals.mjs (TypeChecker-based, idempotent, position edits, `node tools/codemod/hoist-globals.mjs src`): per function body, module-level `const` class/object singletons (hir, lx, p, T, s, bound...) whose costliest path has >=2 mentions (branches=max, loop bodies x2) get `const x$ = x;` right before the first statement that mentions them; existing `x$` aliases are reused.
+Rewrote 7724 references in 1083 functions (122 files); hand fixes: none. Phase 2 (`--accessors`, inline trivial `hir` column accessors, 1615 calls) is opt-in: 0 instruction gain (153.8G both), so not applied.
+Instructions 157.8G -> 153.6G (-2.7%, one thread). Gate: 0 vscode byte mismatches, no GATE FAILED, conformance ok; 8 threads 1.46s (machine busy, noisy).
+Changes are uncommitted in /tmp/wt-tls (diff of src/**; re-run the codemod after merging lexer/parser/names/ir changes).

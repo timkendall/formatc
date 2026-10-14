@@ -677,9 +677,10 @@ export function embedAttribute(p: Printer, element: number, a: number): boolean 
   }
   const isPlain = !p.o.hasParentParser && !hasBraces;
   unescapeQuoteEntities(b, rawS, rawE);
-  const vb = UQ.buf;
-  const vs = UQ.s;
-  const ve = UQ.e;
+  const UQ$ = UQ;
+  const vb = UQ$.buf;
+  const vs = UQ$.s;
+  const ve = UQ$.e;
   if ((t.a[ab + AF_NS_S] | 0) === (t.a[ab + AF_NS_E] | 0)) {
     const ns = t.a[ab + AF_NAME_S] | 0;
     const ne = t.a[ab + AF_NAME_E] | 0;

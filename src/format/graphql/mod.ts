@@ -91,11 +91,12 @@ export function format(text: Uint8Array, options: FormatOptions, out: ByteBuf): 
       break;
     }
   }
+  const normalized$ = normalized;
   if (hasCr) {
-    normalized.reset();
-    normalized.reserve(t.length);
-    writeWithLineEnding(t, 0, t.length, LINE_ENDING_LF, normalized);
-    t = normalized.view();
+    normalized$.reset();
+    normalized$.reserve(t.length);
+    writeWithLineEnding(t, 0, t.length, LINE_ENDING_LF, normalized$);
+    t = normalized$.view();
   }
 
   if (
@@ -108,15 +109,16 @@ export function format(text: Uint8Array, options: FormatOptions, out: ByteBuf): 
   }
   out.append(original, 0, first);
   let r: number;
+  const withPragma$ = withPragma;
   if (start > 0 || end < t.length) {
     r = formatRange(t, start, end, lineEnding, options, out);
   } else {
     if (options.insertPragma && !options.requirePragma && !hasPragmaInHashComment(t, "format", "prettier")) {
-      withPragma.reset();
-      withPragma.reserve(t.length + 12);
-      withPragma.appendAscii("# @format\n\n");
-      withPragma.append(t, 0, t.length);
-      t = withPragma.view();
+      withPragma$.reset();
+      withPragma$.reserve(t.length + 12);
+      withPragma$.appendAscii("# @format\n\n");
+      withPragma$.append(t, 0, t.length);
+      t = withPragma$.view();
     }
     r = formatNormalized(t, 0, lineEnding, options, out);
   }
@@ -134,10 +136,11 @@ function because(): number {
 
 /** Prettier's `formatRange` */
 function formatRange(text: Uint8Array, start: number, end: number, lineEnding: number, options: FormatOptions, out: ByteBuf): number {
-  if (parse(text, tree) < 0) return because();
+  const tree$ = tree;
+  if (parse(text, tree$) < 0) return because();
   let rs = 0;
   let re = 0;
-  if (calculateRange(text, tree, start, end)) {
+  if (calculateRange(text, tree$, start, end)) {
     rs = rangeStartOf();
     re = rangeEndOf();
   }
@@ -147,14 +150,15 @@ function formatRange(text: Uint8Array, start: number, end: number, lineEnding: n
   const slice = text.subarray(beforeEnd, sliceEnd);
   const alignment = alignmentSize(text, beforeEnd, options.indentWidth);
 
-  formatted.reset();
-  const r = formatNormalized(slice, alignment, LINE_ENDING_LF, options, formatted);
+  const formatted$ = formatted;
+  formatted$.reset();
+  const r = formatNormalized(slice, alignment, LINE_ENDING_LF, options, formatted$);
   if (r !== FORMAT_OK) return r;
 
   writeWithLineEnding(text, 0, beforeEnd, lineEnding, out);
-  const fv = formatted.data;
-  const fs = trimJsWhitespaceStart(fv, 0, formatted.len);
-  const fe = trimJsWhitespaceEnd(fv, 0, formatted.len);
+  const fv = formatted$.data;
+  const fs = trimJsWhitespaceStart(fv, 0, formatted$.len);
+  const fe = trimJsWhitespaceEnd(fv, 0, formatted$.len);
   if (fs < fe) writeWithLineEnding(fv, fs, fe, lineEnding, out);
   writeWithLineEnding(text, sliceEnd, n, lineEnding, out);
   return FORMAT_OK;
@@ -166,8 +170,10 @@ function formatRange(text: Uint8Array, start: number, end: number, lineEnding: n
  */
 function formatNormalized(text: Uint8Array, alignment: number, lineEnding: number, options: FormatOptions, out: ByteBuf): number {
   if (trimJsWhitespaceStart(text, 0, text.length) >= text.length) return FORMAT_OK;
-  if (parse(text, tree) < 0) return because();
-  attach(text, tree, attached);
+  const tree$ = tree;
+  if (parse(text, tree$) < 0) return because();
+  const attached$ = attached;
+  attach(text, tree$, attached$);
 
   // Prettier's `addAlignmentToDoc`. The line break makes the indentation take effect.
   if (scratchSlot === null) scratchSlot = new Scratch(options);
@@ -180,8 +186,8 @@ function formatNormalized(text: Uint8Array, alignment: number, lineEnding: numbe
   if (spaces > 0) f.startAlign(spaces);
   for (let i = 0; i < levels; i++) f.startIndent();
   if (alignment > 0) f.hardLineBreak();
-  const b = builderFor(f, text, 0, tree, attached, false, lineEnding);
-  b.print(tree.root());
+  const b = builderFor(f, text, 0, tree$, attached$, false, lineEnding);
+  b.print(tree$.root());
   for (let i = 0; i < levels; i++) f.endIndent();
   if (spaces > 0) f.endAlign(spaces);
   return finishAndPrintWithLineEnding(f, lineEnding, out);

@@ -53,8 +53,9 @@ function endsWithExact(path: string, suffix: string): boolean {
 }
 
 function hasImportMeta(): boolean {
-  const n = hir.nExprs;
-  for (let i = 0; i < n; i++) if ((hir.exprTag[i] | 0) === EXPR_IMPORT_META) return true;
+  const hir$ = hir;
+  const n = hir$.nExprs;
+  for (let i = 0; i < n; i++) if ((hir$.exprTag[i] | 0) === EXPR_IMPORT_META) return true;
   return false;
 }
 
@@ -105,9 +106,10 @@ function placeOfRefusal(src: Uint8Array, len: number, why: number, at: number, a
 
 /** `error_before_refusal`: the first Parse diagnostic of the file the parser has left, which starts before the end of the text. -1: none. */
 function errorBeforeRefusal(len: number): number {
-  const n = hir.diagnosticsLen;
+  const hir$ = hir;
+  const n = hir$.diagnosticsLen;
   for (let i = 0; i < n; i += 5) {
-    if ((hir.diagnostics[i] | 0) === DK_PARSE && (hir.diagnostics[i + 1] | 0) < len) return i;
+    if ((hir$.diagnostics[i] | 0) === DK_PARSE && (hir$.diagnostics[i + 1] | 0) < len) return i;
   }
   return -1;
 }
@@ -139,19 +141,21 @@ export function readFile(src: Uint8Array, len: number, path: string, dialect: nu
   let r = attempt(src, len, false);
   if (r === 0) return READ_PARSED;
   const refusedWhy = r;
-  const refusedAt = lx.refusedAt | 0;
-  const refusedAfter = lx.refusedAfter | 0;
+  const lx$ = lx;
+  const refusedAt = lx$.refusedAt | 0;
+  const refusedAfter = lx$.refusedAfter | 0;
   let at = refusedAt;
   // No parser recovers from an error in Flow.
+  const hir$ = hir;
   if (!isFlow) {
     r = attempt(src, len, true);
     if (r !== 0) {
-      at = placeOfRefusal(src, len, refusedWhy, refusedAt, refusedAfter, lx.refusedAt | 0);
+      at = placeOfRefusal(src, len, refusedWhy, refusedAt, refusedAfter, lx$.refusedAt | 0);
     } else {
       // TypeScript's parser takes `var;`, `class {}` and `catch (a = 1)`, and leaves them to its checker. For acorn and Babel they are
       // no JavaScript, and the parser that refuses a text knows what is.
       const isAnError = refusedWhy === R_SYNTAX || refusedWhy === R_REPORTED;
-      if (!(isEcmascript && isAnError && hir.diagnosticsLen === 0)) return READ_PARSED;
+      if (!(isEcmascript && isAnError && hir$.diagnosticsLen === 0)) return READ_PARSED;
     }
   }
   // The file is not looked at any further: its first error is all that is said about it.
@@ -162,29 +166,29 @@ export function readFile(src: Uint8Array, len: number, path: string, dialect: nu
   let end = 0;
   let args: string[] | null = null;
   if (row >= 0) {
-    start = hir.diagnostics[row + 1] | 0;
-    end = hir.diagnostics[row + 2] | 0;
-    code = hir.diagnostics[row + 3] | 0;
-    const id = hir.diagnostics[row + 4] | 0;
-    if (id >= 0) args = hir.diagArgs[id];
+    start = hir$.diagnostics[row + 1] | 0;
+    end = hir$.diagnostics[row + 2] | 0;
+    code = hir$.diagnostics[row + 3] | 0;
+    const id = hir$.diagnostics[row + 4] | 0;
+    if (id >= 0) args = hir$.diagArgs[id];
   }
-  hir.resetKeepingComments();
-  hir.kind = FK_TSX;
-  hir.isJs = isJs && !isJson;
-  hir.isFlow = isFlow;
-  hir.hasErrors = true;
-  hir.sourceLen = len;
+  hir$.resetKeepingComments();
+  hir$.kind = FK_TSX;
+  hir$.isJs = isJs && !isJson;
+  hir$.isFlow = isFlow;
+  hir$.hasErrors = true;
+  hir$.sourceLen = len;
   if (tooDeep) {
-    hir.ranOutOfStack = true;
+    hir$.ranOutOfStack = true;
     return READ_TOO_DEEP;
   }
-  hir.hasParseDiagnostics = true;
-  hir.errorPos = start;
+  hir$.hasParseDiagnostics = true;
+  hir$.errorPos = start;
   let argsId = -1;
   if (args !== null && args.length > 0) {
-    argsId = hir.diagArgs.length;
-    hir.diagArgs.push(args);
+    argsId = hir$.diagArgs.length;
+    hir$.diagArgs.push(args);
   }
-  hir.pushDiagnostics(DK_PARSE, start, end, code, argsId);
+  hir$.pushDiagnostics(DK_PARSE, start, end, code, argsId);
   return READ_GIVEN_UP;
 }

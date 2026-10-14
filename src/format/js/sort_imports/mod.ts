@@ -37,7 +37,8 @@ function endOfLineOf(text: Uint8Array): string {
 export function sortedText(path: string, how: SortImports): Uint8Array | null {
   if (fileHasParseErrors() || how.how === HOW_OXFMT) return null;
   if (how.how === HOW_NATIVE) return nativePreprocess();
-  const text = hir.text.subarray(0, hir.sourceLen | 0);
+  const hir$ = hir;
+  const text = hir$.text.subarray(0, hir$.sourceLen | 0);
   const endOfLine = endOfLineOf(text);
   if (how.how === HOW_ORGANIZE) return organizePreprocess(how.organize as OrganizeOptions, endOfLine);
   const model = Model.create();

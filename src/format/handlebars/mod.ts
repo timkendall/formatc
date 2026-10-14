@@ -65,18 +65,21 @@ const NESTED = -2;
 let parsedTemplate = 0;
 
 function parse(content: Uint8Array, frontMatterEnd: number): number {
-  tokens.n = 0;
-  tree.clear(content);
+  const tokens$ = tokens;
+  tokens$.n = 0;
+  const tree$ = tree;
+  tree$.clear(content);
   // Positions have 31 bits.
   if (content.length > 2147483647) return noteRefusal(MSG_TOO_LARGE, 0);
   clearRefusal();
-  let r = lex(content, tokens);
+  let r = lex(content, tokens$);
   if (r < 0) return r;
-  r = parseStatements(content, tokens, tree, statements);
+  const statements$ = statements;
+  r = parseStatements(content, tokens$, tree$, statements$);
   if (r < 0) return r;
   let frontMatter = -1;
-  if (frontMatterEnd > 0) frontMatter = tree.add(K_FRONT_MATTER, 0, frontMatterEnd);
-  r = build(content, statements, frontMatter, tree);
+  if (frontMatterEnd > 0) frontMatter = tree$.add(K_FRONT_MATTER, 0, frontMatterEnd);
+  r = build(content, statements$, frontMatter, tree$);
   if (r < 0) return r;
   parsedTemplate = r;
   return PARSED;
@@ -140,12 +143,13 @@ function written(text: Uint8Array, options: FormatOptions, into: ByteBuf): numbe
   const r = parse(content, frontMatterEnd);
   if (r < 0) return 0;
   into.reset();
-  if (tree.hasLostText) {
+  const tree$ = tree;
+  if (tree$.hasLostText) {
     into.append(content, 0, content.length);
     return 1;
   }
   const w = verifyWriter;
-  w.tree = tree;
+  w.tree = tree$;
   w.source = content;
   w.isWhiteSpaceSensitive = options.htmlWhitespaceSensitivity !== HTML_WS_IGNORE;
   w.out = into;
@@ -161,15 +165,17 @@ function written(text: Uint8Array, options: FormatOptions, into: ByteBuf): numbe
 // `--debug-check`: whether `after`, which `format` has made of `before`, says what that says. See `verify.ts`. 1: it does,
 // 0: it does not, -1: nested too deeply (`FormatError::NestedTooDeeply`).
 export function saysTheSame(before: Uint8Array, after: Uint8Array, options: FormatOptions): number {
-  const rb = written(before, options, verifyA);
+  const verifyA$ = verifyA;
+  const rb = written(before, options, verifyA$);
   if (rb === 0) return 0;
-  const ra = written(after, options, verifyB);
+  const verifyB$ = verifyB;
+  const ra = written(after, options, verifyB$);
   if (ra === 0) return 0;
   if (rb === 2 || ra === 2) return -1;
-  if (verifyA.len !== verifyB.len) return 0;
-  const a = verifyA.data;
-  const b = verifyB.data;
-  const n = verifyA.len;
+  if (verifyA$.len !== verifyB$.len) return 0;
+  const a = verifyA$.data;
+  const b = verifyB$.data;
+  const n = verifyA$.len;
   for (let i = 0; i < n; i++) {
     if ((a[i] | 0) !== (b[i] | 0)) return 0;
   }
@@ -245,7 +251,8 @@ export function format(text: Uint8Array, options: FormatOptions, out: ByteBuf): 
     noteRefusal(e.message, e.offset);
     return FORMAT_SYNTAX_ERROR_AT;
   }
-  if (tree.hasLostText) {
+  const tree$ = tree;
+  if (tree$.hasLostText) {
     out.append(original, 0, original.length);
     return FORMAT_OK;
   }
@@ -258,12 +265,15 @@ export function format(text: Uint8Array, options: FormatOptions, out: ByteBuf): 
     docPop();
     return rr;
   }
-  if (options.tailwind >= 0) sortClasses(tree);
-  elements.clear();
-  printer.init(tree, content, lf, frontMatterEnd, options, elements);
-  printer.template(parsedTemplate);
-  if (printer.stack.ranOut()) return FORMAT_NESTED_TOO_DEEPLY;
-  docPrinter.init(options, original, out);
-  docPrinter.print(elements, 0, 0);
-  return docPrinter.result();
+  if (options.tailwind >= 0) sortClasses(tree$);
+  const elements$ = elements;
+  elements$.clear();
+  const printer$ = printer;
+  printer$.init(tree$, content, lf, frontMatterEnd, options, elements$);
+  printer$.template(parsedTemplate);
+  if (printer$.stack.ranOut()) return FORMAT_NESTED_TOO_DEEPLY;
+  const docPrinter$ = docPrinter;
+  docPrinter$.init(options, original, out);
+  docPrinter$.print(elements$, 0, 0);
+  return docPrinter$.result();
 }

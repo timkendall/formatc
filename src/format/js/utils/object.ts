@@ -97,10 +97,11 @@ function setSource(a: number, b: number): void {
 /** `text` in the quotes of the options. It has no quotes in it. */
 function setQuoted(text: Uint8Array, a: number, b: number, f: Formatter): void {
   const quote = quoteStyleAsByte(f.options.quoteStyle);
-  KB.reset();
-  KB.push(quote);
-  KB.append(text, a, b);
-  KB.push(quote);
+  const KB$ = KB;
+  KB$.reset();
+  KB$.push(quote);
+  KB$.append(text, a, b);
+  KB$.push(quote);
   KR[0] = 1;
 }
 
@@ -117,15 +118,16 @@ function setWithNormalizedNewlines(text: Uint8Array, a: number, b: number): void
     setSource(a, b);
     return;
   }
-  KB.reset();
+  const KB$ = KB;
+  KB$.reset();
   let i = a;
   while (i < b) {
     const c = text[i] | 0;
     if (c === 13) {
-      KB.push(10);
+      KB$.push(10);
       i = i + (i + 1 < b && (text[i + 1] | 0) === 10 ? 2 : 1);
     } else {
-      KB.push(c);
+      KB$.push(c);
       i = i + 1;
     }
   }
@@ -140,8 +142,9 @@ function isParserForPrograms(f: Formatter): boolean {
 
 function isGoesToFlow(f: Formatter): boolean {
   const off = fileHasBom() ? 3 : 0;
-  const len = hir.sourceLen | 0;
-  return goesToFlow(off === 0 ? hir.text : hir.text.subarray(off), len - off, f.options.filepath);
+  const hir$ = hir;
+  const len = hir$.sourceLen | 0;
+  return goesToFlow(off === 0 ? hir$.text : hir$.text.subarray(off), len - off, f.options.filepath);
 }
 
 /**
@@ -279,8 +282,9 @@ function setTrimmedNumber(text: Uint8Array, start: number, end: number): void {
     setSource(start, end);
     return;
   }
-  KB.reset();
-  KB.append(numBuf(), 0, n);
+  const KB$ = KB;
+  KB$.reset();
+  KB$.append(numBuf(), 0, n);
   KR[0] = 1;
 }
 
@@ -291,6 +295,8 @@ function setTrimmedNumber(text: Uint8Array, start: number, end: number): void {
 function printedKey(kind: number, name: number, start: number, end: number, parent: number, f: Formatter): void {
   const text = f.source;
   // TODO(port): tailwind (`sorted_string_literal`, `sorted_template_text`): the option is refused by the driver.
+  const KB$ = KB;
+  const KB2$ = KB2;
   switch (kind) {
     case KEY_IDENT:
       if (shouldQuoteKeys(parent, f)) {
@@ -324,10 +330,10 @@ function printedKey(kind: number, name: number, start: number, end: number, pare
           setSource(start, end);
           return;
         }
-        KB.reset();
+        KB$.reset();
         for (let i = start; i < end; i++) {
           const c = text[i] | 0;
-          KB.push(c >= 65 && c <= 90 ? c + 32 : c);
+          KB$.push(c >= 65 && c <= 90 ? c + 32 : c);
         }
         KR[0] = 1;
         return;
@@ -336,14 +342,14 @@ function printedKey(kind: number, name: number, start: number, end: number, pare
       if (kind === KEY_COMPUTED_NUMBER) return;
       // Prettier's `isKeySafeToQuote`: not in TypeScript, where it changes the type, and only if the number is written the way it is converted to a string.
       if (!cxOf(f).hasTreeOfBabel) return;
-      const printed = KR[0] === 0 ? text : KB.data;
+      const printed = KR[0] === 0 ? text : KB$.data;
       const ps = KR[0] === 0 ? KR[1] | 0 : 0;
-      const pe = KR[0] === 0 ? KR[2] | 0 : KB.len;
+      const pe = KR[0] === 0 ? KR[2] | 0 : KB$.len;
       if (isSimpleNumber(printed, ps, pe) && nameEqualsBytes(name, printed, ps, pe - ps) && shouldQuoteKeys(parent, f)) {
         // `setQuoted` resets `KB`, which can be where `printed` is: copy it first.
-        KB2.reset();
-        KB2.append(printed, ps, pe);
-        setQuoted(KB2.data, 0, KB2.len, f);
+        KB2$.reset();
+        KB2$.append(printed, ps, pe);
+        setQuoted(KB2$.data, 0, KB2$.len, f);
       }
       return;
     }
@@ -355,19 +361,23 @@ function printedKey(kind: number, name: number, start: number, end: number, pare
 /** Writes the text `KR` says, which is the key at `(start, end)`. */
 function writePrinted(isName: boolean, start: number, end: number, f: Formatter): void {
   const where = KR[0] | 0;
+  const KB$ = KB;
+  const CLEAN$ = CLEAN;
   if (where === 0) {
     if (isName) f.sourceText(start, end);
     else f.textSource(KR[1] | 0, KR[2] | 0);
-  } else if (where === 1) f.textBytes(KB.data, 0, KB.len);
-  else f.textBytes(CLEAN.data, 0, CLEAN.len);
+  } else if (where === 1) f.textBytes(KB$.data, 0, KB$.len);
+  else f.textBytes(CLEAN$.data, 0, CLEAN$.len);
 }
 
 /** The number of columns that `KR` takes. With a line break in it, it is not one string to Prettier, which asks for the width of nothing else. */
 function printedWidth(f: Formatter): number {
   const where = KR[0] | 0;
-  const buf = where === 0 ? f.source : where === 1 ? KB.data : CLEAN.data;
+  const KB$ = KB;
+  const CLEAN$ = CLEAN;
+  const buf = where === 0 ? f.source : where === 1 ? KB$.data : CLEAN$.data;
   const a = where === 0 ? KR[1] | 0 : 0;
-  const b = where === 0 ? KR[2] | 0 : where === 1 ? KB.len : CLEAN.len;
+  const b = where === 0 ? KR[2] | 0 : where === 1 ? KB$.len : CLEAN$.len;
   for (let i = a; i < b; i++) if ((buf[i] | 0) === 10) return Number.MAX_SAFE_INTEGER;
   return f.stringWidth(buf, a, b);
 }

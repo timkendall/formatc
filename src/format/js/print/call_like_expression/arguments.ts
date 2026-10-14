@@ -457,8 +457,9 @@ function formatAllElementsBrokenOut(ebase: number, n: number, parent: number, ex
   f.startGroupExpand(expand);
   f.token(LPAREN);
   f.startSoftBlockIndentWithMaybeSpace(hasLines);
+  const av$ = av;
   for (let index = 0; index < n; index++) {
-    const element = av.data[(ebase + index) | 0] | 0;
+    const element = av$.data[(ebase + index) | 0] | 0;
     if (element >= 0) {
       if (index > 0) f.softLineBreakOrSpace();
       f.writeInterned(element);
@@ -803,7 +804,8 @@ function writeGroupedArguments(argsStart: number, argsLen: number, parent: numbe
   let hasCached = false;
 
   // All arguments are formatted first, to see which of them break.
-  const ebase = av.len;
+  const av$ = av;
+  const ebase = av$.len;
   for (let index = 0; index < argsLen; index++) {
     const argument = listAt(argsStart, index);
     const isGroupedArgument = (groupedFirst && index === 0) || (groupedLast && index === lastIndex);
@@ -827,13 +829,13 @@ function writeGroupedArguments(argsStart: number, argsLen: number, parent: numbe
     const breaks = interned >= 0 && f.willBreak(interned);
     if (isGroupedArgument) groupedBreaks = groupedBreaks || breaks;
     else nonGroupedBreaks = nonGroupedBreaks || breaks;
-    av.push(interned);
+    av$.push(interned);
   }
 
   // If an argument that is not grouped breaks, they are all on lines of their own.
   if (nonGroupedBreaks) {
     formatAllElementsBrokenOut(ebase, argsLen, parent, true, f);
-    av.len = ebase;
+    av$.len = ebase;
     return;
   }
 
@@ -864,7 +866,7 @@ function writeGroupedArguments(argsStart: number, argsLen: number, parent: numbe
           const cached = cx.getCachedElement(SP[0] | 0, SP[1] | 0);
           if (cached >= 0 && f.willBreak(cached)) {
             formatAllElementsBrokenOut(ebase, argsLen, parent, true, f);
-            av.len = ebase;
+            av$.len = ebase;
             return;
           }
         }
@@ -883,7 +885,7 @@ function writeGroupedArguments(argsStart: number, argsLen: number, parent: numbe
           !removeSoftLinesOfCachedElement(pStart, pStart + 1, f))
       ) {
         formatAllElementsBrokenOut(ebase, argsLen, parent, true, f);
-        av.len = ebase;
+        av$.len = ebase;
         return;
       }
     }
@@ -899,7 +901,7 @@ function writeGroupedArguments(argsStart: number, argsLen: number, parent: numbe
     const element = f.endCapture(slot);
     // An arrow chain, for one, is written differently when it is grouped.
     groupedBreaks = element >= 0 && f.willBreak(element);
-    av.data[(ebase + groupedIndex) | 0] = element | 0;
+    av$.data[(ebase + groupedIndex) | 0] = element | 0;
   }
 
   // The grouped argument is expanded, the others are on the line.
@@ -907,7 +909,7 @@ function writeGroupedArguments(argsStart: number, argsLen: number, parent: numbe
   f.token(LPAREN);
   for (let index = 0; index < argsLen; index++) {
     if (index > 0) f.softLineBreakOrSpace();
-    const element = av.data[(ebase + index) | 0] | 0;
+    const element = av$.data[(ebase + index) | 0] | 0;
     if ((groupedFirst && index === 0) || (groupedLast && index === lastIndex)) {
       f.startGroupExpand(true);
       f.writeInterned(element);
@@ -928,13 +930,13 @@ function writeGroupedArguments(argsStart: number, argsLen: number, parent: numbe
     f.token(LPAREN);
     for (let index = 0; index < argsLen; index++) {
       if (index > 0) f.softLineBreakOrSpace();
-      f.writeInterned(av.data[(ebase + index) | 0] | 0);
+      f.writeInterned(av$.data[(ebase + index) | 0] | 0);
     }
     f.token(RPAREN);
     const mostFlat = f.endVariant(flatSlot);
     f.bestFitting3(mostFlat, middleVariant, mostExpanded);
   }
-  av.len = ebase;
+  av$.len = ebase;
 }
 
 /** `useMemo(() => {}, [a, b])`, `useImperativeHandle(ref, () => {}, [a, b])` */

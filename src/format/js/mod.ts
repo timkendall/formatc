@@ -33,25 +33,26 @@ const thread = new Thread();
 
 /** Whether a table of the HIR has more rows than `AstNodes` can name. */
 function hasTooManyNodes(): boolean {
+  const hir$ = hir;
   return (
-    hir.nExprs >= AN_MAX_ROWS ||
-    hir.nStmts >= AN_MAX_ROWS ||
-    hir.nTypes >= AN_MAX_ROWS ||
-    hir.nFns >= AN_MAX_ROWS ||
-    hir.nProps >= AN_MAX_ROWS ||
-    hir.nMembers >= AN_MAX_ROWS ||
-    hir.nPats >= AN_MAX_ROWS ||
-    hir.nParams >= AN_MAX_ROWS ||
-    hir.nVarDecls >= AN_MAX_ROWS ||
-    hir.nCases >= AN_MAX_ROWS ||
-    hir.nPatProps >= AN_MAX_ROWS ||
-    hir.nPatElems >= AN_MAX_ROWS ||
-    hir.nTupleElems >= AN_MAX_ROWS ||
-    hir.nTypeParams >= AN_MAX_ROWS ||
-    hir.nClasses >= AN_MAX_ROWS ||
-    hir.nEnumMembers >= AN_MAX_ROWS ||
-    hir.nImportSpecs >= AN_MAX_ROWS ||
-    hir.nExportSpecs >= AN_MAX_ROWS
+    hir$.nExprs >= AN_MAX_ROWS ||
+    hir$.nStmts >= AN_MAX_ROWS ||
+    hir$.nTypes >= AN_MAX_ROWS ||
+    hir$.nFns >= AN_MAX_ROWS ||
+    hir$.nProps >= AN_MAX_ROWS ||
+    hir$.nMembers >= AN_MAX_ROWS ||
+    hir$.nPats >= AN_MAX_ROWS ||
+    hir$.nParams >= AN_MAX_ROWS ||
+    hir$.nVarDecls >= AN_MAX_ROWS ||
+    hir$.nCases >= AN_MAX_ROWS ||
+    hir$.nPatProps >= AN_MAX_ROWS ||
+    hir$.nPatElems >= AN_MAX_ROWS ||
+    hir$.nTupleElems >= AN_MAX_ROWS ||
+    hir$.nTypeParams >= AN_MAX_ROWS ||
+    hir$.nClasses >= AN_MAX_ROWS ||
+    hir$.nEnumMembers >= AN_MAX_ROWS ||
+    hir$.nImportSpecs >= AN_MAX_ROWS ||
+    hir$.nExportSpecs >= AN_MAX_ROWS
   );
 }
 
@@ -65,15 +66,16 @@ export function formatDocument(text: Uint8Array, options: FormatOptions, out: By
   if (hasTooManyNodes()) return FORMAT_TOO_LONG;
   // oxfmt's `jsdoc`: the comments are formatted before the document is started (jsdoc/mod.ts says why); `text` may be a copy.
   text = prepareJsdoc(text, options);
-  let scratch = thread.scratch;
+  const thread$ = thread;
+  let scratch = thread$.scratch;
   if (scratch === null) {
     scratch = new Scratch(options);
-    thread.scratch = scratch;
+    thread$.scratch = scratch;
   }
-  let cx = thread.cx;
+  let cx = thread$.cx;
   if (cx === null) {
     cx = newContext(options, cursor);
-    thread.cx = cx;
+    thread$.cx = cx;
   }
   cx.reset(options, text, cursor);
   collectComments(cx.comments, text, options.flavor, cx.hasTreeOfBabel);
@@ -91,8 +93,9 @@ export function formatDocument(text: Uint8Array, options: FormatOptions, out: By
   while (begin < end && isAsciiWhitespace(data[begin] | 0)) begin = begin + 1;
   while (end > begin && isAsciiWhitespace(data[end - 1] | 0)) end = end - 1;
   out.data.copyWithin(start, begin, end);
-  trimInfo.leading = begin - start;
-  trimInfo.end = end - start;
+  const trimInfo$ = trimInfo;
+  trimInfo$.leading = begin - start;
+  trimInfo$.end = end - start;
   out.len = start + (end - begin);
   out.push(10);
   return status;

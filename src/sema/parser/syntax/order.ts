@@ -171,22 +171,23 @@ function rank(parent: number, child: number): number {
   const pid = nodeId(parent);
   const isNode = (kind: number, id: number): boolean => id >= 0 && ((kind << 26) | id) === child;
   const ck = nodeKind(child);
+  const hir$ = hir;
   switch (pk) {
     case N_STMT: {
       if (stmtIsWith(pid)) return isNode(N_STMT, stmtWithBody(pid)) ? 1 : 2;
-      const tag = hir.stmtTag[pid] | 0;
+      const tag = hir$.stmtTag[pid] | 0;
       switch (tag) {
         case STMT_IF: {
-          const yes = hir.stmtB[pid] | 0;
-          const no = hir.stmtC[pid] | 0;
+          const yes = hir$.stmtB[pid] | 0;
+          const no = hir$.stmtC[pid] | 0;
           if (isNode(N_STMT, no)) return 1;
           if (isNode(N_STMT, yes)) return 2;
           return 3;
         }
         case STMT_FOR: {
-          const init = hir.stmtA[pid] | 0;
-          const test = hir.stmtB[pid] | 0;
-          const body = hir.stmtD[pid] | 0;
+          const init = hir$.stmtA[pid] | 0;
+          const test = hir$.stmtB[pid] | 0;
+          const body = hir$.stmtD[pid] | 0;
           if (isNode(N_STMT, body)) return 1;
           if (isNode(N_EXPR, test)) return 3;
           if (init >= 0) {
@@ -200,20 +201,20 @@ function rank(parent: number, child: number): number {
         }
         case STMT_FOR_IN:
         case STMT_FOR_OF: {
-          const expr = hir.stmtB[pid] | 0;
-          const body = hir.stmtC[pid] | 0;
+          const expr = hir$.stmtB[pid] | 0;
+          const body = hir$.stmtC[pid] | 0;
           if (isNode(N_STMT, body)) return 1;
           if (isNode(N_EXPR, expr)) return 3;
           return 2;
         }
         case STMT_WHILE:
-          return isNode(N_STMT, hir.stmtB[pid] | 0) ? 1 : 2;
+          return isNode(N_STMT, hir$.stmtB[pid] | 0) ? 1 : 2;
         case STMT_SWITCH:
-          return isNode(N_EXPR, hir.stmtA[pid] | 0) ? 2 : 1;
+          return isNode(N_EXPR, hir$.stmtA[pid] | 0) ? 2 : 1;
         case STMT_TRY: {
-          const block = hir.stmtA[pid] | 0;
-          const handler = hir.stmtC[pid] | 0;
-          const finalizer = hir.stmtD[pid] | 0;
+          const block = hir$.stmtA[pid] | 0;
+          const handler = hir$.stmtC[pid] | 0;
+          const finalizer = hir$.stmtD[pid] | 0;
           if (isNode(N_STMT, block)) return 1;
           if (isNode(N_STMT, finalizer)) return 2;
           if (isNode(N_STMT, handler)) return 4;
@@ -228,7 +229,7 @@ function rank(parent: number, child: number): number {
       }
     }
     case N_CASE:
-      return isNode(N_EXPR, hir.caseTest[pid] | 0) ? 2 : 1;
+      return isNode(N_EXPR, hir$.caseTest[pid] | 0) ? 2 : 1;
     case N_FUNC: {
       ranksInFunction(pid);
       if (ck === N_TYPE_PARAM) return rTypeParams;
@@ -245,7 +246,7 @@ function rank(parent: number, child: number): number {
       if (ck === N_TYPE) {
         const s = classImplementsStart(pid);
         const n = classImplementsLen(pid);
-        for (let i = 0; i < n; i++) if (nodeOfType(hir.ids[(s + i) | 0] | 0) === child) return 3;
+        for (let i = 0; i < n; i++) if (nodeOfType(hir$.ids[(s + i) | 0] | 0) === child) return 3;
         return 6;
       }
       if (ck === N_TYPE_PARAM) return 5;
@@ -267,8 +268,8 @@ function rank(parent: number, child: number): number {
       return 2;
     }
     case N_PROP: {
-      const value = hir.propValue[pid] | 0;
-      const hasFunc = (hir.propKind[pid] | 0) !== 0 && propHasFunc(pid);
+      const value = hir$.propValue[pid] | 0;
+      const hasFunc = (hir$.propKind[pid] | 0) !== 0 && propHasFunc(pid);
       const isValue = isNode(N_EXPR, value);
       return hasFunc ? 2 - (isValue ? 1 : 0) : 1 + (isValue ? 1 : 0);
     }
@@ -284,27 +285,27 @@ function rank(parent: number, child: number): number {
     case N_VAR_DECL:
       return ck === N_EXPR ? 1 : ck === N_PAT ? 2 : 3;
     case N_EXPR: {
-      const tag = hir.exprTag[pid] | 0;
+      const tag = hir$.exprTag[pid] | 0;
       switch (tag) {
         case EXPR_COND: {
-          const yes = hir.exprB[pid] | 0;
-          const no = hir.exprC[pid] | 0;
+          const yes = hir$.exprB[pid] | 0;
+          const no = hir$.exprC[pid] | 0;
           if (isNode(N_EXPR, no)) return 1;
           if (isNode(N_EXPR, yes)) return 2;
           return 3;
         }
         case EXPR_CALL: {
-          const callee = hir.callCallee[hir.exprA[pid] | 0] | 0;
+          const callee = hir$.callCallee[hir$.exprA[pid] | 0] | 0;
           if (ck === N_TYPE) return 3;
           return 2 - (isNode(N_EXPR, callee) ? 1 : 0);
         }
         case EXPR_NEW: {
-          const callee = hir.callCallee[hir.exprA[pid] | 0] | 0;
+          const callee = hir$.callCallee[hir$.exprA[pid] | 0] | 0;
           if (ck === N_TYPE) return 1;
           return 2 + (isNode(N_EXPR, callee) ? 1 : 0);
         }
         case EXPR_TAGGED_TEMPLATE: {
-          const callee = hir.callCallee[hir.exprA[pid] | 0] | 0;
+          const callee = hir$.callCallee[hir$.exprA[pid] | 0] | 0;
           if (ck === N_TYPE) return 3;
           return 1 + (isNode(N_EXPR, callee) ? 1 : 0);
         }
@@ -328,17 +329,17 @@ function rank(parent: number, child: number): number {
       }
     }
     case N_TYPE: {
-      const tag = hir.typeTag[pid] | 0;
+      const tag = hir$.typeTag[pid] | 0;
       if (tag === TYPE_COND) {
-        const check = hir.typeA[pid] | 0;
-        const extendsTy = hir.typeB[pid] | 0;
-        const no = hir.typeD[pid] | 0;
+        const check = hir$.typeA[pid] | 0;
+        const extendsTy = hir$.typeB[pid] | 0;
+        const no = hir$.typeD[pid] | 0;
         if (isNode(N_TYPE, check)) return 1;
         if (isNode(N_TYPE, extendsTy)) return 2;
         if (isNode(N_TYPE, no)) return 3;
         return 4;
       }
-      if (tag === TYPE_INDEXED_ACCESS) return 2 - (isNode(N_TYPE, hir.typeB[pid] | 0) ? 1 : 0);
+      if (tag === TYPE_INDEXED_ACCESS) return 2 - (isNode(N_TYPE, hir$.typeB[pid] | 0) ? 1 : 0);
       if (tag === TYPE_TYPEOF || tag === TYPE_HERITAGE) return 1 + (ck === N_TYPE ? 1 : 0);
       return 1;
     }
@@ -348,8 +349,9 @@ function rank(parent: number, child: number): number {
 }
 
 function propHasFunc(p: number): boolean {
-  const v = hir.propValue[p] | 0;
-  return v >= 0 && (hir.exprTag[v] | 0) === EXPR_FN;
+  const hir$ = hir;
+  const v = hir$.propValue[p] | 0;
+  return v >= 0 && (hir$.exprTag[v] | 0) === EXPR_FN;
 }
 
 /** When a check of `node` happens that is not the first thing. */
@@ -358,26 +360,27 @@ function rankOfCheck(node: number, when: number): number {
   if (when === WHEN_CATCH_CLAUSE) return 3;
   const k = nodeKind(node);
   const id = nodeId(node);
+  const hir$ = hir;
   if (when === WHEN_TYPE_PARAMETERS) {
     if (k === N_FUNC) {
       ranksInFunction(id);
       return rTypeParams;
     }
     if (k === N_CLASS) return 5;
-    if (k === N_STMT) return (hir.stmtTag[id] | 0) === STMT_INTERFACE ? 3 : 2;
+    if (k === N_STMT) return (hir$.stmtTag[id] | 0) === STMT_INTERFACE ? 3 : 2;
     return 1;
   }
   // WHEN_TYPE_ARGUMENTS
   if (k === N_CLASS) return 6;
   if (k === N_EXPR) {
-    const t = hir.exprTag[id] | 0;
+    const t = hir$.exprTag[id] | 0;
     if (t === EXPR_NEW) return 1;
     if (t === EXPR_JSX) return 5;
     if (t === EXPR_INSTANTIATION) return 2;
     return 3;
   }
   if (k === N_TYPE) {
-    const t = hir.typeTag[id] | 0;
+    const t = hir$.typeTag[id] | 0;
     return t === TYPE_TYPEOF || t === TYPE_HERITAGE ? 2 : 1;
   }
   return 1;
@@ -393,14 +396,15 @@ export function orderFirst(): number {
   let inside: number[] = [];
   for (let i = 0; i < n; i++) inside.push(i);
   let at = NODE_FILE;
+  const kids$ = kids;
   for (;;) {
-    kids.len = 0;
-    nodeChildren(at, -1, kids);
-    const count = kids.len | 0;
+    kids$.len = 0;
+    nodeChildren(at, -1, kids$);
+    const count = kids$.len | 0;
     childStart = [];
     childEnd = [];
     for (let k = 0; k < count; k++) {
-      outerSpanOf(kids.data[k] | 0);
+      outerSpanOf(kids$.data[k] | 0);
       childStart.push(SP[0] | 0);
       childEnd.push(SP[1] | 0);
     }
@@ -444,7 +448,7 @@ export function orderFirst(): number {
       let b: number;
       let c: number;
       if (child >= 0) {
-        a = rank(at, kids.data[child] | 0);
+        a = rank(at, kids$.data[child] | 0);
         b = childStart[child];
         c = 0;
       } else {
@@ -468,7 +472,7 @@ export function orderFirst(): number {
       if (childWith(cStart[i], cEnd[i]) === bestChild) next.push(i);
     }
     inside = next;
-    at = kids.data[bestChild] | 0;
+    at = kids$.data[bestChild] | 0;
     void N_FILE;
     void STMT_FOR_IN;
   }

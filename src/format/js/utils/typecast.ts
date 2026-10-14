@@ -27,8 +27,9 @@ export function isCastTarget(e: number, f: Formatter): boolean {
   if (!cm.hasTypeCastComments || !exprIsParenthesized(e)) return false;
   const first = exprParenFirst(e);
   const n = exprParenCount(e);
+  const hir$ = hir;
   for (let i = 0; i < n; i++) {
-    if (cm.isCastParenthesis(hir.parenStart[(first + i) | 0] | 0)) return true;
+    if (cm.isCastParenthesis(hir$.parenStart[(first + i) | 0] | 0)) return true;
   }
   return false;
 }
@@ -48,12 +49,14 @@ function pushCastParentheses(e: number, f: Formatter): number {
   const first = exprParenFirst(e);
   const n = exprParenCount(e);
   let count = 0;
+  const hir$ = hir;
+  const castStack$ = castStack;
   for (let i = n - 1; i >= 0; i--) {
     const row = (first + i) | 0;
-    const start = hir.parenStart[row] | 0;
+    const start = hir$.parenStart[row] | 0;
     if (cm.isCastParenthesis(start)) {
-      castStack.push(start);
-      castStack.push(hir.parenEnd[row] | 0);
+      castStack$.push(start);
+      castStack$.push(hir$.parenEnd[row] | 0);
       count = (count + 1) | 0;
     }
   }
@@ -76,16 +79,17 @@ export function writeTypeCasts(
 ): boolean {
   const cm = cxOf(f).comments;
   if (!cm.hasTypeCastComments || !exprIsParenthesized(e)) return false;
-  const base = castStack.len;
+  const castStack$ = castStack;
+  const base = castStack$.len;
   const count = pushCastParentheses(e, f);
   if (count === 0) return false;
-  const outStart = castStack.data[base] | 0;
-  const outEnd = castStack.data[base + 1] | 0;
+  const outStart = castStack$.data[base] | 0;
+  const outEnd = castStack$.data[base + 1] | 0;
   const isSuppressed = cm.isSuppressed(outStart) || cm.hasTrailingSuppressionComment(outEnd);
   formatLeadingComments(outStart, outEnd, f);
   if (isSuppressed) writeSuppressedNode(outStart, outEnd, f);
   else writeParenthesizedExpression(e, base, 0, count, node, options, isChainExpression, isInChainExpression, f);
-  castStack.len = base;
+  castStack$.len = base;
   writeTrailingCommentsOf(node, f);
   return true;
 }
@@ -109,8 +113,9 @@ function writeParenthesizedExpression(
   // The parentheses in it are not written by way of `Expr`.
   if (!f.stack.enter()) return;
   const cm = cxOf(f).comments;
-  const start = castStack.data[base + 2 * idx] | 0;
-  const end = castStack.data[base + 2 * idx + 1] | 0;
+  const castStack$ = castStack;
+  const start = castStack$.data[base + 2 * idx] | 0;
+  const end = castStack$.data[base + 2 * idx + 1] | 0;
   // The comments in the parentheses are written in them, also where those after the expression are left to somebody else.
   const previousLimit = cm.showCommentsUpTo(end);
   exprSpan(e);
@@ -126,7 +131,7 @@ function writeParenthesizedExpression(
     f.startSoftBlockIndent();
   }
   if (idx + 1 < count) {
-    formatLeadingComments(castStack.data[base + 2 * idx + 2] | 0, castStack.data[base + 2 * idx + 3] | 0, f);
+    formatLeadingComments(castStack$.data[base + 2 * idx + 2] | 0, castStack$.data[base + 2 * idx + 3] | 0, f);
   }
   writeParenthesizedExpression(e, base, idx + 1, count, node, options, isChainExpression, isInChainExpression, f);
   // Nothing follows the expression in here, so whatever is left trails it.

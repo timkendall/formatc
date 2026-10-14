@@ -1437,10 +1437,11 @@ export class Elements {
   /** The document as a tree. Returns -1 if it is nested too deeply. */
   toTree(): number {
     const stack = Stack.forTree();
-    const mark = docPool.begin();
+    const docPool$ = docPool;
+    const mark = docPool$.begin();
     const at = this.treeUpTo(1, this.n, stack, mark);
     void at;
-    const tree = docPool.array(mark);
+    const tree = docPool$.array(mark);
     if (this.isNestedTooDeeply || stack.ranOut()) return -1;
     return tree;
   }

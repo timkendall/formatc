@@ -98,16 +98,19 @@ export class ParseError {
 export const PE = new ParseError();
 
 function setSyntax(list: ErrorList, index: number): void {
-  PE.list = list;
-  PE.index = index;
+  const PE$ = PE;
+  PE$.list = list;
+  PE$.index = index;
 }
 
 /** The message of the error in `PE` against the text it is of. */
 export function parseErrorMessage(text: Uint8Array, out: ByteBuf): void {
-  errorMessage(PE.list, PE.index, text, out);
+  const PE$ = PE;
+  errorMessage(PE$.list, PE$.index, text, out);
 }
 export function parseErrorAt(): number {
-  return PE.list.at(PE.index);
+  const PE$ = PE;
+  return PE$.list.at(PE$.index);
 }
 
 /** `ParseOptions` of Prettier for `parser`. */

@@ -575,6 +575,7 @@ const reader = new Reader();
 /** Reads the JSDoc comments among `comments` (`pairs` of start, end, from `hir.comments`) of `text` into `out`. */
 export function outlineRead(text: Uint8Array, comments: Int32Array, nComments: number, out: Outline): void {
   out.reset();
+  const reader$ = reader;
   for (let k = 0; k < nComments; k++) {
     const start = comments[k * 2] | 0;
     const end = comments[k * 2 + 1] | 0;
@@ -588,9 +589,9 @@ export function outlineRead(text: Uint8Array, comments: Int32Array, nComments: n
       }
     }
     if (hasAt) {
-      reader.begin(text, start, end);
-      reader.parseJsdocCommentWorker();
-      const t = reader.tags;
+      reader$.begin(text, start, end);
+      reader$.parseJsdocCommentWorker();
+      const t = reader$.tags;
       for (let i = 0; i < t.len; i++) out.tags.push(t.data[i] | 0);
     }
     out.starts.push(start);

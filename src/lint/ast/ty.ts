@@ -47,8 +47,9 @@ export function typeSpan(t: number): void {
     SP[1] = 0;
     return;
   }
-  SP[0] = hir.typePos[t] | 0;
-  SP[1] = hir.typeEnd[t] | 0;
+  const hir$ = hir;
+  SP[0] = hir$.typePos[t] | 0;
+  SP[1] = hir$.typeEnd[t] | 0;
 }
 export function typeStart(t: number): number {
   return inRange(t) ? hir.typePos[t] | 0 : 0;
@@ -62,8 +63,9 @@ export function typeEnd(t: number): number {
  * the type.
  */
 export function typeOuterSpan(t: number): void {
-  const text = hir.text;
-  const len = hir.sourceLen | 0;
+  const hir$ = hir;
+  const text = hir$.text;
+  const len = hir$.sourceLen | 0;
   let start = typeStart(t);
   let end = typeEnd(t);
   while (true) {
@@ -121,8 +123,9 @@ export function typeIsKeyword(t: number, keyword: number): boolean {
 /** The value of a `TYPE_NUMBER_LIT` (`file.hir.numbers`). */
 export function typeNumberLitValue(t: number): number {
   if (typeTag(t) !== TYPE_NUMBER_LIT) return NaN;
-  const at = hir.typeA[t] | 0;
-  return at >= 0 && at < hir.numbersLen ? hir.numbers[at] : NaN;
+  const hir$ = hir;
+  const at = hir$.typeA[t] | 0;
+  return at >= 0 && at < hir$.numbersLen ? hir$.numbers[at] : NaN;
 }
 
 /** `TypeNode::predicate_param`: the atom of the `x` of the `Predicate` `x is T` or `asserts x` (-1 if it is not one); `typePredicateParamPos` is where it is written. */
@@ -131,7 +134,8 @@ export function typePredicateParamAtom(t: number): number {
 }
 export function typePredicateParamPos(t: number): number {
   const start = typeStart(t);
-  if ((hir.typeAux[t] | 0) !== 0) return skipTrivia(hir.text, hir.sourceLen | 0, start + 7);
+  const hir$ = hir;
+  if ((hir$.typeAux[t] | 0) !== 0) return skipTrivia(hir$.text, hir$.sourceLen | 0, start + 7);
   return start;
 }
 
@@ -147,11 +151,12 @@ export function typeUniqueSymbolKeywordSpan(t: number): boolean {
 /** `TypeNode::import_span` into `SP`: of an `Import`: from the `import`, without a `typeof` before it. */
 export function typeImportSpan(t: number): boolean {
   if (typeTag(t) !== TYPE_IMPORT) return false;
-  const isTypeof = ((hir.typeAux[t] | 0) & 1) !== 0;
+  const hir$ = hir;
+  const isTypeof = ((hir$.typeAux[t] | 0) & 1) !== 0;
   const ws = typeStart(t);
   const we = typeEnd(t);
   if (isTypeof) {
-    SP[0] = skipTrivia(hir.text, hir.sourceLen | 0, ws + 6);
+    SP[0] = skipTrivia(hir$.text, hir$.sourceLen | 0, ws + 6);
     SP[1] = we;
   } else {
     SP[0] = ws;
@@ -163,8 +168,9 @@ export function typeImportSpan(t: number): boolean {
 /** `TypeNode::import_source_span` into `SP`: of an `Import`: the module specifier with its quotes. */
 export function typeImportSourceSpan(t: number): boolean {
   if (!typeImportSpan(t)) return false;
-  const text = hir.text;
-  const len = hir.sourceLen | 0;
+  const hir$ = hir;
+  const text = hir$.text;
+  const len = hir$.sourceLen | 0;
   const open = skipTrivia(text, len, (SP[0] | 0) + 6);
   const start = skipTrivia(text, len, open + 1);
   SP[0] = start;
@@ -188,20 +194,22 @@ export function typeTemplateQuasiCount(t: number): number {
 
 /** `TypeTemplate::cooked(i)`: the atom of the value of the piece of text at `i`, or -1. */
 export function typeTemplateCooked(t: number, i: number): number {
-  const n = hir.typeD[t] | 0;
+  const hir$ = hir;
+  const n = hir$.typeD[t] | 0;
   if (i >= n) return -1;
-  const at = ((hir.typeC[t] | 0) + i) | 0;
-  return at >= 0 && at < hir.idsLen ? hir.ids[at] | 0 : -1;
+  const at = ((hir$.typeC[t] | 0) + i) | 0;
+  return at >= 0 && at < hir$.idsLen ? hir$.ids[at] | 0 : -1;
 }
 
 /** `TypeTemplate::quasi_span(i)` into `SP`: the piece of text at `i` with its delimiters. */
 export function typeTemplateQuasiSpan(t: number, i: number): void {
-  const text = hir.text;
-  const len = hir.sourceLen | 0;
-  const n = hir.typeB[t] | 0;
+  const hir$ = hir;
+  const text = hir$.text;
+  const len = hir$.sourceLen | 0;
+  const n = hir$.typeB[t] | 0;
   let start = typeStart(t);
   if (i >= 1 && i - 1 < n) {
-    const before = hir.ids[((hir.typeA[t] | 0) + i - 1) | 0] | 0;
+    const before = hir$.ids[((hir$.typeA[t] | 0) + i - 1) | 0] | 0;
     start = skipTrivia(text, len, typeOuterEnd(before));
   }
   const end = i < n ? templateTextEnd(text, len, start + 1) : typeEnd(t);
@@ -223,8 +231,9 @@ export function typeTemplateRawSpan(t: number, i: number): void {
 // ───────────────────────────── angle brackets ─────────────────────────────
 
 function angleBrackets(start: number, end: number): void {
-  const text = hir.text;
-  const len = hir.sourceLen | 0;
+  const hir$ = hir;
+  const text = hir$.text;
+  const len = hir$.sourceLen | 0;
   let close = skipTrivia(text, len, end);
   if (close < len && (text[close] | 0) === 44) close = skipTrivia(text, len, close + 1);
   const before = fileEndOfTokenBefore(start);
@@ -238,8 +247,9 @@ function angleBrackets(start: number, end: number): void {
  */
 export function typeListAngleBrackets(start: number, len: number): boolean {
   if (len <= 0) return false;
-  const first = hir.ids[start] | 0;
-  const last = hir.ids[(start + len - 1) | 0] | 0;
+  const hir$ = hir;
+  const first = hir$.ids[start] | 0;
+  const last = hir$.ids[(start + len - 1) | 0] | 0;
   const s = typeOuterStart(first);
   const e = typeOuterEnd(last);
   angleBrackets(s, e);
@@ -249,8 +259,9 @@ export function typeListAngleBrackets(start: number, len: number): boolean {
 /** `List<TypeParam>::angle_brackets_span` into `SP`: the `<..>` around type parameters: the range of ESLint's `TSTypeParameterDeclaration`. False if the list is empty. */
 export function typeParamListAngleBrackets(start: number, len: number): boolean {
   if (len <= 0) return false;
-  const first = hir.ids[start] | 0;
-  const last = hir.ids[(start + len - 1) | 0] | 0;
+  const hir$ = hir;
+  const first = hir$.ids[start] | 0;
+  const last = hir$.ids[(start + len - 1) | 0] | 0;
   typeParamSpan(first);
   const s = SP[0] | 0;
   typeParamSpan(last);
@@ -275,7 +286,8 @@ export function importAttributesObject(row: number): number {
 export function importAttributesKeywordSpan(row: number): void {
   const k = importAttributesKeyword(row);
   SP[0] = k;
-  SP[1] = tokenEnd(hir.text, hir.sourceLen | 0, k, false);
+  const hir$ = hir;
+  SP[1] = tokenEnd(hir$.text, hir$.sourceLen | 0, k, false);
 }
 /** `ImportAttributes::braces_span` into `SP`: the `{ .. }`. */
 export function importAttributesBracesSpan(row: number): void {
@@ -283,8 +295,9 @@ export function importAttributesBracesSpan(row: number): void {
 }
 /** `ImportAttributes::options_span` into `SP`: in an import type: the `{ with: { .. } }` that is the second argument. */
 export function importAttributesOptionsSpan(row: number): void {
-  const text = hir.text;
-  const len = hir.sourceLen | 0;
+  const hir$ = hir;
+  const text = hir$.text;
+  const len = hir$.sourceLen | 0;
   exprSpan(importAttributesObject(row));
   let close = skipTrivia(text, len, SP[1] | 0);
   if (close < len && (text[close] | 0) === 44) close = skipTrivia(text, len, close + 1);
@@ -295,11 +308,13 @@ export function importAttributesOptionsSpan(row: number): void {
 /** `ImportAttributes::entries`: `key: "value"`: a list of PropIds. The key is a name or a string. */
 export function importAttributesEntriesStart(row: number): number {
   const o = importAttributesObject(row);
-  return (hir.exprTag[o] | 0) === EXPR_OBJECT ? hir.exprA[o] | 0 : 0;
+  const hir$ = hir;
+  return (hir$.exprTag[o] | 0) === EXPR_OBJECT ? hir$.exprA[o] | 0 : 0;
 }
 export function importAttributesEntriesLen(row: number): number {
   const o = importAttributesObject(row);
-  return (hir.exprTag[o] | 0) === EXPR_OBJECT ? hir.exprB[o] | 0 : 0;
+  const hir$ = hir;
+  return (hir$.exprTag[o] | 0) === EXPR_OBJECT ? hir$.exprB[o] | 0 : 0;
 }
 
 // ───────────────────────────── TupleElem ─────────────────────────────
@@ -314,8 +329,9 @@ export function tupleElemName(e: number): number {
   return hir.tupleElemName[e] | 0;
 }
 export function tupleElemNamePos(e: number): number {
-  const start = hir.tupleElemStart[e] | 0;
-  if ((hir.tupleElemHasDots[e] | 0) !== 0) return skipTrivia(hir.text, hir.sourceLen | 0, start + 3);
+  const hir$ = hir;
+  const start = hir$.tupleElemStart[e] | 0;
+  if ((hir$.tupleElemHasDots[e] | 0) !== 0) return skipTrivia(hir$.text, hir$.sourceLen | 0, start + 3);
   return start;
 }
 export function tupleElemIsOptional(e: number): boolean {
@@ -325,8 +341,9 @@ export function tupleElemIsRest(e: number): boolean {
   return (hir.tupleElemHasDots[e] | 0) !== 0;
 }
 export function tupleElemSpan(e: number): void {
-  SP[0] = hir.tupleElemStart[e] | 0;
-  SP[1] = hir.tupleElemEnd[e] | 0;
+  const hir$ = hir;
+  SP[0] = hir$.tupleElemStart[e] | 0;
+  SP[1] = hir$.tupleElemEnd[e] | 0;
 }
 /** `TupleElem::parent`: the tuple type (a Node). */
 export function tupleElemParent(e: number): number {

@@ -396,13 +396,14 @@ function trimAsciiStart(text: Uint8Array, start: number, end: number): number {
 /** `format_digits`: a number, or a bigint, which is written in lowercase. */
 function writeDigits(start: number, end: number, f: Formatter): void {
   const text = f.source;
+  const lb$ = lb;
   if (end > start && (text[end - 1] | 0) === 110) {
-    lb.reset();
+    lb$.reset();
     for (let i = start; i < end; i++) {
       const c = text[i] | 0;
-      lb.push(c >= 65 && c <= 90 ? c + 32 : c);
+      lb$.push(c >= 65 && c <= 90 ? c + 32 : c);
     }
-    f.textBytesNoWs(lb.data, 0, lb.len);
+    f.textBytesNoWs(lb$.data, 0, lb$.len);
   } else {
     writeNumberToken(start, end, f);
   }
@@ -643,22 +644,23 @@ export function writeTsConditionalType(ty: number, f: Formatter): void {
 export function writeTsTypeQuery(ty: number, expr: number, argsStart: number, argsLen: number, f: Formatter): void {
   if (fileIsFlow() && writeDeclaredPredicate(ty, expr, argsStart, argsLen, f)) return;
   // The name is ESTree's `TSQualifiedName`, which does not break like a member expression.
-  const base = qnames.len;
+  const qnames$ = qnames;
+  const base = qnames$.len;
   let leftmost = expr;
   while (exprTag(leftmost) === EXPR_DOT) {
-    qnames.push(exprDotName(leftmost));
-    qnames.push(exprDotNamePos(leftmost));
+    qnames$.push(exprDotName(leftmost));
+    qnames$.push(exprDotNamePos(leftmost));
     leftmost = exprDotObj(leftmost);
   }
-  const top = qnames.len;
+  const top = qnames$.len;
   f.token(KW_TYPEOF_SPACE);
   fmtExpr(leftmost, f);
   const node = mkAn(AN_TS_TYPE_QUERY, ty);
   for (let i = top - 2; i >= base; i = i - 2) {
     f.token(DOT);
-    identifier(qnames.data[i] | 0, qnames.data[i + 1] | 0, node, f);
+    identifier(qnames$.data[i] | 0, qnames$.data[i + 1] | 0, node, f);
   }
-  qnames.len = base;
+  qnames$.len = base;
   typeArguments(argsStart, argsLen, nodeOfType(ty), f);
 }
 

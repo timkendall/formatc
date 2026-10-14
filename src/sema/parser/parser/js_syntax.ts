@@ -88,7 +88,8 @@ export function modifierTextLen(flag_: number): number {
  * `jsErrorAtRange`. An end of 0: the end of the token at the start (-1: an empty range). Nothing inside a type is reported.
  */
 export function jsError(start: number, end: number, code: number, what: string = ""): void {
-  if (p.isJavascript && (p.context & CTX_TYPE) === 0 && !p.isFlow) {
+  const p$ = p;
+  if (p$.isJavascript && (p$.context & CTX_TYPE) === 0 && !p$.isFlow) {
     if (what === "") flag(DK_JS, code, start, end);
     else flagArgs(DK_JS, code, start, end, [what]);
   }
@@ -100,16 +101,18 @@ export function jsErrorAtType(ty: number, code: number): void {
 }
 
 function jsErrorAtTypes(first: number, last: number, code: number): void {
-  if (first >= 0 && first < hir.nTypes && last >= 0 && last < hir.nTypes) {
-    jsError(hir.typePos[first] | 0, hir.typeEnd[last] | 0, code);
+  const hir$ = hir;
+  if (first >= 0 && first < hir$.nTypes && last >= 0 && last < hir$.nTypes) {
+    jsError(hir$.typePos[first] | 0, hir$.typeEnd[last] | 0, code);
   }
 }
 
 /** For type arguments (the list `start`, `len` of `hir.ids`). */
 export function checkJsTypeArguments(start: number, len: number): void {
+  const hir$ = hir;
   if (p.isJavascript && len > 0) {
-    const last = hir.ids[(start + len - 1) | 0] | 0;
-    jsErrorAtTypes(hir.ids[start] | 0, last, 8011);
+    const last = hir$.ids[(start + len - 1) | 0] | 0;
+    jsErrorAtTypes(hir$.ids[start] | 0, last, 8011);
   }
 }
 
@@ -117,11 +120,12 @@ const JAVASCRIPT_MODIFIERS = FLAG_EXPORT | FLAG_STATIC | FLAG_ACCESSOR | FLAG_AS
 
 /** The modifiers (list `start`, `len`) that are not in `ModifierFlagsJavaScript`. `checkJsDecorators`, if `decorators`. */
 export function checkJsModifiers(start: number, len: number, decorators: boolean): void {
+  const hir$ = hir;
   for (let i = 0; i < len; i++) {
-    const m = hir.ids[(start + i) | 0] | 0;
-    if ((hir.modifierKind[m] | 0) === MODK_KEYWORD) {
-      const f = hir.modifierValue[m] | 0;
-      if ((JAVASCRIPT_MODIFIERS & f) === 0) jsError(hir.modifierPos[m] | 0, 0, 8009, modifierText(f));
+    const m = hir$.ids[(start + i) | 0] | 0;
+    if ((hir$.modifierKind[m] | 0) === MODK_KEYWORD) {
+      const f = hir$.modifierValue[m] | 0;
+      if ((JAVASCRIPT_MODIFIERS & f) === 0) jsError(hir$.modifierPos[m] | 0, 0, 8009, modifierText(f));
     }
   }
   if (decorators) checkJsDecorators(start, len, false);
@@ -135,16 +139,17 @@ export function checkJsDecorators(start: number, len: number, isClassDeclaration
   // Nodes can be missing.
   if (hasFailed()) return;
   let decoratorIndex = -1;
+  const hir$ = hir;
   for (let i = 0; i < len; i++) {
-    const m = hir.ids[(start + i) | 0] | 0;
-    if ((hir.modifierKind[m] | 0) === MODK_DECORATOR) {
+    const m = hir$.ids[(start + i) | 0] | 0;
+    if ((hir$.modifierKind[m] | 0) === MODK_DECORATOR) {
       decoratorIndex = i;
       break;
     }
   }
   if (decoratorIndex < 0) return;
-  const firstStart = hir.modifierPos[hir.ids[(start + decoratorIndex) | 0] | 0] | 0;
-  const firstEnd = endOfExpr(hir.modifierValue[hir.ids[(start + decoratorIndex) | 0] | 0] | 0);
+  const firstStart = hir$.modifierPos[hir$.ids[(start + decoratorIndex) | 0] | 0] | 0;
+  const firstEnd = endOfExpr(hir$.modifierValue[hir$.ids[(start + decoratorIndex) | 0] | 0] | 0);
   if (!isClassDeclaration) {
     // `js_error` says nothing in Flow, whose parsers refuse this too.
     if (p.isFlow) fail();
@@ -157,8 +162,8 @@ export function checkJsDecorators(start: number, len: number, isClassDeclaration
   // the first decorator after `export`
   let trailing = -1;
   for (let i = exportIndex + 1; i < len; i++) {
-    const m = hir.ids[(start + i) | 0] | 0;
-    if ((hir.modifierKind[m] | 0) === MODK_DECORATOR) {
+    const m = hir$.ids[(start + i) | 0] | 0;
+    if ((hir$.modifierKind[m] | 0) === MODK_DECORATOR) {
       trailing = i;
       break;
     }
@@ -166,31 +171,33 @@ export function checkJsDecorators(start: number, len: number, isClassDeclaration
   if (decoratorIndex > exportIndex) {
     if (defaultIndex >= 0 && decoratorIndex < defaultIndex) jsError(firstStart, firstEnd, 1206);
   } else if (trailing >= 0) {
-    const m = hir.ids[(start + trailing) | 0] | 0;
+    const m = hir$.ids[(start + trailing) | 0] | 0;
     // TODO: the related diagnostic (1486 at the first decorator) is not kept.
-    hir.pushDiagnostics(DK_JS, hir.modifierPos[m] | 0, endOfExpr(hir.modifierValue[m] | 0), 8038, -1);
+    hir$.pushDiagnostics(DK_JS, hir$.modifierPos[m] | 0, endOfExpr(hir$.modifierValue[m] | 0), 8038, -1);
   }
 }
 
 function indexOfKeyword(start: number, len: number, flag_: number): number {
+  const hir$ = hir;
   for (let i = 0; i < len; i++) {
-    const m = hir.ids[(start + i) | 0] | 0;
-    if ((hir.modifierKind[m] | 0) === MODK_KEYWORD && (hir.modifierValue[m] | 0) === flag_) return i;
+    const m = hir$.ids[(start + i) | 0] | 0;
+    if ((hir$.modifierKind[m] | 0) === MODK_KEYWORD && (hir$.modifierValue[m] | 0) === flag_) return i;
   }
   return -1;
 }
 
 /** For the declaration `id`. */
 export function checkJsStatement(id: number): void {
-  if (hasFailed() || id < 0 || id >= hir.nStmts) return;
-  const tag = hir.stmtTag[id] | 0;
-  const modStart = hir.stmtModStart[id] | 0;
-  const modLen = hir.stmtModLen[id] | 0;
+  const hir$ = hir;
+  if (hasFailed() || id < 0 || id >= hir$.nStmts) return;
+  const tag = hir$.stmtTag[id] | 0;
+  const modStart = hir$.stmtModStart[id] | 0;
+  const modLen = hir$.stmtModLen[id] | 0;
   // TODO(oxc): `module_statements.0 += 1` for an external module indicator.
   switch (tag) {
     // `parseAmbientExternalModuleDeclaration` does not perform this check.
     case STMT_MODULE:
-      if ((hir.moduleNameKind[hir.stmtA[id] | 0] | 0) !== MODNAME_IDENT) return;
+      if ((hir$.moduleNameKind[hir$.stmtA[id] | 0] | 0) !== MODNAME_IDENT) return;
       checkJsDecorators(modStart, modLen, false);
       break;
     case STMT_CLASS:
@@ -219,21 +226,22 @@ export function checkJsStatement(id: number): void {
 
 /** What is said about the declaration `id` as a whole. */
 function errorOfJsDeclaration(id: number, tag: number): void {
-  const whole = hir.stmtStart[id] | 0;
-  const wholeEnd = hir.stmtLocEnd[id] | 0;
-  const a = hir.stmtA[id] | 0;
+  const hir$ = hir;
+  const whole = hir$.stmtStart[id] | 0;
+  const wholeEnd = hir$.stmtLocEnd[id] | 0;
+  const a = hir$.stmtA[id] | 0;
   switch (tag) {
     case STMT_FN:
       if (!fnHasBodyNode(a)) jsError(whole, wholeEnd, 8017);
       break;
     case STMT_IMPORT:
-      if ((hir.importTypeOnly[a] | 0) !== 0) jsError(whole, wholeEnd, 8006, "import type");
+      if ((hir$.importTypeOnly[a] | 0) !== 0) jsError(whole, wholeEnd, 8006, "import type");
       break;
     case STMT_EXPORT_NAMED:
-      if ((hir.exportTypeOnly[a] | 0) !== 0) jsError(whole, wholeEnd, 8006, "export type");
+      if ((hir$.exportTypeOnly[a] | 0) !== 0) jsError(whole, wholeEnd, 8006, "export type");
       break;
     case STMT_EXPORT_STAR:
-      if (((hir.stmtAux[id] | 0) & 1) !== 0) jsError(whole, wholeEnd, 8006, "export type");
+      if (((hir$.stmtAux[id] | 0) & 1) !== 0) jsError(whole, wholeEnd, 8006, "export type");
       break;
     case STMT_IMPORT_EQUALS:
       jsError(whole, wholeEnd, 8002);
@@ -242,16 +250,16 @@ function errorOfJsDeclaration(id: number, tag: number): void {
       jsError(whole, wholeEnd, 8003);
       break;
     case STMT_INTERFACE:
-      jsError(hir.interfaceNamePos[a] | 0, 0, 8006, "interface");
+      jsError(hir$.interfaceNamePos[a] | 0, 0, 8006, "interface");
       break;
     case STMT_MODULE:
-      jsError(hir.moduleNamePos[a] | 0, 0, 8006, (hir.moduleSpecifiesModule[a] | 0) !== 0 ? "module" : "namespace");
+      jsError(hir$.moduleNamePos[a] | 0, 0, 8006, (hir$.moduleSpecifiesModule[a] | 0) !== 0 ? "module" : "namespace");
       break;
     case STMT_ENUM:
-      jsError(hir.enumNamePos[a] | 0, 0, 8006, "enum");
+      jsError(hir$.enumNamePos[a] | 0, 0, 8006, "enum");
       break;
     case STMT_TYPE_ALIAS:
-      jsError(hir.aliasNamePos[a] | 0, 0, 8008);
+      jsError(hir$.aliasNamePos[a] | 0, 0, 8008);
       break;
     default:
   }
@@ -260,13 +268,14 @@ function errorOfJsDeclaration(id: number, tag: number): void {
 /** For a method or an accessor in an object literal: the prop row and its modifiers (list `modStart`, `modLen`). */
 export function checkJsMethodOfObject(prop: number, modStart: number, modLen: number): void {
   if (hasFailed()) return;
-  const postfix = hir.propPostfixToken[prop] | 0;
-  const kind = hir.propKind[prop] | 0;
-  if (kind === PROP_METHOD && postfix !== 0 && (hir.text[postfix] | 0) === 63 /* '?' */) jsError(postfix, 0, 8009, "?");
-  const value = hir.propValue[prop] | 0;
-  if (value >= 0 && value < hir.nExprs && (hir.exprTag[value] | 0) === EXPR_FN) {
-    const f = hir.exprA[value] | 0;
-    if (!fnHasBodyNode(f)) jsError(hir.propStart[prop] | 0, hir.propEnd[prop] | 0, 8017);
+  const hir$ = hir;
+  const postfix = hir$.propPostfixToken[prop] | 0;
+  const kind = hir$.propKind[prop] | 0;
+  if (kind === PROP_METHOD && postfix !== 0 && (hir$.text[postfix] | 0) === 63 /* '?' */) jsError(postfix, 0, 8009, "?");
+  const value = hir$.propValue[prop] | 0;
+  if (value >= 0 && value < hir$.nExprs && (hir$.exprTag[value] | 0) === EXPR_FN) {
+    const f = hir$.exprA[value] | 0;
+    if (!fnHasBodyNode(f)) jsError(hir$.propStart[prop] | 0, hir$.propEnd[prop] | 0, 8017);
   }
   checkJsModifiers(modStart, modLen, false);
 }
@@ -274,14 +283,15 @@ export function checkJsMethodOfObject(prop: number, modStart: number, modLen: nu
 /** For a class member (a `members` row). `question`: the position of the `?` after its name, or -1. */
 export function checkJsMember(member: number, question: number): void {
   if (hasFailed()) return;
-  const kind = hir.memberKind[member] | 0;
+  const hir$ = hir;
+  const kind = hir$.memberKind[member] | 0;
   if ((kind === MEMBER_PROPERTY || kind === MEMBER_METHOD) && question >= 0) jsError(question, 0, 8009, "?");
-  const f = hir.memberFunc[member] | 0;
-  if (f >= 0 && f < hir.nFns && !fnHasBodyNode(f)) {
-    jsError(hir.memberStart[member] | 0, hir.memberLocEnd[member] | 0, 8017);
+  const f = hir$.memberFunc[member] | 0;
+  if (f >= 0 && f < hir$.nFns && !fnHasBodyNode(f)) {
+    jsError(hir$.memberStart[member] | 0, hir$.memberLocEnd[member] | 0, 8017);
   }
-  const modStart = hir.memberModStart[member] | 0;
-  const modLen = hir.memberModLen[member] | 0;
+  const modStart = hir$.memberModStart[member] | 0;
+  const modLen = hir$.memberModLen[member] | 0;
   if (kind === MEMBER_INDEX_SIGNATURE) {
     checkJsDecorators(modStart, modLen, false);
   } else {

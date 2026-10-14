@@ -821,25 +821,26 @@ export const nodeBases = new Int32Array(NV_COUNT + 1);
 export function finishNodes(): void {
   const b = nodeBases;
   b[0] = 1;
-  b[1] = (b[0] | 0) + hir.nExprs;
-  b[2] = (b[1] | 0) + hir.nStmts;
-  b[3] = (b[2] | 0) + hir.nTypes;
-  b[4] = (b[3] | 0) + hir.nPats;
-  b[5] = (b[4] | 0) + hir.nPatProps;
-  b[6] = (b[5] | 0) + hir.nPatElems;
-  b[7] = (b[6] | 0) + hir.nParams;
-  b[8] = (b[7] | 0) + hir.nTypeParams;
-  b[9] = (b[8] | 0) + hir.nMembers;
-  b[10] = (b[9] | 0) + hir.nProps;
-  b[11] = (b[10] | 0) + hir.nVarDecls;
-  b[12] = (b[11] | 0) + hir.nCases;
-  b[13] = (b[12] | 0) + hir.nEnumMembers;
-  b[14] = (b[13] | 0) + hir.nImportSpecs;
-  b[15] = (b[14] | 0) + hir.nExportSpecs;
-  b[16] = (b[15] | 0) + hir.nTupleElems;
-  b[17] = (b[16] | 0) + hir.nModifiers;
-  b[18] = (b[17] | 0) + hir.nNames;
-  b[19] = (b[18] | 0) + hir.nParens;
+  const hir$ = hir;
+  b[1] = (b[0] | 0) + hir$.nExprs;
+  b[2] = (b[1] | 0) + hir$.nStmts;
+  b[3] = (b[2] | 0) + hir$.nTypes;
+  b[4] = (b[3] | 0) + hir$.nPats;
+  b[5] = (b[4] | 0) + hir$.nPatProps;
+  b[6] = (b[5] | 0) + hir$.nPatElems;
+  b[7] = (b[6] | 0) + hir$.nParams;
+  b[8] = (b[7] | 0) + hir$.nTypeParams;
+  b[9] = (b[8] | 0) + hir$.nMembers;
+  b[10] = (b[9] | 0) + hir$.nProps;
+  b[11] = (b[10] | 0) + hir$.nVarDecls;
+  b[12] = (b[11] | 0) + hir$.nCases;
+  b[13] = (b[12] | 0) + hir$.nEnumMembers;
+  b[14] = (b[13] | 0) + hir$.nImportSpecs;
+  b[15] = (b[14] | 0) + hir$.nExportSpecs;
+  b[16] = (b[15] | 0) + hir$.nTupleElems;
+  b[17] = (b[16] | 0) + hir$.nModifiers;
+  b[18] = (b[17] | 0) + hir$.nNames;
+  b[19] = (b[18] | 0) + hir$.nParens;
 }
 
 /** `Row::row`: the handle of the HIR row `id` of vector `v` (NV_*). NODE_NONE for NONE. */
@@ -906,14 +907,15 @@ export function exprNode(e: number): number {
 export function exprChildNode(e: number): number {
   // The outermost parentheses around it come last in `parens` (sorted by expression).
   let lo = 0;
-  let hi = hir.nParens;
+  const hir$ = hir;
+  let hi = hir$.nParens;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
-    if ((hir.parenExpr[mid] | 0) <= e) lo = mid + 1;
+    if ((hir$.parenExpr[mid] | 0) <= e) lo = mid + 1;
     else hi = mid;
   }
   const last = lo - 1;
-  if (last >= 0 && (hir.parenExpr[last] | 0) === e) return rowNode(NV_PAREN, last);
+  if (last >= 0 && (hir$.parenExpr[last] | 0) === e) return rowNode(NV_PAREN, last);
   return exprNode(e);
 }
 export function stmtNode(s: number): number {

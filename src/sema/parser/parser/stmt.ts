@@ -302,10 +302,11 @@ function popCount(x: number): number {
  * and its modifiers (`modStart`, `modLen`). Returns the statement.
  */
 export function finishStmt(stmt: number, startFull: number, modStart: number, modLen: number): number {
-  hir.stmtLocPos[stmt] = startFull | 0;
-  hir.stmtLocEnd[stmt] = lx.fullStart | 0;
-  hir.stmtModStart[stmt] = modStart | 0;
-  hir.stmtModLen[stmt] = modLen | 0;
+  const hir$ = hir;
+  hir$.stmtLocPos[stmt] = startFull | 0;
+  hir$.stmtLocEnd[stmt] = lx.fullStart | 0;
+  hir$.stmtModStart[stmt] = modStart | 0;
+  hir$.stmtModLen[stmt] = modLen | 0;
   return stmt;
 }
 
@@ -318,12 +319,14 @@ export function statement(): number {
 }
 
 function statementInDoor(): number {
-  const startPos = lx.start;
-  const startFull = lx.fullStart;
-  const t = lx.token;
+  const lx$ = lx;
+  const startPos = lx$.start;
+  const startFull = lx$.fullStart;
+  const t = lx$.token;
+  const p$ = p;
   switch (t) {
     case T_SEMICOLON:
-      lx.next();
+      lx$.next();
       return finishStmt(pushStmtEmpty(startPos), startFull, 0, 0);
     case T_OPEN_BRACE:
       return block();
@@ -366,16 +369,16 @@ function statementInDoor(): number {
     case T_TRY:
       return tryStatement();
     case T_DEBUGGER:
-      lx.next();
+      lx$.next();
       semicolon();
       return finishStmt(pushStmtDebugger(startPos), startFull, 0, 0);
     case T_CATCH:
     case T_FINALLY:
-      if (p.recovers) return tryStatement();
+      if (p$.recovers) return tryStatement();
       return expressionOrLabeledStatement();
     case T_ASYNC:
       // Nothing but `function` follows it in a declaration.
-      if (p.isEcmascript && !nextIsFunctionOnSameLine()) return expressionOrLabeledStatement();
+      if (p$.isEcmascript && !nextIsFunctionOnSameLine()) return expressionOrLabeledStatement();
       if (isStartOfDeclaration()) return declaration();
       return expressionOrLabeledStatement();
     case T_INTERFACE:
@@ -398,7 +401,7 @@ function statementInDoor(): number {
       if (isStartOfDeclaration()) return declaration();
       // `isStartOfStatement`: "they may be the start of a class member if an identifier immediately follows. Otherwise they're an
       // identifier in an expression statement." TODO(oxc): `&& !dialect.oxc`
-      if (!p.isEcmascript && !p.recovers && isFollowedByWordOnSameLine()) {
+      if (!p$.isEcmascript && !p$.recovers && isFollowedByWordOnSameLine()) {
         fail();
         return NONE;
       }
@@ -412,10 +415,11 @@ function statementInDoor(): number {
 function isLetDeclaration(): boolean {
   // TODO(oxc): `isEcmascript || dialect.oxc`
   const isEcmascript = p.isEcmascript;
-  const m = lx.mark();
-  const had = lx.refusal | 0;
-  lx.next();
-  const t = lx.token;
+  const lx$ = lx;
+  const m = lx$.mark();
+  const had = lx$.refusal | 0;
+  lx$.next();
+  const t = lx$.token;
   let r = false;
   if (t === T_OPEN_BRACE || t === T_OPEN_BRACKET) r = true;
   // acorn's `isLet`
@@ -440,28 +444,30 @@ export function embeddedStatement(): number {
 
 function embeddedStatementInDoor(): number {
   // TODO(oxc): `|| dialect.oxc`
-  if (lx.token === T_LET && p.isEcmascript) {
-    const m = lx.mark();
-    const had = lx.refusal | 0;
-    lx.next();
-    const isDeclaration = lx.token === T_OPEN_BRACKET || (lx.token === T_IDENTIFIER && lx.hasEscape);
+  const lx$ = lx;
+  if (lx$.token === T_LET && p.isEcmascript) {
+    const m = lx$.mark();
+    const had = lx$.refusal | 0;
+    lx$.next();
+    const isDeclaration = lx$.token === T_OPEN_BRACKET || (lx$.token === T_IDENTIFIER && lx$.hasEscape);
     lookAheadEnd(m, had);
     if (!isDeclaration) return expressionOrLabeledStatement();
   }
   const st = statement();
   // TODO(jsdoc): `if (readsJsdoc()) statementJsdoc(st)`
-  if (st >= 0 && st < hir.nStmts) {
-    switch (hir.stmtTag[st] | 0) {
+  const hir$ = hir;
+  if (st >= 0 && st < hir$.nStmts) {
+    switch (hir$.stmtTag[st] | 0) {
       // The other parser takes these for statements of the file if no block is around them.
       case STMT_IMPORT:
       case STMT_EXPORT_NAMED:
       case STMT_EXPORT_STAR:
-        hir.hasModuleSyntax = true;
+        hir$.hasModuleSyntax = true;
         break;
       case STMT_VAR:
       case STMT_FN:
       case STMT_CLASS:
-        hir.rareSyntax = hir.rareSyntax | RARE_DECLARATION_AS_BODY;
+        hir$.rareSyntax = hir$.rareSyntax | RARE_DECLARATION_AS_BODY;
         // TODO(oxc): `if (reportsLikeOxc()) oxc::declaration_as_body(st)`
         break;
       // TODO(oxc): Interface | TypeAlias | Enum | Module: `oxc::declaration_as_body(st)`
@@ -474,28 +480,31 @@ function embeddedStatementInDoor(): number {
 
 /** `nextTokenIsBindingIdentifierOrStartOfDestructuringOnSameLine`. Consumes tokens: call it in a lookahead. */
 function nextIsBindingOnSameLine(disallowOf: boolean): boolean {
-  lx.next();
-  if (disallowOf && lx.token === T_OF) {
+  const lx$ = lx;
+  lx$.next();
+  if (disallowOf && lx$.token === T_OF) {
     const t = peek();
     return t === T_EQUALS || t === T_SEMICOLON || t === T_COLON;
   }
-  return (isBindingIdentifier() || lx.token === T_OPEN_BRACE) && !lx.newlineBefore;
+  return (isBindingIdentifier() || lx$.token === T_OPEN_BRACE) && !lx$.newlineBefore;
 }
 
 function isUsingDeclaration(): boolean {
-  const m = lx.mark();
-  const had = lx.refusal | 0;
+  const lx$ = lx;
+  const m = lx$.mark();
+  const had = lx$.refusal | 0;
   const r = nextIsBindingOnSameLine(false);
   lookAheadEnd(m, had);
   return r;
 }
 
 function isAwaitUsingDeclaration(): boolean {
-  const m = lx.mark();
-  const had = lx.refusal | 0;
-  lx.next();
+  const lx$ = lx;
+  const m = lx$.mark();
+  const had = lx$.refusal | 0;
+  lx$.next();
   // acorn and oxc ask for `using` on the line of `await`. TODO(oxc): `|| dialect.oxc`
-  const r = lx.token === T_USING && !(lx.newlineBefore && p.isEcmascript) && nextIsBindingOnSameLine(false);
+  const r = lx$.token === T_USING && !(lx$.newlineBefore && p.isEcmascript) && nextIsBindingOnSameLine(false);
   lookAheadEnd(m, had);
   return r;
 }
@@ -507,38 +516,43 @@ let declarationLast = 0;
 export function isStartOfDeclaration(): boolean {
   // The scan steps over one modifier at a time and remembers nothing, so it ends the same way from each of them. Without this
   // `declare declare ..` is scanned once from each word. The commonest, for which the text says what the scan would.
-  if (lx.token === T_IMPORT && isBefore(" {")) return true;
-  const from = lx.start | 0;
-  const context = p.context & (CTX_YIELD | CTX_AWAIT);
-  if (p.declarationScanContext === context && p.declarationScanFrom <= from && from <= p.declarationScanTo) {
-    return p.declarationScanAnswer;
+  const lx$ = lx;
+  if (lx$.token === T_IMPORT && isBefore(" {")) return true;
+  const from = lx$.start | 0;
+  const p$ = p;
+  const context = p$.context & (CTX_YIELD | CTX_AWAIT);
+  if (p$.declarationScanContext === context && p$.declarationScanFrom <= from && from <= p$.declarationScanTo) {
+    return p$.declarationScanAnswer;
   }
-  const m = lx.mark();
-  const had = lx.refusal | 0;
+  const m = lx$.mark();
+  const had = lx$.refusal | 0;
   declarationLast = from;
   const answer = isDeclaration();
   const to = declarationLast;
   lookAheadEnd(m, had);
   if (to - from > 64) {
-    p.declarationScanFrom = from;
-    p.declarationScanTo = to;
-    p.declarationScanContext = context;
-    p.declarationScanAnswer = answer;
+    p$.declarationScanFrom = from;
+    p$.declarationScanTo = to;
+    p$.declarationScanContext = context;
+    p$.declarationScanAnswer = answer;
   }
   return answer;
 }
 
 /** `nextTokenIsIdentifierOnSameLine` */
 function nextIsIdentifierOnSameLine(): boolean {
-  lx.next();
-  return isIdentifier() && !lx.newlineBefore;
+  const lx$ = lx;
+  lx$.next();
+  return isIdentifier() && !lx$.newlineBefore;
 }
 
 /** `isDeclaration`. `declarationLast` is set to the start of the last token at which the loop was. */
 function isDeclaration(): boolean {
+  const lx$ = lx;
+  const p$ = p;
   while (true) {
-    declarationLast = lx.start | 0;
-    switch (lx.token) {
+    declarationLast = lx$.start | 0;
+    switch (lx$.token) {
       case T_VAR:
       case T_LET:
       case T_CONST:
@@ -552,16 +566,16 @@ function isDeclaration(): boolean {
         return isAwaitUsingDeclarationHere();
       // TODO(oxc): `Interface | Type if dialect.oxc`
       case T_DEFER:
-        if (p.recovers) return nextIsIdentifierOnSameLine();
+        if (p$.recovers) return nextIsIdentifierOnSameLine();
         return false;
       case T_INTERFACE:
       case T_TYPE:
         return nextIsIdentifierOnSameLine();
       case T_MODULE:
       case T_NAMESPACE:
-        lx.next();
+        lx$.next();
         // oxc leaves the await context for the declaration.
-        return !lx.newlineBefore && (isIdentifier() || lx.token === T_STRING);
+        return !lx$.newlineBefore && (isIdentifier() || lx$.token === T_STRING);
       case T_ABSTRACT:
       case T_ACCESSOR:
       case T_ASYNC:
@@ -570,35 +584,35 @@ function isDeclaration(): boolean {
       case T_PROTECTED:
       case T_PUBLIC:
       case T_READONLY: {
-        const previous = lx.token;
-        lx.next();
+        const previous = lx$.token;
+        lx$.next();
         // "ASI takes effect for this modifier."
-        if (lx.newlineBefore) return false;
+        if (lx$.newlineBefore) return false;
         // "If we see 'declare type', then commit to parsing a type alias."
-        if (previous === T_DECLARE && lx.token === T_TYPE) return true;
+        if (previous === T_DECLARE && lx$.token === T_TYPE) return true;
         // TODO(oxc): `declare` is a name before `using`/`await`.
         // `declare module.exports: T`
-        if (previous === T_DECLARE && lx.token === T_MODULE && p.isFlow) return true;
+        if (previous === T_DECLARE && lx$.token === T_MODULE && p$.isFlow) return true;
         break;
       }
       case T_GLOBAL: {
-        lx.next();
-        const t = lx.token;
-        return !p.isEcmascript && (t === T_OPEN_BRACE || t === T_IDENTIFIER || t === T_EXPORT);
+        lx$.next();
+        const t = lx$.token;
+        return !p$.isEcmascript && (t === T_OPEN_BRACE || t === T_IDENTIFIER || t === T_EXPORT);
       }
       case T_IMPORT: {
-        lx.next();
-        const t = lx.token;
+        lx$.next();
+        const t = lx$.token;
         return t === T_STRING || t === T_ASTERISK || t === T_OPEN_BRACE || t >= T_IDENTIFIER;
       }
       case T_EXPORT: {
-        lx.next();
-        let current = lx.token;
+        lx$.next();
+        let current = lx$.token;
         if (current === T_TYPE) {
           // The native parser decides by the token after `type` alone.
-          if (p.recovers) {
-            lx.next();
-            return lx.token === T_ASTERISK || lx.token === T_OPEN_BRACE || (isIdentifier() && !lx.newlineBefore);
+          if (p$.recovers) {
+            lx$.next();
+            return lx$.token === T_ASTERISK || lx$.token === T_OPEN_BRACE || (isIdentifier() && !lx$.newlineBefore);
           }
           current = peek();
         }
@@ -608,10 +622,10 @@ function isDeclaration(): boolean {
         break;
       }
       case T_STATIC:
-        lx.next();
+        lx$.next();
         break;
       default:
-        return p.isFlow && flowIsAtDeclarationWord();
+        return p$.isFlow && flowIsAtDeclarationWord();
     }
   }
 }
@@ -653,8 +667,9 @@ function canFollowExportModifier(): boolean {
 
 /** `nextTokenCanFollowDefaultKeyword` */
 function nextCanFollowDefaultKeyword(): boolean {
-  lx.next();
-  switch (lx.token) {
+  const lx$ = lx;
+  lx$.next();
+  switch (lx$.token) {
     case T_CLASS:
     case T_FUNCTION:
     case T_AT:
@@ -664,18 +679,18 @@ function nextCanFollowDefaultKeyword(): boolean {
       // TODO(oxc): `!dialect.oxc || lookAhead(next; !newlineBefore)`
       return true;
     case T_ABSTRACT: {
-      const m = lx.mark();
-      const had = lx.refusal | 0;
-      lx.next();
-      const r = lx.token === T_CLASS && !lx.newlineBefore;
+      const m = lx$.mark();
+      const had = lx$.refusal | 0;
+      lx$.next();
+      const r = lx$.token === T_CLASS && !lx$.newlineBefore;
       lookAheadEnd(m, had);
       return r;
     }
     case T_ASYNC: {
-      const m = lx.mark();
-      const had = lx.refusal | 0;
-      lx.next();
-      const r = lx.token === T_FUNCTION && !lx.newlineBefore;
+      const m = lx$.mark();
+      const had = lx$.refusal | 0;
+      lx$.next();
+      const r = lx$.token === T_FUNCTION && !lx$.newlineBefore;
       lookAheadEnd(m, had);
       return r;
     }
@@ -688,25 +703,26 @@ function nextCanFollowDefaultKeyword(): boolean {
 
 /** `nextTokenCanFollowModifier`. It leaves the parser after the modifier. */
 function nextCanFollowModifier(): boolean {
-  switch (lx.token) {
+  const lx$ = lx;
+  switch (lx$.token) {
     // "'const' is only a modifier if followed by 'enum'."
     case T_CONST:
-      lx.next();
-      return lx.token === T_ENUM;
+      lx$.next();
+      return lx$.token === T_ENUM;
     case T_EXPORT: {
-      lx.next();
-      const t = lx.token;
+      lx$.next();
+      const t = lx$.token;
       if (t === T_DEFAULT) {
-        const m = lx.mark();
-        const had = lx.refusal | 0;
+        const m = lx$.mark();
+        const had = lx$.refusal | 0;
         const r = nextCanFollowDefaultKeyword();
         lookAheadEnd(m, had);
         return r;
       }
       if (t === T_TYPE) {
-        const m = lx.mark();
-        const had = lx.refusal | 0;
-        lx.next();
+        const m = lx$.mark();
+        const had = lx$.refusal | 0;
+        lx$.next();
         const r = canFollowExportModifier();
         lookAheadEnd(m, had);
         return r;
@@ -719,11 +735,11 @@ function nextCanFollowModifier(): boolean {
     case T_STATIC:
     case T_GET:
     case T_SET:
-      lx.next();
+      lx$.next();
       return canFollowModifier();
     default:
-      lx.next();
-      return !lx.newlineBefore && canFollowModifier();
+      lx$.next();
+      return !lx$.newlineBefore && canFollowModifier();
   }
 }
 
@@ -739,8 +755,11 @@ export function modifiers(of: number): number {
   // "[...leadingDecorators, ...leadingModifiers, ...trailingDecorators, ...trailingModifiers]"
   let hasTrailingDecorators = false;
   let hasTrailingModifiers = false;
+  const lx$ = lx;
+  const s$ = s;
+  const hir$ = hir;
   while (true) {
-    const token = lx.token;
+    const token = lx$.token;
     if (token === T_AT) {
       if (!allowDecorators) {
         failUnlessRecovering();
@@ -752,31 +771,31 @@ export function modifiers(of: number): number {
       continue;
     }
     if (!isModifier(token)) return flags;
-    if (token === T_CONST && !permitConst && lx.isConstBeforeBinding()) return flags;
-    const pos = lx.start;
-    const mark = lx.mark();
+    if (token === T_CONST && !permitConst && lx$.isConstBeforeBinding()) return flags;
+    const pos = lx$.start;
+    const mark = lx$.mark();
     let isMod = false;
     if (token === T_CONST && permitConst) {
       // "We need to ensure that any subsequent modifiers appear on the same line"
-      lx.next();
-      isMod = !lx.newlineBefore && canFollowModifier();
+      lx$.next();
+      isMod = !lx$.newlineBefore && canFollowModifier();
     } else if (token === T_STATIC && ((flags & FLAG_STATIC) !== 0 || (stopOnStaticBlock && peek() === T_OPEN_BRACE))) {
-      lx.release(mark);
+      lx$.release(mark);
       return flags;
     } else {
       // TODO(oxc): `token === T_DEFAULT && of === MODS_CLASS_MEMBER && dialect.oxc`
       isMod = nextCanFollowModifier();
     }
     if (!isMod) {
-      lx.reset(mark);
+      lx$.reset(mark);
       return flags;
     }
-    lx.release(mark);
+    lx$.release(mark);
     const flagBit = modifierFlag(token);
     // TODO(oxc): `oxc::modifier_after(..)`
     flags = flags | flagBit;
     hasTrailingModifiers = hasTrailingDecorators;
-    s.modifiers.push(hir.pushModifier(MODK_KEYWORD, flagBit, pos));
+    s$.modifiers.push(hir$.pushModifier(MODK_KEYWORD, flagBit, pos));
   }
 }
 
@@ -795,26 +814,30 @@ function decorator(): void {
 
 /** Pops the modifiers from `base` on and makes them a list of the file. Returns its start, the length is in `p.outLen`. */
 export function takeModifiers(base: number): number {
-  if (s.modifiers.len === base) {
+  const s$ = s;
+  if (s$.modifiers.len === base) {
     p.outLen = 0;
     return 0;
   }
-  return takeList(s.modifiers, base);
+  return takeList(s$.modifiers, base);
 }
 
 // ───────────────────────────── declarations ─────────────────────────────
 
 /** `parseDeclaration` */
 function declaration(): number {
-  const startPos = lx.start;
-  const startFull = lx.fullStart;
-  const base = s.modifiers.len;
+  const lx$ = lx;
+  const startPos = lx$.start;
+  const startFull = lx$.fullStart;
+  const s$ = s;
+  const base = s$.modifiers.len;
   // acorn stops here, whatever is wrong further on.
-  if (p.recovers && lx.isScript && (lx.token === T_IMPORT || lx.token === T_EXPORT)) errorAtToken(1128);
+  const p$ = p;
+  if (p$.recovers && lx$.isScript && (lx$.token === T_IMPORT || lx$.token === T_EXPORT)) errorAtToken(1128);
   // The common declarations have no modifier.
   let flags = 0;
   let isDecorated = false;
-  const t = lx.token;
+  const t = lx$.token;
   if (
     t === T_VAR ||
     t === T_LET ||
@@ -824,37 +847,38 @@ function declaration(): number {
     t === T_IMPORT ||
     t === T_INTERFACE ||
     t === T_TYPE ||
-    (t === T_CONST && lx.isConstBeforeBinding())
+    (t === T_CONST && lx$.isConstBeforeBinding())
   ) {
     // none
   } else {
     flags = modifiers(MODS_DECLARATION);
     // Or it has a keyword twice.
     const keywords = popCount(flags);
-    isDecorated = s.modifiers.len - base > keywords;
+    isDecorated = s$.modifiers.len - base > keywords;
   }
   // No other modifier is before a declaration.
   const isNoJavascript =
-    p.isEcmascript &&
-    ((flags & ~(FLAG_EXPORT | FLAG_DEFAULT | FLAG_ASYNC)) !== 0 || ((flags & FLAG_ASYNC) !== 0 && lx.token !== T_FUNCTION) || hasModifierTwice(base, flags));
+    p$.isEcmascript &&
+    ((flags & ~(FLAG_EXPORT | FLAG_DEFAULT | FLAG_ASYNC)) !== 0 || ((flags & FLAG_ASYNC) !== 0 && lx$.token !== T_FUNCTION) || hasModifierTwice(base, flags));
   if (isNoJavascript) {
     // TODO(oxc): `oxc::declaration` says what oxc does.
-    if (p.isFlow) flowDeclareBeforeExport(base, flags);
+    if (p$.isFlow) flowDeclareBeforeExport(base, flags);
     else report();
   }
-  const saved = p.context;
+  const saved = p$.context;
   // TODO(oxc): `leaveAwaitLikeOxc(flags)`
+  const hir$ = hir;
   if ((flags & FLAG_AMBIENT) !== 0) {
-    if ((p.context & (CTX_TOP_LEVEL | CTX_IN_NAMESPACE)) !== CTX_TOP_LEVEL) hir.rareSyntax = hir.rareSyntax | RARE_NESTED_DECLARE;
-    p.context = p.context | CTX_AMBIENT;
+    if ((p$.context & (CTX_TOP_LEVEL | CTX_IN_NAMESPACE)) !== CTX_TOP_LEVEL) hir$.rareSyntax = hir$.rareSyntax | RARE_NESTED_DECLARE;
+    p$.context = p$.context | CTX_AMBIENT;
     // `parseClassDeclarationOrExpression`: no `await` in it has the statement reparsed.
-    if (p.recovers && lx.token === T_CLASS && (flags & FLAG_EXPORT) === 0 && (p.context & CTX_TOP_LEVEL) !== 0) p.context = p.context & ~CTX_AWAIT;
+    if (p$.recovers && lx$.token === T_CLASS && (flags & FLAG_EXPORT) === 0 && (p$.context & CTX_TOP_LEVEL) !== 0) p$.context = p$.context & ~CTX_AWAIT;
   }
   const st = declarationWorker(startPos, startFull, base, flags);
-  p.context = saved;
+  p$.context = saved;
   void isDecorated;
   // TODO(oxc): `if ((isDecorated || isOdd) && isForOxc()) oxc::declaration(..)`
-  if (p.isJavascript) checkJsStatement(st);
+  if (p$.isJavascript) checkJsStatement(st);
   return st;
 }
 
@@ -862,15 +886,17 @@ function declaration(): number {
 function hasModifierTwice(base: number, flags: number): boolean {
   let keywords = 0;
   const ms = s.modifiers;
+  const hir$ = hir;
   for (let i = base; i < ms.len; i++) {
-    if ((hir.modifierKind[ms.data[i] | 0] | 0) === MODK_KEYWORD) keywords = (keywords + 1) | 0;
+    if ((hir$.modifierKind[ms.data[i] | 0] | 0) === MODK_KEYWORD) keywords = (keywords + 1) | 0;
   }
   return keywords !== popCount(flags);
 }
 
 /** `parseDeclarationWorker` */
 function declarationWorker(startPos: number, startFull: number, base: number, flags: number): number {
-  switch (lx.token) {
+  const lx$ = lx;
+  switch (lx$.token) {
     case T_VAR:
     case T_LET:
     case T_CONST:
@@ -903,14 +929,14 @@ function declarationWorker(startPos: number, startFull: number, base: number, fl
       return moduleDeclaration(startPos, startFull, base, flags);
     case T_MODULE:
     case T_NAMESPACE:
-      if (lx.token === T_MODULE && p.isFlow && peek() === T_DOT) return flowDeclareModuleExports(startPos, startFull, base);
+      if (lx$.token === T_MODULE && p.isFlow && peek() === T_DOT) return flowDeclareModuleExports(startPos, startFull, base);
       return moduleDeclaration(startPos, startFull, base, flags);
     case T_IMPORT:
       return importDeclarationOrImportEquals(startPos, startFull, base, flags);
     case T_EXPORT: {
-      const exportPos = lx.start | 0;
-      lx.next();
-      switch (lx.token) {
+      const exportPos = lx$.start | 0;
+      lx$.next();
+      switch (lx$.token) {
         case T_DEFAULT:
           if ((flags & FLAG_AMBIENT) !== 0 && p.isFlow) return flowDeclareExportDefaultType(startPos, startFull, base, exportPos);
           return exportAssignment(startPos, startFull, base);
@@ -939,12 +965,14 @@ function missingDeclaration(startPos: number, startFull: number, base0: number):
   }
   const end = lx.fullStart | 0;
   error(1146, end, -1);
-  const base = base0 < s.modifiers.len ? base0 : s.modifiers.len;
-  for (let i = base; i < s.modifiers.len; i++) {
-    const m = s.modifiers.data[i] | 0;
-    if ((hir.modifierKind[m] | 0) === MODK_DECORATOR) s.ids.push(strayDecorator(hir.modifierValue[m] | 0, hir.modifierPos[m] | 0, end));
+  const s$ = s;
+  const base = base0 < s$.modifiers.len ? base0 : s$.modifiers.len;
+  const hir$ = hir;
+  for (let i = base; i < s$.modifiers.len; i++) {
+    const m = s$.modifiers.data[i] | 0;
+    if ((hir$.modifierKind[m] | 0) === MODK_DECORATOR) s$.ids.push(strayDecorator(hir$.modifierValue[m] | 0, hir$.modifierPos[m] | 0, end));
   }
-  s.modifiers.len = base;
+  s$.modifiers.len = base;
   return finishStmt(pushStmtEmpty(startPos), startFull, 0, 0);
 }
 
@@ -955,39 +983,44 @@ function missingDeclaration(startPos: number, startFull: number, base0: number):
 function strayDecorator(expression: number, at: number, end: number): number {
   let start = at;
   let last = at;
-  if (expression >= 0 && expression < hir.nExprs) {
-    start = hir.exprPos[expression] | 0;
-    last = hir.exprEnd[expression] | 0;
+  const hir$ = hir;
+  if (expression >= 0 && expression < hir$.nExprs) {
+    start = hir$.exprPos[expression] | 0;
+    last = hir$.exprEnd[expression] | 0;
   }
   // The outermost parentheses are the last.
-  for (let i = hir.nParens - 1; i >= 0; i--) {
-    if ((hir.parenExpr[i] | 0) === expression) {
-      start = hir.parenStart[i] | 0;
-      last = hir.parenEnd[i] | 0;
+  for (let i = hir$.nParens - 1; i >= 0; i--) {
+    if ((hir$.parenExpr[i] | 0) === expression) {
+      start = hir$.parenStart[i] | 0;
+      last = hir$.parenEnd[i] | 0;
       break;
     }
   }
-  hir.pushStrayDecorators(start, end);
+  hir$.pushStrayDecorators(start, end);
   const id = pushStmtExpr(start, expression);
-  hir.stmtLocPos[id] = (at + 1) | 0;
-  hir.stmtLocEnd[id] = last;
+  hir$.stmtLocPos[id] = (at + 1) | 0;
+  hir$.stmtLocEnd[id] = last;
   return id;
 }
 
 /** `parseVariableStatement` */
 function variableStatement(startPos: number, startFull: number, base: number, flags: number): number {
   const decls = variableDeclarationList(false, flags & FLAG_EXPORT);
-  const declsLen = p.outLen | 0;
+  const p$ = p;
+  const declsLen = p$.outLen | 0;
   semicolon();
   const modStart = takeModifiers(base);
-  const modLen = p.outLen | 0;
+  const modLen = p$.outLen | 0;
   return finishStmt(pushStmtVar(startPos, decls, declsLen), startFull, modStart, modLen);
 }
 
 /** `parseVariableDeclarationList`. Returns the list start, the length is in `p.outLen`. */
 export function variableDeclarationList(isInFor: boolean, flags0: number): number {
   let kind = VAR_VAR;
-  switch (lx.token) {
+  const lx$ = lx;
+  const hir$ = hir;
+  const p$ = p;
+  switch (lx$.token) {
     case T_VAR:
       kind = VAR_VAR;
       break;
@@ -998,106 +1031,108 @@ export function variableDeclarationList(isInFor: boolean, flags0: number): numbe
       kind = VAR_CONST;
       break;
     case T_USING:
-      hir.rareSyntax = hir.rareSyntax | RARE_ODD_DECLARATION;
+      hir$.rareSyntax = hir$.rareSyntax | RARE_ODD_DECLARATION;
       // TODO(oxc): `checkExportedUsingLikeOxc(flags, pos)`
       kind = VAR_USING;
       break;
     default:
       noteAwait();
-      p.suspensions = (p.suspensions + 1) | 0;
-      hir.rareSyntax = hir.rareSyntax | RARE_AWAIT_USING | RARE_ODD_DECLARATION;
+      p$.suspensions = (p$.suspensions + 1) | 0;
+      hir$.rareSyntax = hir$.rareSyntax | RARE_AWAIT_USING | RARE_ODD_DECLARATION;
       // TODO(oxc): as for an `await` expression: `operand_of_await_outside_async`.
-      lx.next();
-      if (lx.token !== T_USING) fail();
+      lx$.next();
+      if (lx$.token !== T_USING) fail();
       // TODO(oxc): `checkExportedUsingLikeOxc(flags, keyword)`
       kind = VAR_AWAIT_USING;
       break;
   }
-  lx.next();
+  lx$.next();
   // `for (let of X) { }`: the list is empty, and `of` is the keyword.
-  if (p.recovers && lx.token === T_OF && isBeforeIdentifierAndCloseParen()) {
-    hir.rareSyntax = hir.rareSyntax | RARE_ODD_DECLARATION;
-    p.outLen = 0;
+  if (p$.recovers && lx$.token === T_OF && isBeforeIdentifierAndCloseParen()) {
+    hir$.rareSyntax = hir$.rareSyntax | RARE_ODD_DECLARATION;
+    p$.outLen = 0;
     return 0;
   }
   const flags = flags0 | ambient();
   const saved = isInFor ? enterContext(CTX_DISALLOW_IN, 0) : enterContext(0, CTX_DISALLOW_IN);
   // TODO(oxc): `declares = kind === VAR_VAR ? DECLARES_VAR : DECLARES_LEXICAL`
-  const base = s.varDecls.len;
+  const s$ = s;
+  const base = s$.varDecls.len;
   const lists = enterList(LK_VARIABLE_DECLARATIONS);
   while (isAtElement(LK_VARIABLE_DECLARATIONS)) {
     // `isListElement`, `isListTerminator`: the list can be empty, and can end with a comma. The checker reports both.
-    const t0 = lx.token;
+    const t0 = lx$.token;
     if (
       !isBindingIdentifier() &&
       !(t0 === T_OPEN_BRACKET || t0 === T_OPEN_BRACE || t0 === T_PRIVATE_IDENTIFIER) &&
       // TODO(oxc): `(!isEcmascript || dialect.oxc && varDecls.len > base)`
-      !p.isEcmascript &&
+      !p$.isEcmascript &&
       (canParseSemicolon() || t0 === T_IN || t0 === T_OF)
     ) {
-      hir.rareSyntax = hir.rareSyntax | RARE_ODD_DECLARATION;
+      hir$.rareSyntax = hir$.rareSyntax | RARE_ODD_DECLARATION;
       break;
     }
     // `parseVariableDeclaration`
-    const full = lx.fullStart;
+    const full = lx$.fullStart;
     let pat = NONE;
     if (t0 === T_PRIVATE_IDENTIFIER) {
       pat = missingBindingIdentifier(18029);
-    } else if ((t0 === T_OPEN_BRACKET || t0 === T_OPEN_BRACE) && isInFor && p.recovers) {
+    } else if ((t0 === T_OPEN_BRACKET || t0 === T_OPEN_BRACE) && isInFor && p$.recovers) {
       // `parseArrayBindingPattern`, `parseObjectBindingPattern`: `in` is an operator.
       const savedIn = enterContext(0, CTX_DISALLOW_IN);
       pat = identifierOrPattern();
-      p.context = savedIn;
+      p$.context = savedIn;
     } else {
       pat = identifierOrPattern();
     }
     // TODO(oxc): `declarePattern(pat, declares)`
     let declFlags = flags;
-    const isName = pat >= 0 && (hir.patTag[pat] | 0) === PAT_IDENT;
-    if (!isInFor && lx.token === T_EXCLAMATION && !lx.newlineBefore && isName) {
-      lx.next();
+    const isName = pat >= 0 && (hir$.patTag[pat] | 0) === PAT_IDENT;
+    if (!isInFor && lx$.token === T_EXCLAMATION && !lx$.newlineBefore && isName) {
+      lx$.next();
       declFlags = declFlags | FLAG_DEFINITE;
     }
     const ty = typeAnnotation();
     let init = NONE;
-    if (lx.token === T_EQUALS) {
+    if (lx$.token === T_EQUALS) {
       init = initializer();
     } else {
       // TODO(oxc): `T_QUESTION && ty < 0 && reportsLikeOxc()`: reported, and the type annotation again.
-      const token = lx.token;
+      const token = lx$.token;
       if (
         (declFlags & FLAG_AMBIENT) === 0 &&
         !(isInFor && (token === T_OF || token === T_IN)) &&
         (kind === VAR_CONST || !isName)
       ) {
-        hir.rareSyntax = hir.rareSyntax | RARE_ODD_DECLARATION;
+        hir$.rareSyntax = hir$.rareSyntax | RARE_ODD_DECLARATION;
       }
       // TODO(oxc): `oxc::pattern_without_initializer(..)`
     }
-    const decl = hir.pushVarDecl(pat, ty, init, kind, declFlags, full, lx.fullStart);
+    const decl = hir$.pushVarDecl(pat, ty, init, kind, declFlags, full, lx$.fullStart);
     // TODO(oxc): `oxc::variable(..)`
-    s.varDecls.push(decl);
+    s$.varDecls.push(decl);
     if (!eat(T_COMMA) && !goesOnWithoutComma(LK_VARIABLE_DECLARATIONS, full)) break;
   }
   leaveList(lists);
-  p.context = saved;
-  const decls = takeList(s.varDecls, base);
-  const len = p.outLen | 0;
-  if (len !== 1 && (len === 0 || lx.token === T_OF || lx.token === T_IN)) hir.rareSyntax = hir.rareSyntax | RARE_ODD_DECLARATION;
+  p$.context = saved;
+  const decls = takeList(s$.varDecls, base);
+  const len = p$.outLen | 0;
+  if (len !== 1 && (len === 0 || lx$.token === T_OF || lx$.token === T_IN)) hir$.rareSyntax = hir$.rareSyntax | RARE_ODD_DECLARATION;
   // TODO(jsdoc): `variableDeclarationsJsdoc(decls)`
-  p.outLen = len;
+  p$.outLen = len;
   return decls;
 }
 
 /** `nextIsIdentifierAndCloseParen`, in a `lookAhead`. */
 function isBeforeIdentifierAndCloseParen(): boolean {
-  const m = lx.mark();
-  const had = lx.refusal | 0;
-  lx.next();
+  const lx$ = lx;
+  const m = lx$.mark();
+  const had = lx$.refusal | 0;
+  lx$.next();
   let r = false;
   if (isIdentifier()) {
-    lx.next();
-    r = lx.token === T_CLOSE_PAREN;
+    lx$.next();
+    r = lx$.token === T_CLOSE_PAREN;
   }
   lookAheadEnd(m, had);
   return r;
@@ -1118,31 +1153,36 @@ export function optionalInitializer(): number {
 /** `parseEnumDeclaration` */
 function enumDeclaration(startPos: number, startFull: number, base: number, flags: number): number {
   // TODO(oxc): `unexpectedLikeOxc` for `enum` in JavaScript, `checkTypeNameLikeOxc(Enum)`.
-  lx.next();
+  const lx$ = lx;
+  lx$.next();
   const name = isIdentifier() ? identifier() : missingName();
-  const namePos = p.outPos | 0;
+  const p$ = p;
+  const namePos = p$.outPos | 0;
   // TODO(oxc): `declare(name, flags & CONST ? DECLARES_CONST_ENUM : DECLARES_ENUM)`
   const hasMembers = expect(T_OPEN_BRACE);
   // TODO(oxc): `openScope()`
-  const saved = enterContext(0, p.clearedInTypes);
-  const members = s.enumMembers.len;
+  const saved = enterContext(0, p$.clearedInTypes);
+  const s$ = s;
+  const members = s$.enumMembers.len;
   const lists = enterList(LK_ENUM_MEMBERS);
+  const names$ = names;
+  const hir$ = hir;
   while (hasMembers && isInList(T_CLOSE_BRACE) && isAtElement(LK_ENUM_MEMBERS)) {
     // `parseEnumMember`
-    const memberPos = lx.start;
-    const memberFull = lx.fullStart;
+    const memberPos = lx$.start;
+    const memberFull = lx$.fullStart;
     // The checker reports a number, a computed name and so on.
-    const isBigInt = lx.token === T_BIG_INT;
-    const bigStart = lx.start;
-    const bigEnd = lx.end;
+    const isBigInt = lx$.token === T_BIG_INT;
+    const bigStart = lx$.start;
+    const bigEnd = lx$.end;
     propertyName();
-    let keyKind = p.keyKind | 0;
-    let keyVal = p.keyVal | 0;
-    let nameKind = p.nameKind | 0;
+    let keyKind = p$.keyKind | 0;
+    let keyVal = p$.keyVal | 0;
+    let nameKind = p$.nameKind | 0;
     // TODO(oxc): `oxc::enum_member_name(..)`
     if (isBigInt) {
       keyKind = PK_NAME;
-      keyVal = names.atomOfSourceRange(bigStart, bigEnd);
+      keyVal = names$.atomOfSourceRange(bigStart, bigEnd);
     }
     let memberName = ATOM_NONE;
     let computedName = NONE;
@@ -1156,20 +1196,20 @@ function enumDeclaration(startPos: number, startFull: number, base: number, flag
     }
     const saved2 = enterContext(0, CTX_DISALLOW_IN);
     const init = optionalInitializer();
-    p.context = saved2;
-    s.enumMembers.push(hir.pushEnumMember(memberName, nameKind, computedName, init, memberPos, memberFull, lx.fullStart));
+    p$.context = saved2;
+    s$.enumMembers.push(hir$.pushEnumMember(memberName, nameKind, computedName, init, memberPos, memberFull, lx$.fullStart));
     if (!eat(T_COMMA) && !goesOnWithoutComma(LK_ENUM_MEMBERS, memberFull)) break;
   }
   leaveList(lists);
-  p.context = saved;
+  p$.context = saved;
   // TODO(oxc): `closeScope()`
   if (hasMembers) expect(T_CLOSE_BRACE);
   // TODO(oxc): `oxc::enum_members(..)`
-  const membersStart = takeList(s.enumMembers, members);
-  const membersLen = p.outLen | 0;
-  const declarationId = hir.pushEnum(name, namePos, ambient() | (flags & (FLAG_CONST | FLAG_EXPORT)), membersStart, membersLen, NONE);
+  const membersStart = takeList(s$.enumMembers, members);
+  const membersLen = p$.outLen | 0;
+  const declarationId = hir$.pushEnum(name, namePos, ambient() | (flags & (FLAG_CONST | FLAG_EXPORT)), membersStart, membersLen, NONE);
   const modStart = takeModifiers(base);
-  const modLen = p.outLen | 0;
+  const modLen = p$.outLen | 0;
   return finishStmt(pushStmtEnum(startPos, declarationId), startFull, modStart, modLen);
 }
 
@@ -1179,47 +1219,49 @@ function moduleDeclaration(startPos: number, startFull: number, base: number, fl
   let nameKind = MODNAME_IDENT;
   let name = ATOM_NONE;
   let namePos = 0;
-  if (lx.token === T_GLOBAL) {
+  const lx$ = lx;
+  const p$ = p;
+  if (lx$.token === T_GLOBAL) {
     // `parseAmbientExternalModuleDeclaration`
     nameKind = MODNAME_GLOBAL;
-    namePos = lx.start;
+    namePos = lx$.start;
     // `parseIdentifier`
     nextAfterName();
   } else {
-    const keyword = lx.token;
-    lx.next();
-    let isString = lx.token === T_STRING;
+    const keyword = lx$.token;
+    lx$.next();
+    let isString = lx$.token === T_STRING;
     // Only after `module` is a string a name.
     if (isString && keyword === T_NAMESPACE) {
-      if (p.recovers) isString = false;
+      if (p$.recovers) isString = false;
       else report();
     }
     if (!isString) {
       const modStart = takeModifiers(base);
-      const modLen = p.outLen | 0;
+      const modLen = p$.outLen | 0;
       const ident = identifier();
-      const identPos = p.outPos | 0;
+      const identPos = p$.outPos | 0;
       // TODO(oxc): `declare(ident, DECLARES_NAMESPACE)`
       return namespaceDeclaration(startPos, startFull, modStart, modLen, flags, keyword === T_MODULE, ident, identPos);
     }
     nameKind = MODNAME_STRING;
-    name = lx.atom;
-    namePos = lx.start;
-    lx.next();
+    name = lx$.atom;
+    namePos = lx$.start;
+    lx$.next();
   }
   let bodyStart = 0;
   let bodyLen = 0;
   let hasBody = 0;
-  if (lx.token === T_OPEN_BRACE) {
+  if (lx$.token === T_OPEN_BRACE) {
     bodyStart = moduleBlock();
-    bodyLen = p.outLen | 0;
+    bodyLen = p$.outLen | 0;
     hasBody = 1;
   } else {
     semicolon();
   }
   const mod = hir.pushModule(nameKind, name, namePos, flags, bodyStart, bodyLen, hasBody, 0, NONE);
   const modStart = takeModifiers(base);
-  const modLen = p.outLen | 0;
+  const modLen = p$.outLen | 0;
   return finishStmt(pushStmtModule(startPos, mod), startFull, modStart, modLen);
 }
 
@@ -1237,32 +1279,35 @@ function namespaceDeclaration(
   if (!enterDepth()) return NONE;
   let bodyStart = 0;
   let bodyLen = 0;
-  if (lx.token === T_DOT) {
-    lx.next();
+  const lx$ = lx;
+  const p$ = p;
+  const s$ = s;
+  if (lx$.token === T_DOT) {
+    lx$.next();
     // The `b` of `namespace a.b` is exported from `a`, and starts with its name.
-    const innerPos = lx.start;
-    const innerFull = lx.fullStart;
+    const innerPos = lx$.start;
+    const innerFull = lx$.fullStart;
     // `parseIdentifierName`, for the `b` of `namespace a.b`: with recovery any word.
     let nested: number;
     let nestedPos: number;
-    if (p.recovers) {
+    if (p$.recovers) {
       nested = identifierName();
-      nestedPos = p.outPos | 0;
+      nestedPos = p$.outPos | 0;
       noteIdentifier(nested, nestedPos);
     } else {
       nested = identifier();
-      nestedPos = p.outPos | 0;
+      nestedPos = p$.outPos | 0;
     }
     const innerFlags = (flags & FLAG_AMBIENT) | FLAG_EXPORT;
     const inner = namespaceDeclaration(innerPos, innerFull, 0, 0, innerFlags, specifiesModule, nested, nestedPos);
-    if (p.isJavascript) checkJsStatement(inner);
-    const b = s.ids.len;
-    s.ids.push(inner);
+    if (p$.isJavascript) checkJsStatement(inner);
+    const b = s$.ids.len;
+    s$.ids.push(inner);
     bodyStart = takeIds(b);
-    bodyLen = p.outLen | 0;
+    bodyLen = p$.outLen | 0;
   } else {
     bodyStart = moduleBlock();
-    bodyLen = p.outLen | 0;
+    bodyLen = p$.outLen | 0;
     // TODO(oxc): `oxc::namespace_body(..)`
   }
   const mod = hir.pushModule(MODNAME_IDENT, name, namePos, flags, bodyStart, bodyLen, 1, specifiesModule ? 1 : 0, NONE);
@@ -1273,26 +1318,27 @@ function namespaceDeclaration(
 
 /** `parseModuleBlock`. Returns the list start, the length is in `p.outLen`. */
 function moduleBlock(): number {
+  const p$ = p;
   if (!expect(T_OPEN_BRACE)) {
-    p.outLen = 0;
+    p$.outLen = 0;
     return 0;
   }
   // It stays in the context of the function around it. To oxc an `await` in an exported namespace is one of the top level.
   let saved = 0;
   if (hasContext(CTX_TOP_LEVEL)) {
     // TODO(oxc): `dialect.oxc && hasContext(CTX_AWAIT)`: `saved = p.context`
-    saved = enterContext(0, CTX_TOP_LEVEL | p.clearedInTypes);
+    saved = enterContext(0, CTX_TOP_LEVEL | p$.clearedInTypes);
   } else {
-    saved = p.context;
+    saved = p$.context;
   }
-  p.context = (p.context & ~(CTX_IN_LOOP | CTX_IN_SWITCH)) | CTX_IN_NAMESPACE;
+  p$.context = (p$.context & ~(CTX_IN_LOOP | CTX_IN_SWITCH)) | CTX_IN_NAMESPACE;
   // TODO(oxc): `openScopeForVars()`
   const list = statementsUntilCloseBrace();
-  const len = p.outLen | 0;
+  const len = p$.outLen | 0;
   // TODO(oxc): `closeScope()`
-  p.context = saved;
+  p$.context = saved;
   expect(T_CLOSE_BRACE);
-  p.outLen = len;
+  p$.outLen = len;
   return list;
 }
 
@@ -1303,32 +1349,35 @@ function moduleBlock(): number {
  * Returns the list start, the length is in `p.outLen`.
  */
 export function statementsUntilCloseBrace(): number {
-  const base = s.ids.len;
+  const s$ = s;
+  const base = s$.ids.len;
   // Only a statement of the file makes it a module.
-  const wasModule = hir.hasModuleSyntax;
+  const hir$ = hir;
+  const wasModule = hir$.hasModuleSyntax;
   const lists = enterList(LK_BLOCK_STATEMENTS);
-  const strays = s.strayDecorators.len;
+  const strays = s$.strayDecorators.len;
   while (isInList(T_CLOSE_BRACE) && isAtElement(LK_BLOCK_STATEMENTS)) {
     const st = statement();
     takeStrayDecorators(strays);
     // TODO(jsdoc): `statementJsdoc(st); listReparsed(..)`
-    s.ids.push(st);
+    s$.ids.push(st);
   }
   leaveList(lists);
-  hir.hasModuleSyntax = wasModule;
+  hir$.hasModuleSyntax = wasModule;
   return takeIds(base);
 }
 
 /** `parseBlock` */
 export function block(): number {
   // TODO(oxc): `openScope()` / `closeScope()`
-  const startPos = lx.start;
-  const startFull = lx.fullStart;
+  const lx$ = lx;
+  const startPos = lx$.start;
+  const startFull = lx$.fullStart;
   if (!expect(T_OPEN_BRACE)) return finishStmt(pushStmtBlock(startPos, 0, 0), startFull, 0, 0);
   const list = statementsUntilCloseBrace();
   const len = p.outLen | 0;
   expectMatching(T_OPEN_BRACE, T_CLOSE_BRACE, startPos);
-  if (lx.token === T_EQUALS) equalsAfterBlock();
+  if (lx$.token === T_EQUALS) equalsAfterBlock();
   return finishStmt(pushStmtBlock(startPos, list, len), startFull, 0, 0);
 }
 
@@ -1351,9 +1400,10 @@ function parenthesizedCondition(): number {
 }
 
 function ifStatement(): number {
-  const startPos = lx.start;
-  const startFull = lx.fullStart;
-  lx.next();
+  const lx$ = lx;
+  const startPos = lx$.start;
+  const startFull = lx$.fullStart;
+  lx$.next();
   const test = parenthesizedCondition();
   const yes = embeddedStatement();
   const no = eat(T_ELSE) ? embeddedStatement() : NONE;
@@ -1368,9 +1418,10 @@ function bodyOfLoop(): number {
 }
 
 function doStatement(): number {
-  const startPos = lx.start;
-  const startFull = lx.fullStart;
-  lx.next();
+  const lx$ = lx;
+  const startPos = lx$.start;
+  const startFull = lx$.fullStart;
+  lx$.next();
   const body = bodyOfLoop();
   expect(T_WHILE);
   const test = parenthesizedCondition();
@@ -1380,9 +1431,10 @@ function doStatement(): number {
 }
 
 function whileStatement(): number {
-  const startPos = lx.start;
-  const startFull = lx.fullStart;
-  lx.next();
+  const lx$ = lx;
+  const startPos = lx$.start;
+  const startFull = lx$.fullStart;
+  lx$.next();
   const test = parenthesizedCondition();
   const body = bodyOfLoop();
   return finishStmt(pushStmtWhile(startPos, test, body), startFull, 0, 0);
@@ -1390,60 +1442,66 @@ function whileStatement(): number {
 
 /** `parseWithStatement`: a block of the expression, as a statement, and the body. */
 function withStatement(): number {
-  const startPos = lx.start;
-  const startFull = lx.fullStart;
-  lx.next();
-  const open = lx.start;
+  const lx$ = lx;
+  const startPos = lx$.start;
+  const startFull = lx$.fullStart;
+  lx$.next();
+  const open = lx$.start;
   const opened = expect(T_OPEN_PAREN);
-  const full = lx.fullStart;
+  const full = lx$.fullStart;
   const object = expressionAllowingIn();
   // `add_stmt(Expr(object), start)` and then `loc.pos = full`.
   const objectStmt = finishStmt(pushStmtExpr(startPos, object), full, 0, 0);
-  const close = lx.start;
+  const close = lx$.start;
   expectMatching(T_OPEN_PAREN, T_CLOSE_PAREN, opened ? open : -1);
   const body = embeddedStatement();
-  const end = body >= 0 && body < hir.nStmts ? hir.stmtLocEnd[body] | 0 : 0;
-  hir.pushWithBodies((close + 1) | 0, end);
-  const b = s.ids.len;
-  s.ids.push(objectStmt);
-  s.ids.push(body);
+  const hir$ = hir;
+  const end = body >= 0 && body < hir$.nStmts ? hir$.stmtLocEnd[body] | 0 : 0;
+  hir$.pushWithBodies((close + 1) | 0, end);
+  const s$ = s;
+  const b = s$.ids.len;
+  s$.ids.push(objectStmt);
+  s$.ids.push(body);
   const list = takeIds(b);
   return finishStmt(pushStmtBlock(startPos, list, 2), startFull, 0, 0);
 }
 
 /** `parseForOrForInOrForOfStatement` */
 function forStatement(): number {
-  const startPos = lx.start;
-  const startFull = lx.fullStart;
-  lx.next();
-  const isAwait = lx.token === T_AWAIT;
+  const lx$ = lx;
+  const startPos = lx$.start;
+  const startFull = lx$.fullStart;
+  lx$.next();
+  const isAwait = lx$.token === T_AWAIT;
+  const hir$ = hir;
   if (isAwait) {
-    hir.rareSyntax = hir.rareSyntax | RARE_FOR_AWAIT;
+    hir$.rareSyntax = hir$.rareSyntax | RARE_FOR_AWAIT;
     noteAwait();
     // TODO(oxc): it tells oxc nothing about whether the file is a module.
-    lx.next();
+    lx$.next();
   }
   expect(T_OPEN_PAREN);
   // TODO(oxc): `openScope()`
   let init = NONE;
   let startsWithLet = false;
-  if (lx.token !== T_SEMICOLON) {
-    const atPos = lx.start;
-    const atFull = lx.fullStart;
-    startsWithLet = lx.token === T_LET;
+  const p$ = p;
+  if (lx$.token !== T_SEMICOLON) {
+    const atPos = lx$.start;
+    const atFull = lx$.fullStart;
+    startsWithLet = lx$.token === T_LET;
     let isDeclaration = false;
-    switch (lx.token) {
+    switch (lx$.token) {
       case T_LET:
         // TODO(oxc): `|| dialect.oxc`
-        isDeclaration = p.isEcmascript ? isLetDeclaration() : true;
+        isDeclaration = p$.isEcmascript ? isLetDeclaration() : true;
         break;
       case T_VAR:
       case T_CONST:
         isDeclaration = true;
         break;
       case T_USING: {
-        const m = lx.mark();
-        const had = lx.refusal | 0;
+        const m = lx$.mark();
+        const had = lx$.refusal | 0;
         isDeclaration = nextIsBindingOnSameLine(true);
         lookAheadEnd(m, had);
         break;
@@ -1456,40 +1514,40 @@ function forStatement(): number {
     }
     if (isDeclaration) {
       const decls = variableDeclarationList(true, 0);
-      init = finishStmt(pushStmtVar(atPos, decls, p.outLen | 0), atFull, 0, 0);
+      init = finishStmt(pushStmtVar(atPos, decls, p$.outLen | 0), atFull, 0, 0);
     } else {
       const saved = enterContext(CTX_DISALLOW_IN, 0);
       const e = expression();
-      p.context = saved;
+      p$.context = saved;
       init = finishStmt(pushStmtExpr(atPos, e), atFull, 0, 0);
     }
   }
-  const t = lx.token;
+  const t = lx$.token;
   // Whatever the dialect: the checks for JavaScript and for oxfmt ask for the bit too.
-  if ((t === T_OF || t === T_IN) && init >= 0 && (hir.stmtTag[init] | 0) === STMT_VAR) {
-    const ls = hir.stmtA[init] | 0;
-    const ln = hir.stmtB[init] | 0;
+  if ((t === T_OF || t === T_IN) && init >= 0 && (hir$.stmtTag[init] | 0) === STMT_VAR) {
+    const ls = hir$.stmtA[init] | 0;
+    const ln = hir$.stmtB[init] | 0;
     for (let i = 0; i < ln; i++) {
-      const d = hir.ids[(ls + i) | 0] | 0;
-      if ((hir.varDeclInit[d] | 0) >= 0 || (hir.varDeclTy[d] | 0) >= 0) {
-        hir.rareSyntax = hir.rareSyntax | RARE_ODD_LOOP_HEAD;
+      const d = hir$.ids[(ls + i) | 0] | 0;
+      if ((hir$.varDeclInit[d] | 0) >= 0 || (hir$.varDeclTy[d] | 0) >= 0) {
+        hir$.rareSyntax = hir$.rareSyntax | RARE_ODD_LOOP_HEAD;
         break;
       }
     }
   }
   // TODO(oxc): `async_before_of`
-  if ((t === T_OF || t === T_IN) && init >= 0 && (hir.stmtTag[init] | 0) === STMT_EXPR) noteTarget(hir.stmtA[init] | 0);
-  if (t === T_OF && startsWithLet && init >= 0 && (hir.stmtTag[init] | 0) === STMT_EXPR) {
+  if ((t === T_OF || t === T_IN) && init >= 0 && (hir$.stmtTag[init] | 0) === STMT_EXPR) noteTarget(hir$.stmtA[init] | 0);
+  if (t === T_OF && startsWithLet && init >= 0 && (hir$.stmtTag[init] | 0) === STMT_EXPR) {
     // TODO(oxc): `oxc::let_before_of(..)`
     report();
   }
   // oxc reads the other loops after `for await` too. TODO(oxc): `isOtherLoop`
   let st = NONE;
   let isFor = false;
-  if ((isAwait || lx.token === T_OF) && expect(T_OF)) {
+  if ((isAwait || lx$.token === T_OF) && expect(T_OF)) {
     const saved = enterContext(0, CTX_DISALLOW_IN);
     const expr = assignmentExpression();
-    p.context = saved;
+    p$.context = saved;
     expect(T_CLOSE_PAREN);
     const body = bodyOfLoop();
     st = pushStmtForOf(startPos, init, expr, body, isAwait ? 1 : 0);
@@ -1500,9 +1558,9 @@ function forStatement(): number {
     st = pushStmtForIn(startPos, init, expr, body);
   } else {
     expect(T_SEMICOLON);
-    const test = lx.token === T_SEMICOLON || lx.token === T_CLOSE_PAREN ? NONE : expressionAllowingIn();
+    const test = lx$.token === T_SEMICOLON || lx$.token === T_CLOSE_PAREN ? NONE : expressionAllowingIn();
     expect(T_SEMICOLON);
-    const update = lx.token === T_CLOSE_PAREN ? NONE : expressionAllowingIn();
+    const update = lx$.token === T_CLOSE_PAREN ? NONE : expressionAllowingIn();
     expect(T_CLOSE_PAREN);
     const body = bodyOfLoop();
     st = pushStmtFor(startPos, init, test, update, body);
@@ -1514,10 +1572,11 @@ function forStatement(): number {
 }
 
 function breakOrContinue(): number {
-  const startPos = lx.start;
-  const startFull = lx.fullStart;
-  const isBreak = lx.token === T_BREAK;
-  lx.next();
+  const lx$ = lx;
+  const startPos = lx$.start;
+  const startFull = lx$.fullStart;
+  const isBreak = lx$.token === T_BREAK;
+  lx$.next();
   let label = ATOM_NONE;
   if (canParseSemicolon()) {
     label = ATOM_NONE;
@@ -1525,36 +1584,40 @@ function breakOrContinue(): number {
     label = missingIdentifier(0, 0);
   } else {
     // The reference notes the name at the start of the statement. TODO(oxc): at the label for oxc.
-    label = lx.atom;
+    label = lx$.atom;
     noteIdentifier(label, startPos);
     nextAfterName();
   }
   const targets = isBreak ? CTX_IN_LOOP | CTX_IN_SWITCH : CTX_IN_LOOP;
-  if (label >= 0 || !hasContext(targets)) hir.rareSyntax = hir.rareSyntax | RARE_ODD_JUMP;
+  const hir$ = hir;
+  if (label >= 0 || !hasContext(targets)) hir$.rareSyntax = hir$.rareSyntax | RARE_ODD_JUMP;
   semicolon();
   const st = isBreak ? pushStmtBreak(startPos, label) : pushStmtContinue(startPos, label);
   return finishStmt(st, startFull, 0, 0);
 }
 
 function returnStatement(): number {
-  const startPos = lx.start;
-  const startFull = lx.fullStart;
-  lx.next();
+  const lx$ = lx;
+  const startPos = lx$.start;
+  const startFull = lx$.fullStart;
+  lx$.next();
   const value = canParseSemicolon() ? NONE : expressionAllowingIn();
   semicolon();
   return finishStmt(pushStmtReturn(startPos, value), startFull, 0, 0);
 }
 
 function throwStatement(): number {
-  const startPos = lx.start;
-  const startFull = lx.fullStart;
-  lx.next();
+  const lx$ = lx;
+  const startPos = lx$.start;
+  const startFull = lx$.fullStart;
+  lx$.next();
   let value = NONE;
-  if (lx.newlineBefore) {
+  const p$ = p;
+  if (lx$.newlineBefore) {
     // TODO(oxc): oxc reports the line break and goes on with the expression.
-    if (!p.isEcmascript) {
+    if (!p$.isEcmascript) {
       // The checker reports the line break.
-      const end = lx.fullStart | 0;
+      const end = lx$.fullStart | 0;
       value = pushExprMissing(end, end);
     } else {
       fail();
@@ -1563,34 +1626,38 @@ function throwStatement(): number {
     value = expressionAllowingIn();
   }
   if (!eat(T_SEMICOLON) && !canParseSemicolon()) {
-    if (p.recovers) missingSemicolonAfter(value);
+    if (p$.recovers) missingSemicolonAfter(value);
     else fail();
   }
   return finishStmt(pushStmtThrow(startPos, value), startFull, 0, 0);
 }
 
 function switchStatement(): number {
-  const startPos = lx.start;
-  const startFull = lx.fullStart;
-  lx.next();
+  const lx$ = lx;
+  const startPos = lx$.start;
+  const startFull = lx$.fullStart;
+  lx$.next();
   expect(T_OPEN_PAREN);
   const expr = expressionAllowingIn();
   expect(T_CLOSE_PAREN);
   expect(T_OPEN_BRACE);
   // TODO(oxc): `openScope()`
   const saved = enterContext(CTX_IN_SWITCH, 0);
-  const base = s.cases.len;
+  const s$ = s;
+  const base = s$.cases.len;
   let defaults = 0;
   const lists = enterList(LK_SWITCH_CLAUSES);
+  const p$ = p;
+  const hir$ = hir;
   while (isInList(T_CLOSE_BRACE) && isAtElement(LK_SWITCH_CLAUSES)) {
-    const pos = lx.start;
+    const pos = lx$.start;
     let test = NONE;
-    if (lx.token === T_CASE) {
-      lx.next();
+    if (lx$.token === T_CASE) {
+      lx$.next();
       test = expressionAllowingIn();
-    } else if (lx.token === T_DEFAULT) {
+    } else if (lx$.token === T_DEFAULT) {
       defaults = (defaults + 1) | 0;
-      lx.next();
+      lx$.next();
     } else {
       fail();
       break;
@@ -1599,56 +1666,58 @@ function switchStatement(): number {
     // `checkSwitchStatement` reports the second one, up to its `:`.
     if (defaults === 2 && test < 0) {
       defaults = (defaults + 1) | 0;
-      flag(DK_GRAMMAR, 1113, pos, lx.fullStart);
+      flag(DK_GRAMMAR, 1113, pos, lx$.fullStart);
     }
-    const ids = s.ids.len;
+    const ids = s$.ids.len;
     // TODO(jsdoc): `const reparsed = ..`
     const lists2 = enterList(LK_SWITCH_CLAUSE_STATEMENTS);
-    while (!(lx.token === T_CASE || lx.token === T_DEFAULT || lx.token === T_CLOSE_BRACE || lx.token === T_EOF) && isAtElement(LK_SWITCH_CLAUSE_STATEMENTS)) {
+    while (!(lx$.token === T_CASE || lx$.token === T_DEFAULT || lx$.token === T_CLOSE_BRACE || lx$.token === T_EOF) && isAtElement(LK_SWITCH_CLAUSE_STATEMENTS)) {
       const st = statement();
       // TODO(jsdoc): `statementJsdoc(st); listReparsedOfClause(..)`
-      s.ids.push(st);
+      s$.ids.push(st);
     }
     leaveList(lists2);
     const body = takeIds(ids);
-    const bodyLen = p.outLen | 0;
+    const bodyLen = p$.outLen | 0;
     // TODO(jsdoc): `clauseJsdoc(pos)`
-    s.cases.push(hir.pushCase(test, body, bodyLen, pos, lx.fullStart));
+    s$.cases.push(hir$.pushCase(test, body, bodyLen, pos, lx$.fullStart));
   }
   leaveList(lists);
-  p.context = saved;
+  p$.context = saved;
   // TODO(oxc): `closeScope()`
   expect(T_CLOSE_BRACE);
-  const cases = takeList(s.cases, base);
-  return finishStmt(pushStmtSwitch(startPos, expr, cases, p.outLen | 0), startFull, 0, 0);
+  const cases = takeList(s$.cases, base);
+  return finishStmt(pushStmtSwitch(startPos, expr, cases, p$.outLen | 0), startFull, 0, 0);
 }
 
 function tryStatement(): number {
-  const startPos = lx.start;
-  const startFull = lx.fullStart;
+  const lx$ = lx;
+  const startPos = lx$.start;
+  const startFull = lx$.fullStart;
   expect(T_TRY);
   const blk = block();
   let param = NONE;
   let handler = NONE;
   let finalizer = NONE;
+  const hir$ = hir;
   if (eat(T_CATCH)) {
     // TODO(oxc): `openScope()`
     if (eat(T_OPEN_PAREN)) {
       // `parseVariableDeclaration`
-      const full = lx.fullStart;
+      const full = lx$.fullStart;
       const pat = identifierOrPattern();
       // TODO(oxc): `declarePattern(pat, isName ? DECLARES_PARAMETER : DECLARES_LEXICAL)`
       const ty = typeAnnotation();
       // `checkCatchClause` reports it.
       let init = NONE;
-      if (lx.token === T_EQUALS) {
+      if (lx$.token === T_EQUALS) {
         if (p.recovers) {
           init = initializer();
         } else {
           refuse(R_REPORTED);
         }
       }
-      param = hir.pushVarDecl(pat, ty, init, VAR_LET, 0, full, lx.fullStart);
+      param = hir$.pushVarDecl(pat, ty, init, VAR_LET, 0, full, lx$.fullStart);
       // TODO(jsdoc): `variableDeclarationJsdoc(param)`
       expect(T_CLOSE_PAREN);
     }
@@ -1656,40 +1725,43 @@ function tryStatement(): number {
     handler = block();
     // TODO(oxc): `closeScope()`
   }
-  if (lx.token === T_FINALLY || handler < 0) {
+  if (lx$.token === T_FINALLY || handler < 0) {
     // The block starts at the keyword.
-    const keywordPos = lx.start;
+    const keywordPos = lx$.start;
     if (!eat(T_FINALLY)) errorAtToken(1472);
     finalizer = block();
-    if (finalizer >= 0 && finalizer < hir.nStmts) hir.stmtStart[finalizer] = keywordPos;
+    if (finalizer >= 0 && finalizer < hir$.nStmts) hir$.stmtStart[finalizer] = keywordPos;
   }
   return finishStmt(pushStmtTry(startPos, blk, param, handler, finalizer), startFull, 0, 0);
 }
 
 /** `parseExpressionOrLabeledStatement` */
 function expressionOrLabeledStatement(): number {
-  const startPos = lx.start;
-  const startFull = lx.fullStart;
-  if (p.isFlow) p.flowStatementStart = startPos;
+  const lx$ = lx;
+  const startPos = lx$.start;
+  const startFull = lx$.fullStart;
+  const p$ = p;
+  if (p$.isFlow) p$.flowStatementStart = startPos;
   // TypeScript 5 has `allowInAnd(parseExpression)` here, the native parser has not.
-  const e = p.isTypescript5 || p.isEcmascript ? expressionAllowingIn() : expression();
+  const e = p$.isTypescript5 || p$.isEcmascript ? expressionAllowingIn() : expression();
+  const hir$ = hir;
   if (
-    lx.token === T_COLON &&
+    lx$.token === T_COLON &&
     e >= 0 &&
-    e + 1 === hir.nExprs &&
-    (hir.exprTag[e] | 0) === EXPR_IDENT &&
-    (hir.exprPos[e] | 0) === startPos
+    e + 1 === hir$.nExprs &&
+    (hir$.exprTag[e] | 0) === EXPR_IDENT &&
+    (hir$.exprPos[e] | 0) === startPos
   ) {
-    const label = hir.exprA[e] | 0;
-    hir.nExprs = e;
-    lx.next();
+    const label = hir$.exprA[e] | 0;
+    hir$.nExprs = e;
+    lx$.next();
     const body = embeddedStatement();
-    hir.rareSyntax = hir.rareSyntax | RARE_ODD_JUMP;
+    hir$.rareSyntax = hir$.rareSyntax | RARE_ODD_JUMP;
     return finishStmt(pushStmtLabeled(startPos, label, body), startFull, 0, 0);
   }
   // `parseSemicolon`
-  if (lx.token === T_SEMICOLON) {
-    lx.next();
+  if (lx$.token === T_SEMICOLON) {
+    lx$.next();
   } else if (!canParseSemicolon()) {
     return statementWithoutSemicolon(startPos, startFull, e);
   }
@@ -1698,12 +1770,14 @@ function expressionOrLabeledStatement(): number {
 
 /** The token cannot follow the expression statement `e`. */
 function statementWithoutSemicolon(startPos: number, startFull: number, e: number): number {
-  if (p.isFlow) return flowDeclarationAfterExpression(startPos, startFull, e);
+  const p$ = p;
+  if (p$.isFlow) return flowDeclarationAfterExpression(startPos, startFull, e);
   // `parseErrorForMissingSemicolonAfter`: "If a declared node failed to parse, it would have emitted a diagnostic already."
-  if (!p.isEcmascript && e >= 0 && (hir.exprTag[e] | 0) === EXPR_IDENT && names.atomIs(hir.exprA[e] | 0, "declare") && !isParenthesized(e)) {
+  const hir$ = hir;
+  if (!p$.isEcmascript && e >= 0 && (hir$.exprTag[e] | 0) === EXPR_IDENT && names.atomIs(hir$.exprA[e] | 0, "declare") && !isParenthesized(e)) {
     return finishStmt(pushStmtExpr(startPos, e), startFull, 0, 0);
   }
-  if (p.recovers) {
+  if (p$.recovers) {
     missingSemicolonAfter(e);
     return finishStmt(pushStmtExpr(startPos, e), startFull, 0, 0);
   }

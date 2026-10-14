@@ -48,12 +48,13 @@ export function writeBigIntLiteral(e: number, f: Formatter): void {
     f.sourceText(start, end);
     return;
   }
-  KB.reset();
+  const KB$ = KB;
+  KB$.reset();
   for (let i = start; i < end; i++) {
     const c = text[i] | 0;
-    KB.push(c >= 65 && c <= 90 ? c + 32 : c);
+    KB$.push(c >= 65 && c <= 90 ? c + 32 : c);
   }
-  f.textBytesNoWs(KB.data, 0, KB.len);
+  f.textBytesNoWs(KB$.data, 0, KB$.len);
 }
 
 /** An error: `/a/é`. The characters are sorted as JavaScript sorts strings, by UTF-16 code units. */

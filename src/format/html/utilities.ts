@@ -234,10 +234,11 @@ export function unescapeQuoteEntities(buf: Uint8Array, s: number, e: number): vo
       break;
     }
   }
+  const UQ$ = UQ;
   if (!found) {
-    UQ.buf = buf;
-    UQ.s = s;
-    UQ.e = e;
+    UQ$.buf = buf;
+    UQ$.s = s;
+    UQ$.e = e;
     return;
   }
   const out = new ByteBuf(e - s);
@@ -259,9 +260,9 @@ export function unescapeQuoteEntities(buf: Uint8Array, s: number, e: number): vo
     out.push(b);
     i = i + 1;
   }
-  UQ.buf = out.data;
-  UQ.s = 0;
-  UQ.e = out.len;
+  UQ$.buf = out.data;
+  UQ$.s = 0;
+  UQ$.e = out.len;
 }
 
 function isEntityAt(buf: Uint8Array, at: number, e: number, lit: string): boolean {

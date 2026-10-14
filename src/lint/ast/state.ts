@@ -79,7 +79,8 @@ export function fileIsParenthesized(e: number): boolean {
 
 /** `File::has_no_unicode_escape_in`: it is known that the text has no `\u` from `pos` to `end`. */
 export function fileHasNoUnicodeEscapeIn(pos: number, end: number): boolean {
-  return end <= F.unicodeFirst || F.unicodeLast < pos;
+  const F$ = F;
+  return end <= F$.unicodeFirst || F$.unicodeLast < pos;
 }
 
 /**
@@ -87,9 +88,10 @@ export function fileHasNoUnicodeEscapeIn(pos: number, end: number): boolean {
  * with an escape is `pos` and the length of the name. That is past the first escape.
  */
 export function fileEndOfIdentifier(pos: number, end: number): number {
-  if (end <= F.unicodeFirst || F.unicodeLast < pos) return end;
+  const F$ = F;
+  if (end <= F$.unicodeFirst || F$.unicodeLast < pos) return end;
   // the first `\u` at or after `pos`
-  const v = F.unicodeEscapes;
+  const v = F$.unicodeEscapes;
   let lo = 0;
   let hi = v.len;
   while (lo < hi) {
@@ -97,9 +99,10 @@ export function fileEndOfIdentifier(pos: number, end: number): number {
     if ((v.data[mid] | 0) < pos) lo = mid + 1;
     else hi = mid;
   }
+  const hir$ = hir;
   if (lo < v.len && (v.data[lo] | 0) < end) {
     // `end.max(pos + token_len(text[pos..]))`
-    const e2 = tokenEnd(hir.text, hir.sourceLen | 0, pos, false);
+    const e2 = tokenEnd(hir$.text, hir$.sourceLen | 0, pos, false);
     return e2 > end ? e2 : end;
   }
   return end;
@@ -111,8 +114,9 @@ export function fileEndOfIdentifier(pos: number, end: number): number {
  * made (`hir.comments`, and a `#!` line) says where they are, which is also exact for a regular expression like `/a*&#47;`.
  */
 export function fileEndOfTokenBefore(at: number): number {
-  const text = hir.text;
-  const len = hir.sourceLen | 0;
+  const hir$ = hir;
+  const text = hir$.text;
+  const len = hir$.sourceLen | 0;
   let end = at < len ? at : len;
   // A comment can end here if this is where we start, after a line break (a line comment ends before it), or after a `/`.
   let check = true;

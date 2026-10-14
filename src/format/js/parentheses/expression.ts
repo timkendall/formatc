@@ -686,6 +686,7 @@ function classHasDecorators(cls: number): boolean {
  */
 function shouldWrapFunctionForExportDefault(declaration: number, f: Formatter): boolean {
   let current = declaration;
+  const sequenceScratch$ = sequenceScratch;
   while (true) {
     const isDeclaration = current === declaration;
     let isFunctionOrClass = false;
@@ -699,10 +700,10 @@ function shouldWrapFunctionForExportDefault(declaration: number, f: Formatter): 
     switch (t) {
       case EXPR_BINARY:
         if (exprBinaryOpOf(current) === BIN_COMMA) {
-          const base = sequenceScratch.len;
-          exprSequence(current, sequenceScratch);
-          const first = sequenceScratch.len > base ? sequenceScratch.data[base] | 0 : -1;
-          sequenceScratch.len = base;
+          const base = sequenceScratch$.len;
+          exprSequence(current, sequenceScratch$);
+          const first = sequenceScratch$.len > base ? sequenceScratch$.data[base] | 0 : -1;
+          sequenceScratch$.len = base;
           if (first < 0) return false;
           current = first;
         } else current = exprBinaryLeft(current);
@@ -758,6 +759,7 @@ function exprOperandOf(e: number): number {
 export function leftEdgeEnd(e: number, node0: number): number {
   let current = e;
   let node = node0;
+  const sequenceScratch$ = sequenceScratch;
   while (true) {
     const parent = anParent(node);
     const pid = anId(parent);
@@ -794,10 +796,10 @@ export function leftEdgeEnd(e: number, node0: number): number {
         break;
       }
       case AN_SEQUENCE_EXPRESSION: {
-        const base = sequenceScratch.len;
-        exprSequence(pid, sequenceScratch);
-        const first = sequenceScratch.len > base ? sequenceScratch.data[base] | 0 : -1;
-        sequenceScratch.len = base;
+        const base = sequenceScratch$.len;
+        exprSequence(pid, sequenceScratch$);
+        const first = sequenceScratch$.len > base ? sequenceScratch$.data[base] | 0 : -1;
+        sequenceScratch$.len = base;
         if (first === current) next = pid;
         break;
       }

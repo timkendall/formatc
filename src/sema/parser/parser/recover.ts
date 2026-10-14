@@ -166,16 +166,18 @@ export function isAtElement(kind: number): boolean {
 }
 
 function skipToElement(kind: number): boolean {
+  const p$ = p;
+  const lx$ = lx;
   if (kind === LK_SOURCE_ELEMENTS) {
     // The loop of `reparseTopLevelAwait` calls `parseStatement` whatever the token is, and goes to the next token if that has
     // consumed nothing.
-    if (p.reparsesRestOfFile) {
-      if (lx.start === p.reparsedAt) next();
-      p.reparsedAt = lx.start | 0;
-      return lx.token !== T_EOF;
+    if (p$.reparsesRestOfFile) {
+      if (lx$.start === p$.reparsedAt) next();
+      p$.reparsedAt = lx$.start | 0;
+      return lx$.token !== T_EOF;
     }
-    p.hasAwaitInStatement = false;
-    p.wasAwaitRefused = false;
+    p$.hasAwaitInStatement = false;
+    p$.wasAwaitRefused = false;
   }
   for (;;) {
     const step = listStep(kind);
@@ -212,9 +214,10 @@ function recoverMissingComma(kind: number, element: number): boolean {
     expected(T_COMMA);
   }
   // `{ a; b }`
-  if ((kind === LK_OBJECT_LITERAL_MEMBERS || kind === LK_IMPORT_ATTRIBUTES) && lx.token === T_SEMICOLON && !lx.newlineBefore) next();
+  const lx$ = lx;
+  if ((kind === LK_OBJECT_LITERAL_MEMBERS || kind === LK_IMPORT_ATTRIBUTES) && lx$.token === T_SEMICOLON && !lx$.newlineBefore) next();
   // "Consume a token to advance the parser in some way and avoid an infinite loop"
-  if (lx.fullStart === element) next();
+  if (lx$.fullStart === element) next();
   return true;
 }
 
@@ -232,16 +235,17 @@ function abortListOrSkip(kind: number): boolean {
 
 /** `isInSomeParsingContext` */
 function isInSomeParsingContext(): boolean {
-  let open = p.lists | 0;
+  const p$ = p;
+  let open = p$.lists | 0;
   // `reparseTopLevelAwait` parses a statement of the file that has an `await` again, and no list of statements is open then.
   if (lx.token === T_AWAIT && hasContext(CTX_TOP_LEVEL) && hasContext(CTX_AWAIT)) {
-    p.hasTopLevelAwait = true;
-    p.hasPlainTopLevelAwait = true;
-    p.hasAwaitInStatement = true;
-    p.hasAwaitIdentifier = true;
-    p.wasAwaitRefused = true;
+    p$.hasTopLevelAwait = true;
+    p$.hasPlainTopLevelAwait = true;
+    p$.hasAwaitInStatement = true;
+    p$.hasAwaitIdentifier = true;
+    p$.wasAwaitRefused = true;
   }
-  if (p.hasAwaitInStatement) open = open & ~(1 << LK_SOURCE_ELEMENTS);
+  if (p$.hasAwaitInStatement) open = open & ~(1 << LK_SOURCE_ELEMENTS);
   let isInSome = false;
   for (let kind = 0; kind < ALL_LISTS_COUNT; kind++) {
     if ((open & (1 << kind)) !== 0 && (isListElement(kind, true) || isListTerminator(kind))) {
@@ -250,7 +254,7 @@ function isInSomeParsingContext(): boolean {
     }
   }
   // The first parse has ended its statement at this token.
-  if (!isInSome && open !== (p.lists | 0) && !p.wasAwaitRefused && isListElement(LK_SOURCE_ELEMENTS, true)) p.reparsesRestOfFile = true;
+  if (!isInSome && open !== (p$.lists | 0) && !p$.wasAwaitRefused && isListElement(LK_SOURCE_ELEMENTS, true)) p$.reparsesRestOfFile = true;
   return isInSome;
 }
 
@@ -335,7 +339,8 @@ function parsingContextError(kind: number): void {
 
 /** `isStartOfStatement` */
 export function isStartOfStatement(): boolean {
-  switch (lx.token) {
+  const lx$ = lx;
+  switch (lx$.token) {
     case T_AT:
     case T_SEMICOLON:
     case T_OPEN_BRACE:
@@ -384,10 +389,10 @@ export function isStartOfStatement(): boolean {
     case T_STATIC:
     case T_READONLY: {
       if (isStartOfDeclaration()) return true;
-      const m = lx.mark();
-      const had = lx.refusal | 0;
+      const m = lx$.mark();
+      const had = lx$.refusal | 0;
       next();
-      const r = isIdentifierOrKeyword(lx.token) && !lx.newlineBefore;
+      const r = isIdentifierOrKeyword(lx$.token) && !lx$.newlineBefore;
       lookAheadEnd(m, had);
       return !r;
     }
@@ -398,9 +403,10 @@ export function isStartOfStatement(): boolean {
 
 /** `scanClassMemberStart`, in a `lookAhead`. */
 function isClassMemberStart(): boolean {
-  if (lx.token === T_AT) return true;
-  const m = lx.mark();
-  const had = lx.refusal | 0;
+  const lx$ = lx;
+  if (lx$.token === T_AT) return true;
+  const m = lx$.mark();
+  const had = lx$.refusal | 0;
   const r = classMemberStartAhead();
   lookAheadEnd(m, had);
   return r;
@@ -408,31 +414,33 @@ function isClassMemberStart(): boolean {
 
 function classMemberStartAhead(): boolean {
   let name = -1;
-  while (isModifier(lx.token)) {
-    name = lx.token | 0;
+  const lx$ = lx;
+  while (isModifier(lx$.token)) {
+    name = lx$.token | 0;
     // `IsClassMemberModifier`
-    const t = lx.token;
+    const t = lx$.token;
     if (t === T_PUBLIC || t === T_PRIVATE || t === T_PROTECTED || t === T_READONLY || t === T_OVERRIDE || t === T_STATIC || t === T_ACCESSOR) return true;
     next();
   }
-  if (lx.token === T_ASTERISK) return true;
+  if (lx$.token === T_ASTERISK) return true;
   if (isLiteralPropertyName()) {
-    name = lx.token | 0;
+    name = lx$.token | 0;
     next();
   }
-  if (lx.token === T_OPEN_BRACKET) return true;
+  if (lx$.token === T_OPEN_BRACKET) return true;
   if (name < 0) return false;
   if (name <= T_PRIVATE_IDENTIFIER || name === T_GET || name === T_SET) return true;
-  const t = lx.token;
+  const t = lx$.token;
   return t === T_OPEN_PAREN || t === T_LESS_THAN || t === T_EXCLAMATION || t === T_COLON || t === T_EQUALS || t === T_QUESTION || canParseSemicolon();
 }
 
 /** `scanTypeMemberStart`, in a `lookAhead`. */
 function isTypeMemberStart(): boolean {
-  const t0 = lx.token;
+  const lx$ = lx;
+  const t0 = lx$.token;
   if (t0 === T_OPEN_PAREN || t0 === T_LESS_THAN || t0 === T_GET || t0 === T_SET) return true;
-  const m = lx.mark();
-  const had = lx.refusal | 0;
+  const m = lx$.mark();
+  const had = lx$.refusal | 0;
   const r = typeMemberStartAhead();
   lookAheadEnd(m, had);
   return r;
@@ -440,17 +448,18 @@ function isTypeMemberStart(): boolean {
 
 function typeMemberStartAhead(): boolean {
   let hasName = false;
-  while (isModifier(lx.token)) {
+  const lx$ = lx;
+  while (isModifier(lx$.token)) {
     hasName = true;
     next();
   }
-  if (lx.token === T_OPEN_BRACKET) return true;
+  if (lx$.token === T_OPEN_BRACKET) return true;
   if (isLiteralPropertyName()) {
     hasName = true;
     next();
   }
   if (!hasName) return false;
-  const t = lx.token;
+  const t = lx$.token;
   return t === T_OPEN_PAREN || t === T_LESS_THAN || t === T_QUESTION || t === T_COLON || t === T_COMMA || canParseSemicolon();
 }
 
@@ -561,15 +570,16 @@ function isListTerminator(kind: number): boolean {
  * context. (oxc's first reading is not ported.)
  */
 export function topLevelStatement(): number {
-  p.hasAwaitInName = false;
-  p.hasAwaitIdentifier = false;
+  const p$ = p;
+  p$.hasAwaitInName = false;
+  p$.hasAwaitIdentifier = false;
   const before = checkpoint();
   const stmt = statement();
-  if (!(p.hasAwaitInName && p.hasAwaitIdentifier) || hasFailed()) return stmt;
+  if (!(p$.hasAwaitInName && p$.hasAwaitIdentifier) || hasFailed()) return stmt;
   rollback(before);
-  p.namesAreInAwaitContext = true;
+  p$.namesAreInAwaitContext = true;
   const again = statement();
-  p.namesAreInAwaitContext = false;
+  p$.namesAreInAwaitContext = false;
   return again;
 }
 
@@ -583,16 +593,18 @@ export function noteStrayDecorators(base: number, end: number): void {
     fail();
     return;
   }
-  for (let index = base; index < s.modifiers.len; index++) {
-    const m = s.modifiers.data[index] | 0;
-    if ((hir.modifierKind[m] | 0) !== MODK_DECORATOR) continue;
-    const decorator = hir.modifierValue[m] | 0;
+  const s$ = s;
+  const hir$ = hir;
+  for (let index = base; index < s$.modifiers.len; index++) {
+    const m = s$.modifiers.data[index] | 0;
+    if ((hir$.modifierKind[m] | 0) !== MODK_DECORATOR) continue;
+    const decorator = hir$.modifierValue[m] | 0;
     const start = firstOperandPos(decorator);
-    hir.pushStrayDecorators(start, end);
-    s.strayDecorators.push(start);
-    s.strayDecorators.push(decorator);
+    hir$.pushStrayDecorators(start, end);
+    s$.strayDecorators.push(start);
+    s$.strayDecorators.push(decorator);
   }
-  s.modifiers.len = base;
+  s$.modifiers.len = base;
 }
 
 /**
@@ -604,10 +616,11 @@ export function takeStrayDecorators(base: number): void {
 }
 
 function takeStrayDecoratorsSlowly(base: number): void {
-  for (let index = base; index < s.strayDecorators.len; index += 2) {
-    const start = s.strayDecorators.data[index] | 0;
-    const decorator = s.strayDecorators.data[index + 1] | 0;
-    s.ids.push(pushStmtExpr(start, decorator));
+  const s$ = s;
+  for (let index = base; index < s$.strayDecorators.len; index += 2) {
+    const start = s$.strayDecorators.data[index] | 0;
+    const decorator = s$.strayDecorators.data[index + 1] | 0;
+    s$.ids.push(pushStmtExpr(start, decorator));
   }
-  s.strayDecorators.len = base;
+  s$.strayDecorators.len = base;
 }

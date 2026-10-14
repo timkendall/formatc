@@ -66,10 +66,11 @@ function optionsFor(width: number, useTabs: boolean, tabWidth: number): FormatOp
 }
 
 function printed(f: Formatter): string {
-  out.reset();
-  const r = finishAndPrint(f, out);
+  const out$ = out;
+  out$.reset();
+  const r = finishAndPrint(f, out$);
   if (r !== 0) return "<error " + r + ">";
-  return out.toUtf8();
+  return out$.toUtf8();
 }
 
 function render(d: T.D, o: FormatOptions): string {
@@ -131,15 +132,16 @@ function specific(): void {
   check("cr", render(T.seq(t("a"), T.hardline(), t("b")), cr), "a\rb");
   const auto = w(80);
   auto.lineEnding = LINE_ENDING_AUTO;
+  const scratch$ = scratch;
   {
     const src = utf8Bytes("x\r\ny\n");
-    const f = startDocument(scratch, src, auto, null);
+    const f = startDocument(scratch$, src, auto, null);
     T.emit(new T.Emitter(f), T.seq(t("a"), T.hardline(), t("b")));
     check("auto picks crlf from the source", printed(f), "a\r\nb");
-    const f2 = startDocument(scratch, utf8Bytes("x\ny\n"), auto, null);
+    const f2 = startDocument(scratch$, utf8Bytes("x\ny\n"), auto, null);
     T.emit(new T.Emitter(f2), T.seq(t("a"), T.hardline(), t("b")));
     check("auto picks lf from the source", printed(f2), "a\nb");
-    const f3 = startDocument(scratch, utf8Bytes("x\ry\n"), auto, null);
+    const f3 = startDocument(scratch$, utf8Bytes("x\ry\n"), auto, null);
     T.emit(new T.Emitter(f3), T.seq(t("a"), T.hardline(), t("b")));
     check("auto picks cr from the source", printed(f3), "a\rb");
   }
@@ -164,7 +166,7 @@ function specific(): void {
   // Multi-line texts: the width is that of the first line, and a line break in a text breaks the groups around it
   {
     const src = utf8Bytes("`a\nbb`");
-    const f = startDocument(scratch, src, w(80), null);
+    const f = startDocument(scratch$, src, w(80), null);
     f.startGroup();
     f.token(token("x"));
     f.softLineBreakOrSpace();
@@ -176,7 +178,7 @@ function specific(): void {
   }
   {
     const src = utf8Bytes("`a\nbb`");
-    const f = startDocument(scratch, src, w(80), null);
+    const f = startDocument(scratch$, src, w(80), null);
     f.token(token("x"));
     f.textSource(0, src.length);
     f.token(token("y"));
@@ -191,7 +193,7 @@ function specific(): void {
   // Source texts
   {
     const src = utf8Bytes("foo 中文 bar\\u0061b ok");
-    const f = startDocument(scratch, src, w(10), null);
+    const f = startDocument(scratch$, src, w(10), null);
     f.startGroup();
     f.sourceText(0, 3); // foo
     f.softLineBreakOrSpace();
@@ -204,7 +206,7 @@ function specific(): void {
   {
     // `ab` is written `ab`
     const src = utf8Bytes("\\u0061b \\u{62}c");
-    const f = startDocument(scratch, src, w(80), null);
+    const f = startDocument(scratch$, src, w(80), null);
     f.sourceText(0, 7);
     f.space();
     f.sourceText(8, src.length);
@@ -212,14 +214,14 @@ function specific(): void {
   }
   {
     const src = utf8Bytes("abcdefghij".repeat(20));
-    const f = startDocument(scratch, src, w(80), null);
+    const f = startDocument(scratch$, src, w(80), null);
     f.textSourceNoWs(0, 15);
     f.space();
     f.textSource(20, 25);
     check("long source text", printed(f), "abcdefghijabcde abcde");
   }
   {
-    const f = startDocument(scratch, new Uint8Array(0), w(80), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(80), null);
     const buf = f.textBuf();
     const at = buf.len;
     buf.appendAscii("built");
@@ -236,7 +238,7 @@ function specific(): void {
 
   // Capturing: memoized content is written any number of times; willBreak is known at once
   {
-    const f = startDocument(scratch, new Uint8Array(0), w(8), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(8), null);
     const slot = f.startCapture();
     f.token(token("aa"));
     f.softLineBreakOrSpace();
@@ -256,7 +258,7 @@ function specific(): void {
     check("interned content written twice", printed(f), "aa bb\naa\nbbaa\nbb");
   }
   {
-    const f = startDocument(scratch, new Uint8Array(0), w(80), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(80), null);
     const slot = f.startCapture();
     f.token(token("a"));
     f.hardLineBreak();
@@ -271,7 +273,7 @@ function specific(): void {
     check("a hard break in interned content breaks the group", printed(f), "x\na\nb");
   }
   {
-    const f = startDocument(scratch, new Uint8Array(0), w(80), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(80), null);
     const slot = f.startCapture();
     f.endCapture(slot);
     checkNum("an empty capture is -1", f.endCapture(f.startCapture()), -1);
@@ -281,7 +283,7 @@ function specific(): void {
   }
   {
     // a capture of a single element is written as that element
-    const f = startDocument(scratch, new Uint8Array(0), w(80), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(80), null);
     const slot = f.startCapture();
     f.token(token("one"));
     const h = f.endCapture(slot);
@@ -292,7 +294,7 @@ function specific(): void {
   }
   // Labels
   {
-    const f = startDocument(scratch, new Uint8Array(0), w(80), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(80), null);
     const start = f.len();
     f.startLabelled(LABEL_MEMBER_CHAIN);
     f.token(token("a"));
@@ -314,7 +316,7 @@ function specific(): void {
   }
   // reserveTag / groupFrom
   {
-    const f = startDocument(scratch, new Uint8Array(0), w(8), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(8), null);
     const start = f.reserveTag();
     f.token(token("("));
     f.startSoftBlockIndent();
@@ -330,7 +332,7 @@ function specific(): void {
     check("group from a reserved tag, breaking", printed(f), "(\n  aaaa,\n  bbbb\n)");
   }
   {
-    const f = startDocument(scratch, new Uint8Array(0), w(80), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(80), null);
     const start = f.reserveTag();
     f.token(token("a"));
     f.softLineBreakOrSpace();
@@ -342,7 +344,7 @@ function specific(): void {
   }
   {
     // a reserved place that is never used is nothing
-    const f = startDocument(scratch, new Uint8Array(0), w(80), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(80), null);
     f.startGroup();
     const unused = f.reserveTag();
     f.token(token("a"));
@@ -354,7 +356,7 @@ function specific(): void {
   }
   // a reserved tag inside a capture, used and not used
   {
-    const f = startDocument(scratch, new Uint8Array(0), w(8), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(8), null);
     const slot = f.startCapture();
     const r1 = f.reserveTag();
     f.token(token("("));
@@ -376,7 +378,7 @@ function specific(): void {
   }
   // write without soft lines
   {
-    const f = startDocument(scratch, new Uint8Array(0), w(1), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(1), null);
     const slot = f.startCapture();
     f.startGroup();
     f.token(token("a"));
@@ -395,7 +397,7 @@ function specific(): void {
     check("without soft lines", printed(f), "a bcd");
   }
   {
-    const f = startDocument(scratch, new Uint8Array(0), w(80), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(80), null);
     const slot = f.startCapture();
     const v1 = f.startVariant();
     f.token(token("flat"));
@@ -411,7 +413,7 @@ function specific(): void {
   }
   // best fitting, variants written by hand
   {
-    const f = startDocument(scratch, new Uint8Array(0), w(7), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(7), null);
     const v1 = f.startVariant();
     f.token(token("aaaaaaaaaa"));
     const h1 = f.endVariant(v1);
@@ -430,14 +432,14 @@ function specific(): void {
   }
   // group ids and the stability of ids
   {
-    const f = startDocument(scratch, new Uint8Array(0), w(80), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(80), null);
     const a = f.groupId();
     const b = f.groupId();
     checkBool("ids differ", a !== b && a > 0 && b > 0, true);
   }
   // cursor marks
   {
-    const f = startDocument(scratch, new Uint8Array(0), w(80), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(80), null);
     f.token(token("ab"));
     f.cursor(CURSOR_REGION_START);
     f.token(token("cd"));
@@ -450,7 +452,7 @@ function specific(): void {
   // Embedded: a document for another source is written into this one
   {
     const outer = utf8Bytes("outer 12345 end");
-    const f = startDocument(scratch, outer, w(80), null);
+    const f = startDocument(scratch$, outer, w(80), null);
     f.sourceText(0, 5);
     f.space();
     // a part of the outer source: ranges are shifted
@@ -468,6 +470,7 @@ function specific(): void {
     check("embedded sources", printed(f), "outer 1245 inner end");
   }
   // propagateExpand over a document that was written without a Formatter gives what the Formatter gives
+  const out$ = out;
   {
     const st = new Storage(64);
     const tr = new Tracker(st);
@@ -482,10 +485,10 @@ function specific(): void {
     st.push(19 /* T_END_INDENT_WITH_LINE */, 1, 0, 0);
     st.push(27 /* T_END_GROUP */, 0, 0, 0);
     propagateExpand(10, st.len, tr);
-    out.reset();
-    const r = printDocument(st, 10, st.len, new Uint8Array(0), w(80), out);
+    out$.reset();
+    const r = printDocument(st, 10, st.len, new Uint8Array(0), w(80), out$);
     checkNum("propagateExpand result", r, 0);
-    check("propagateExpand breaks the group of a hard line break", out.toUtf8(), "(\n  a\n  a\n");
+    check("propagateExpand breaks the group of a hard line break", out$.toUtf8(), "(\n  a\n  a\n");
   }
   // reuse: the same scratch twice gives the same text
   {
@@ -504,7 +507,7 @@ function specific(): void {
   // tokens of every length: 1 to 12 bytes are in the element, longer ones are in the table of tokens
   {
     const words = ["a", "ab", "abc", "abcd", "abcde", "abcdef", "abcdefg", "abcdefgh", "abcdefghi", "abcdefghij", "abcdefghijk", "abcdefghijkl", "abcdefghijklm", "abcdefghijklmn", "abcdefghijklmnopqrstuvwxyz0123456789"];
-    const f = startDocument(scratch, new Uint8Array(0), w(1000), null);
+    const f = startDocument(scratch$, new Uint8Array(0), w(1000), null);
     let expected = "";
     for (let i = 0; i < words.length; i++) {
       f.token(token(words[i]));
@@ -512,7 +515,7 @@ function specific(): void {
       expected += words[i] + " ";
     }
     check("tokens of every length", printed(f), expected.substring(0, expected.length - 1));
-    const g = startDocument(scratch, new Uint8Array(0), w(10), null);
+    const g = startDocument(scratch$, new Uint8Array(0), w(10), null);
     g.startGroup();
     g.tokenIfBreaks(token("abcdefghijklmnopq"));
     g.token(token("abcdefghijklm"));
@@ -521,7 +524,7 @@ function specific(): void {
     g.tokenIfBreaks(token("abcdefghijklmnopq"));
     g.endGroup();
     check("token if breaks, broken", printed(g), "abcdefghijklmnopqabcdefghijklm\nxyzabcdefghijklmnopq");
-    const h = startDocument(scratch, new Uint8Array(0), w(100), null);
+    const h = startDocument(scratch$, new Uint8Array(0), w(100), null);
     h.startGroup();
     h.tokenIfBreaks(token("abcdefghijklmnopq"));
     h.token(token("abcdefghijklm"));

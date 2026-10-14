@@ -378,21 +378,24 @@ class FillParts {
 
   separator(sep: number): void {
     if (this.isFill) this.endContent();
-    docPool.add(sep);
-    this.contentMark = docPool.ns;
+    const docPool$ = docPool;
+    docPool$.add(sep);
+    this.contentMark = docPool$.ns;
   }
 
   hardline(): void {
+    const docPool$ = docPool;
     if (this.isFill) this.separator(DOC_HARDLINE);
     else {
-      docPool.add(DOC_HARD_LINE);
-      docPool.add(DOC_BREAK_PARENT_DOC);
+      docPool$.add(DOC_HARD_LINE);
+      docPool$.add(DOC_BREAK_PARENT_DOC);
     }
   }
 
   // Prettier's `flattenFill`: the parts of a `fill` in `doc` become parts of this one.
   flatten(doc: number): void {
-    const p = docPool;
+    const docPool$ = docPool;
+    const p = docPool$;
     const tag = p.tag[doc] | 0;
     if (tag === DOC_ARRAY) {
       if (!this.isFill) {
@@ -401,12 +404,12 @@ class FillParts {
       }
       const start = p.a[doc] | 0;
       const count = p.b[doc] | 0;
-      for (let i = 0; i < count; i++) this.flatten(docPool.kids[start + i] | 0);
+      for (let i = 0; i < count; i++) this.flatten(docPool$.kids[start + i] | 0);
     } else if (tag === DOC_FILL) {
       const start = p.a[doc] | 0;
       const count = p.b[doc] | 0;
       for (let i = 0; i < count; i++) {
-        const part = docPool.kids[start + i] | 0;
+        const part = docPool$.kids[start + i] | 0;
         if (i % 2 === 0) this.content(part);
         else this.separator(part);
       }
@@ -416,9 +419,10 @@ class FillParts {
   }
 
   finish(): number {
-    if (!this.isFill) return docPool.array(this.mark);
+    const docPool$ = docPool;
+    if (!this.isFill) return docPool$.array(this.mark);
     this.endContent();
-    return docPool.fill(this.mark);
+    return docPool$.fill(this.mark);
   }
 }
 
@@ -491,8 +495,9 @@ export class Printer {
     this.lineWidth = options.lineWidth;
     this.indentWidth = options.indentWidth;
     this.literallineDoc = literalline();
-    this.markRootLiteralline = docPool.markAsRoot(this.literallineDoc);
-    this.verbatimLineDoc = docPool.dedentToRoot(DOC_HARDLINE);
+    const docPool$ = docPool;
+    this.markRootLiteralline = docPool$.markAsRoot(this.literallineDoc);
+    this.verbatimLineDoc = docPool$.dedentToRoot(DOC_HARDLINE);
     this.tickDoc = docAscii("`");
     this.spaceDoc = docAscii(" ");
     this.fmtOut = new ByteBuf(1024);
@@ -1228,6 +1233,7 @@ export class Printer {
     const prevIsNewline = index > 0 && (kinds[ti - 1] | 0) === TK_NEWLINE;
     const hasNext = index + 1 < count;
     const nextIsNewline = hasNext && (kinds[ti + 1] | 0) === TK_NEWLINE;
+    const scratch$ = scratch;
     if (emphasis < 0) {
       // What looks like the line under a heading is escaped: `Previous line↵␣␣␣␣===`.
       if (this.proseWrap === PROSE_WRAP_PRESERVE && prevIsNewline && (!hasNext || nextIsNewline)) {
@@ -1239,10 +1245,10 @@ export class Printer {
           if (b !== 45) allDash = false;
         }
         if (allEq || allDash) {
-          scratch.reset();
-          scratch.push(92);
-          scratch.append(buf, ts, te);
-          return docText(scratch.data, 0, scratch.len);
+          scratch$.reset();
+          scratch$.push(92);
+          scratch$.append(buf, ts, te);
+          return docText(scratch$.data, 0, scratch$.len);
         }
       }
       return docText(buf, ts, te);
@@ -1291,9 +1297,9 @@ export class Printer {
     const before = index > 0 ? this.unitOfToken(ti - 1, true) : -1;
     const after = hasNext ? this.unitOfToken(ti + 1, false) : -1;
     const outLen = this.escapeDelimiterRuns(units, n, before, after);
-    scratch.reset();
-    this.encodeUnits(this.escOut, outLen, scratch);
-    return docText(scratch.data, 0, scratch.len);
+    scratch$.reset();
+    this.encodeUnits(this.escOut, outLen, scratch$);
+    return docText(scratch$.data, 0, scratch$.len);
   }
 
   units: Uint16Array = new Uint16Array(64);
@@ -1532,9 +1538,10 @@ export class Printer {
       for (let k = 0; k < tail.length; k++) escaped.push(tail[k]);
       for (let k = 0; k < head.length; k++) escaped.push(head[k]);
     }
-    scratch.reset();
-    for (let k = 0; k < escaped.length; k++) pushCodePoint(scratch, escaped[k]);
-    return docText(scratch.data, 0, scratch.len);
+    const scratch$ = scratch;
+    scratch$.reset();
+    for (let k = 0; k < escaped.length; k++) pushCodePoint(scratch$, escaped[k]);
+    return docText(scratch$.data, 0, scratch$.len);
   }
 
   // What is in a reference whose label is its text: as it is, but for where its lines break.
@@ -1615,29 +1622,30 @@ export class Printer {
     const s = this.sStart;
     const e = this.sEnd;
     if (s === e && !this.isMdx) return docAscii("<>");
+    const scratch$ = scratch;
     if (this.isOxfmt) {
-      scratch.reset();
-      urlOfOxfmt(buf, s, e, isInParentheses, scratch);
-      return docText(scratch.data, 0, scratch.len);
+      scratch$.reset();
+      urlOfOxfmt(buf, s, e, isInParentheses, scratch$);
+      return docText(scratch$.data, 0, scratch$.len);
     }
     const isDangerous = containsByte(buf, s, e, 32) || (isInParentheses && containsByte(buf, s, e, 41));
     if (!isDangerous) return docText(buf, s, e);
-    scratch.reset();
-    scratch.push(60);
+    scratch$.reset();
+    scratch$.push(60);
     for (let i = s; i < e; i++) {
       const b = buf[i] | 0;
       if (b === 60) {
-        scratch.push(37);
-        scratch.push(51);
-        scratch.push(67);
+        scratch$.push(37);
+        scratch$.push(51);
+        scratch$.push(67);
       } else if (b === 62) {
-        scratch.push(37);
-        scratch.push(51);
-        scratch.push(69);
-      } else scratch.push(b);
+        scratch$.push(37);
+        scratch$.push(51);
+        scratch$.push(69);
+      } else scratch$.push(b);
     }
-    scratch.push(62);
-    return docText(scratch.data, 0, scratch.len);
+    scratch$.push(62);
+    return docText(scratch$.data, 0, scratch$.len);
   }
 
   // Prettier's `printTitle`
@@ -1648,19 +1656,20 @@ export class Printer {
     let e = this.sEnd;
     if (s === e) return DOC_EMPTY;
     // `title.replaceAll(/\\(?=["')])/g, "")`
+    const scratch2$ = scratch2;
     if (this.isMdx && containsByte(buf, s, e, 92)) {
-      scratch2.reset();
+      scratch2$.reset();
       for (let i = s; i < e; i++) {
         const b = buf[i] | 0;
         if (b === 92 && i + 1 < e) {
           const n = buf[i + 1] | 0;
           if (n === 34 || n === 39 || n === 41) continue;
         }
-        scratch2.push(b);
+        scratch2$.push(b);
       }
-      buf = scratch2.data;
+      buf = scratch2$.data;
       s = 0;
-      e = scratch2.len;
+      e = scratch2$.len;
     }
     const has = (byte: number): boolean => containsByte(buf, s, e, byte);
     const out = scratch;
@@ -1837,6 +1846,7 @@ export class Printer {
     if (this.isInLabel) return this.printSameContent(id);
     const tree = this.tree;
     const kind = tree.kind[id] | 0;
+    const scratch$ = scratch;
     switch (kind) {
       case K_ROOT: {
         if ((tree.firstChild[id] | 0) === NONE) return DOC_EMPTY;
@@ -1874,9 +1884,9 @@ export class Printer {
           marker = needsAsterisk ? 42 : 95;
         }
         const children = this.printChildren(id);
-        scratch.reset();
-        scratch.push(marker);
-        const style = docText(scratch.data, 0, 1);
+        scratch$.reset();
+        scratch$.push(marker);
+        const style = docText(scratch$.data, 0, 1);
         return docs3(style, children, style);
       }
       case K_STRONG: {
@@ -2100,11 +2110,12 @@ export class Printer {
       return docs3(children, DOC_HARDLINE, docText(orig, lastLineStart + from, end));
     }
     const n = tree.number[id] | 0;
-    scratch.reset();
+    const scratch$ = scratch;
+    scratch$.reset();
     const hashes = n < 6 ? n : 6;
-    for (let i = 0; i < hashes; i++) scratch.push(35);
-    scratch.push(32);
-    const prefix = docText(scratch.data, 0, scratch.len);
+    for (let i = 0; i < hashes; i++) scratch$.push(35);
+    scratch$.push(32);
+    const prefix = docText(scratch$.data, 0, scratch$.len);
     return docs2(prefix, this.printChildren(id));
   }
 
@@ -2223,26 +2234,28 @@ export class Printer {
       }
     }
     const hasNewline = containsByte(buf, s, e, 10);
+    const scratch2$ = scratch2;
     if (this.proseWrap !== PROSE_WRAP_PRESERVE && hasNewline) {
-      scratch2.reset();
+      scratch2$.reset();
       for (let i = s; i < e; i++) {
         const b = buf[i] | 0;
-        scratch2.push(b === 10 ? 32 : b);
+        scratch2$.push(b === 10 ? 32 : b);
       }
-      buf = scratch2.data;
+      buf = scratch2$.data;
       s = 0;
-      e = scratch2.len;
+      e = scratch2$.len;
     }
+    const scratch$ = scratch;
     if (!this.isMdx && containsByte(buf, s, e, 124) && this.hasAncestorKind(id, K_TABLE_CELL)) {
-      scratch.reset();
+      scratch$.reset();
       for (let i = s; i < e; i++) {
         const b = buf[i] | 0;
-        if (b === 124) scratch.push(92);
-        scratch.push(b);
+        if (b === 124) scratch$.push(92);
+        scratch$.push(b);
       }
-      buf = scratch.data;
+      buf = scratch$.data;
       s = 0;
-      e = scratch.len;
+      e = scratch$.len;
     }
     const nTicks = minNotPresentContinuousCount(buf, s, e, 96);
     const first = e > s ? buf[s] | 0 : -1;
@@ -2393,13 +2406,14 @@ export class Printer {
     const cs = this.sStart;
     const ce = this.sEnd;
     const isOxfmt = this.isOxfmt;
+    const docPool$ = docPool;
     if (isOxfmt) {
       // Formatting would move the lines that the numbers are about.
       this.strOf(tree.third[id] | 0);
       if (hasLineRanges(this.sBuf, this.sStart, this.sEnd)) return -1;
       // Nothing but white space in a language that is formatted: an empty line.
       if (trimJsWhitespaceEnd(cbuf, cs, ce) === cs && this.embed.knowsOxfmtLanguage(lbuf, ls, le)) {
-        const style = docPool.repeated(this.fenceUnit(id), 3);
+        const style = docPool$.repeated(this.fenceUnit(id), 3);
         const m = docBegin();
         docAdd(style);
         docAdd(this.printInfo(id));
@@ -2416,7 +2430,7 @@ export class Printer {
     const run = isOxfmt ? maxContinuousCount(out.data, 0, fe, this.fenceUnit(id)) : -1;
     const isAsItIs = this.indentation === 0 && !this.isInTemplate && !this.options.isInMarkdown && !containsByte(out.data, 0, fe, 13);
     const formatted = isAsItIs ? docText(out.data, 0, fe) : this.linesOf(out.data, 0, fe);
-    return docPool.markAsRoot(this.printCode(id, formatted, run));
+    return docPool$.markAsRoot(this.printCode(id, formatted, run));
   }
 
   // Prettier's `printEmbedFrontMatter`
@@ -2559,9 +2573,10 @@ export class Printer {
     let any = false;
     let index = 0;
     let item = tree.firstChild[list] | 0;
+    const scratch$ = scratch;
     while (item >= 0) {
       const nextItem = tree.next[item] | 0;
-      const pfx = scratch;
+      const pfx = scratch$;
       pfx.reset();
       if (isOrdered) {
         let number: number;
@@ -2646,6 +2661,7 @@ export class Printer {
     const m = docBegin();
     let any = false;
     let child = first;
+    const docPool$ = docPool;
     while (child >= 0) {
       const next = tree.next[child] | 0;
       const kind = tree.kind[child] | 0;
@@ -2667,7 +2683,7 @@ export class Printer {
         this.indentation = this.indentation + alignment;
         const d = this.print(child);
         this.indentation = this.indentation - alignment;
-        doc = docs2(docPool.repeated(32, alignment), alignWithSpaces(alignment, d));
+        doc = docs2(docPool$.repeated(32, alignment), alignWithSpaces(alignment, d));
       }
       if (any) this.addSeparators(child);
       docAdd(doc);

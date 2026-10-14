@@ -404,7 +404,8 @@ export class Model {
       }
     }
     if (lastImport < 0) return null;
-    const model = new Model(hir.text.subarray(0, hir.sourceLen | 0));
+    const hir$ = hir;
+    const model = new Model(hir$.text.subarray(0, hir$.sourceLen | 0));
     stmtSpan(lastImport);
     model.collectComments(SP[1] | 0);
     model.collectStatements();
@@ -584,15 +585,16 @@ export class Model {
 
   commentsOf(node: number, which: number): List {
     const kind = nodeKindOf(node);
-    if (kind === N_NEW_LINE || kind === N_NEW_LINE_LITERAL) return NO_LIST;
+    const NO_LIST$ = NO_LIST;
+    if (kind === N_NEW_LINE || kind === N_NEW_LINE_LITERAL) return NO_LIST$;
     const attached = this.attachedOf(node);
     if (attached !== null) return attached.get(which);
-    if (kind === N_INTERPRETER || kind === N_DIRECTIVE || kind === N_IMPORT || kind === N_SPECIFIER || kind === N_EMPTY) return NO_LIST;
+    if (kind === N_INTERPRETER || kind === N_DIRECTIVE || kind === N_IMPORT || kind === N_SPECIFIER || kind === N_EMPTY) return NO_LIST$;
     for (let i = 0; i < this.deep.length; i++) {
       const d = this.deep[i] as Deep;
       if (d.node === node && d.which === which) return d.list;
     }
-    return NO_LIST;
+    return NO_LIST$;
   }
 
   /** Adds `list` at the end of the comments of `node`. */
@@ -650,6 +652,7 @@ export class Model {
     let hasSeenOther = false;
     const n = fileBodyLen();
     const bs = fileBodyStart();
+    const NO_LIST$ = NO_LIST;
     for (let i = 0; i < n; i++) {
       const statement = listAt(bs, i);
       stmtSpan(statement);
@@ -657,7 +660,7 @@ export class Model {
       const spanEnd = SP[1] | 0;
       const group = this.nextGroupBefore(spanStart);
       const start = group === null ? skipWhitespace(this.text, previousEnd) : group.end;
-      const between = group === null ? NO_LIST : this.newRange(group.first, group.after);
+      const between = group === null ? NO_LIST$ : this.newRange(group.first, group.after);
       if (previous >= 0) {
         this.attach(previous, WHICH_TRAILING, between);
         previous = -1;

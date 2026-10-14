@@ -970,9 +970,10 @@ export function parse(t: HTree, len: number, start: number, o: ParseOptions, raw
   const isCaseSensitive = o.isTagNameCaseSensitive;
   tokenize(text, len, start, rawMode, isCaseSensitive, o.tokenizeAngularBlocks, o.tokenizeLet, o.canSelfClose, o.allowHtmComponentClosingTags, o.allowStartTagComments);
   const result = new ParseResult();
-  appendErrors(result.errors, lx.errors);
-  const tokens = lx.tokens;
-  const tokenCount = lx.tokenCount;
+  const lx$ = lx;
+  appendErrors(result.errors, lx$.errors);
+  const tokens = lx$.tokens;
+  const tokenCount = lx$.tokenCount;
   const root = addNode(t, K_ROOT, 0, len);
   const end = tokenCount > 0 ? tokenCount - 1 : 0;
   let eofStart = len;

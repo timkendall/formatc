@@ -1196,11 +1196,12 @@ export function fmtExpr(e: number, f: Formatter): void {
 export function fmtNonNullMarks(e: number, f: Formatter): void {
   const cm = cxOf(f).comments;
   const n = exprInnerNonNullCount(e);
+  const hir$ = hir;
   if (n > 0) {
     const first = exprNonNullEndsFirst(e);
     const wholeEnd = exprEnd(e);
     for (let i = 0; i < n; i++) {
-      const nextEnd = i + 1 < n ? hir.nonNullEndEnd[(first + i + 1) | 0] | 0 : wholeEnd;
+      const nextEnd = i + 1 < n ? hir$.nonNullEndEnd[(first + i + 1) | 0] | 0 : wholeEnd;
       f.token(BANG);
       cm.commentsBefore(nextEnd > 0 ? nextEnd - 1 : 0);
       formatTrailingCommentsRange(cm.from, cm.to, f);

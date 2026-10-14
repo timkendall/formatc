@@ -60,6 +60,7 @@ const TX = new TextOf();
 function textOfElement(f: Formatter, i: number): boolean {
   const st = f.st;
   const kind = st.tag[i] | 0;
+  const TX$ = TX;
   if (kind >= TOK_BASE) {
     if (kind >= TIB_BASE) return false;
     const len = kind - TOK_BASE;
@@ -70,27 +71,27 @@ function textOfElement(f: Formatter, i: number): boolean {
       const w = k < 4 ? w0 : k < 8 ? w1 : w2;
       TOKEN_SCRATCH[k] = (w >>> (8 * (k & 3))) & 255;
     }
-    TX.tb = TOKEN_SCRATCH;
-    TX.ts = 0;
-    TX.te = len;
+    TX$.tb = TOKEN_SCRATCH;
+    TX$.ts = 0;
+    TX$.te = len;
     return true;
   }
   if (kind === E_TOKEN) {
-    TX.tb = tokenBytes();
-    TX.ts = st.a[i] | 0;
-    TX.te = (st.a[i] | 0) + (st.b[i] | 0);
+    TX$.tb = tokenBytes();
+    TX$.ts = st.a[i] | 0;
+    TX$.te = (st.a[i] | 0) + (st.b[i] | 0);
     return true;
   }
   if (kind === E_SOURCE_TEXT) {
-    TX.tb = f.source;
-    TX.ts = st.a[i] | 0;
-    TX.te = (st.a[i] | 0) + (st.b[i] | 0);
+    TX$.tb = f.source;
+    TX$.ts = st.a[i] | 0;
+    TX$.te = (st.a[i] | 0) + (st.b[i] | 0);
     return true;
   }
   if (kind === E_OWNED_TEXT) {
-    TX.tb = st.text.data;
-    TX.ts = st.a[i] | 0;
-    TX.te = (st.a[i] | 0) + (st.b[i] | 0);
+    TX$.tb = st.text.data;
+    TX$.ts = st.a[i] | 0;
+    TX$.te = (st.a[i] | 0) + (st.b[i] | 0);
     return true;
   }
   return false;
@@ -105,8 +106,9 @@ export function writeMapped(f: Formatter, content: number, map: StringMapper): v
   // Everything that `content` stands for is in it: what is captured stays where it is written.
   let changes = false;
   const end = f.capturedEnd(content);
+  const TX$ = TX;
   for (let i = f.capturedStart(content); i < end; i++) {
-    if (textOfElement(f, i) && map.changes(TX.tb, TX.ts, TX.te)) {
+    if (textOfElement(f, i) && map.changes(TX$.tb, TX$.ts, TX$.te)) {
       changes = true;
       break;
     }
@@ -167,6 +169,7 @@ class Mapper {
     const st = f.st;
     let i = f.capturedStart(content);
     const end = f.capturedEnd(content);
+    const TX$ = TX;
     while (i < end) {
       const kind = st.tag[i] | 0;
       let lineBreaks = LB_NONE;
@@ -181,7 +184,7 @@ class Mapper {
         this.lineBreaks = lineBreaks;
       }
       if (textOfElement(f, i)) {
-        this.text.append(TX.tb, TX.ts, TX.te);
+        this.text.append(TX$.tb, TX$.ts, TX$.te);
         this.strings.push(i);
         i = i + 1;
         continue;

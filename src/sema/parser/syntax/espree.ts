@@ -225,17 +225,20 @@ function fail(at: number, message: string): void {
 }
 
 function byte(at: number): number {
-  return at >= 0 && at < (hir.sourceLen | 0) ? hir.text[at] | 0 : 0;
+  const hir$ = hir;
+  return at >= 0 && at < (hir$.sourceLen | 0) ? hir$.text[at] | 0 : 0;
 }
 
 function sliceText(start: number, end: number): string {
   if (end <= start) return "";
-  return Buffer.from(hir.text.buffer, hir.text.byteOffset + start, end - start).toString("utf8");
+  const hir$ = hir;
+  return Buffer.from(hir$.text.buffer, hir$.text.byteOffset + start, end - start).toString("utf8");
 }
 
 /** The token at `at`. */
 function tokenAt(at: number): string {
-  const rest = hir.sourceLen - at;
+  const hir$ = hir;
+  const rest = hir$.sourceLen - at;
   if (rest <= 0) return "";
   const c = byte(at);
   let len: number;
@@ -248,7 +251,7 @@ function tokenAt(at: number): string {
     // The quote is a token of its own.
     len = 1;
   } else {
-    len = tokenLen(hir.text, hir.sourceLen | 0, at);
+    len = tokenLen(hir$.text, hir$.sourceLen | 0, at);
   }
   if (len > rest) len = rest;
   return sliceText(at, at + len);
@@ -256,7 +259,8 @@ function tokenAt(at: number): string {
 
 /** The start of the token after the one at `at`. */
 function afterToken(at: number): number {
-  return skipTrivia(hir.text, hir.sourceLen | 0, (at + tokenAt(at).length) | 0);
+  const hir$ = hir;
+  return skipTrivia(hir$.text, hir$.sourceLen | 0, (at + tokenAt(at).length) | 0);
 }
 
 function isIdentifierByte(c: number): boolean {
@@ -272,7 +276,8 @@ function beforeToken(at: number): number {
 }
 
 function nextIs(after: number, c: number): number {
-  const at = skipTrivia(hir.text, hir.sourceLen | 0, after);
+  const hir$ = hir;
+  const at = skipTrivia(hir$.text, hir$.sourceLen | 0, after);
   return byte(at) === c ? at : -1;
 }
 
@@ -304,9 +309,10 @@ function findCandidates(): void {
   taggedTemplates.len = 0;
   unaries.len = 0;
   yields.len = 0;
-  const n = hir.nExprs | 0;
-  const text = hir.text;
-  const len = hir.sourceLen | 0;
+  const hir$ = hir;
+  const n = hir$.nExprs | 0;
+  const text = hir$.text;
+  const len = hir$.sourceLen | 0;
   // Most files have no `??` and no `#`.
   let hasPrivateNames = false;
   let hasNullish = false;
@@ -316,26 +322,26 @@ function findCandidates(): void {
     else if (c === 63 && (text[i + 1] | 0) === 63) hasNullish = true;
   }
   for (let i = 0; i < n; i++) {
-    const t = hir.exprTag[i] | 0;
+    const t = hir$.exprTag[i] | 0;
     let isCandidate = false;
     switch (t) {
       case EXPR_IDENT:
-        isCandidate = (hir.exprA[i] | 0) === A_arguments;
+        isCandidate = (hir$.exprA[i] | 0) === A_arguments;
         if (isCandidate) {
           if (exprInTree(i) && !exprIsJsxTagName(i)) argumentsIdents.push(i);
           isCandidate = false;
         }
         break;
       case EXPR_DOT:
-        isCandidate = hasPrivateNames && byte(hir.exprC[i] | 0) === 35;
+        isCandidate = hasPrivateNames && byte(hir$.exprC[i] | 0) === 35;
         break;
       case EXPR_BINARY: {
-        const op = hir.exprAux[i] | 0;
+        const op = hir$.exprAux[i] | 0;
         isCandidate = hasNullish && (op === BIN_NULLISH || op === BIN_AND || op === BIN_OR);
         break;
       }
       case EXPR_UNARY: {
-        const op = hir.exprAux[i] | 0;
+        const op = hir$.exprAux[i] | 0;
         isCandidate = op === UN_PRE_INC || op === UN_PRE_DEC || op === UN_POST_INC || op === UN_POST_DEC || op === UN_DELETE;
         break;
       }
@@ -423,9 +429,10 @@ function funcInTree(f: number): boolean {
 }
 
 function classInTree(c: number): boolean {
-  const t = bound.classOwnerTag[c] | 0;
+  const bound$ = bound;
+  const t = bound$.classOwnerTag[c] | 0;
   if (t === 0) return false;
-  return !(t === 2 && (bound.classOwnerA[c] | 0) < 0);
+  return !(t === 2 && (bound$.classOwnerA[c] | 0) < 0);
 }
 
 function strBytes(text_: string): Uint8Array {
@@ -440,11 +447,12 @@ function strBytes(text_: string): Uint8Array {
 function thisScope(node: number): number {
   let inside = node;
   let at = nodeParent(node);
+  const hir$ = hir;
   for (;;) {
     if (nodeKind(at) === N_FILE) return -1;
-    if (nodeKind(at) === N_FUNC && (hir.fnKind[nodeId(at)] | 0) !== FN_ARROW) return at;
-    if (nodeKind(at) === N_MEMBER && (hir.memberKind[nodeId(at)] | 0) === MEMBER_PROPERTY) {
-      const init = hir.memberInit[nodeId(at)] | 0;
+    if (nodeKind(at) === N_FUNC && (hir$.fnKind[nodeId(at)] | 0) !== FN_ARROW) return at;
+    if (nodeKind(at) === N_MEMBER && (hir$.memberKind[nodeId(at)] | 0) === MEMBER_PROPERTY) {
+      const init = hir$.memberInit[nodeId(at)] | 0;
       if (init >= 0 && ((N_EXPR << 26) | init) === inside) return at;
     }
     inside = at;
@@ -456,7 +464,8 @@ function thisScope(node: number): number {
 function isReservedArguments(node: number, at: number): boolean {
   // The name of a function expression is in the scope of the function.
   let func = -1;
-  if (nodeKind(node) === N_FUNC && (hir.fnKind[nodeId(node)] | 0) === FN_EXPR) {
+  const hir$ = hir;
+  if (nodeKind(node) === N_FUNC && (hir$.fnKind[nodeId(node)] | 0) === FN_EXPR) {
     func = nodeId(node);
   } else {
     let inside = node;
@@ -469,7 +478,7 @@ function isReservedArguments(node: number, at: number): boolean {
       }
       // For acorn the initializer of a field is a scope of its own, which is not that of the function around.
       if (nodeKind(up) === N_MEMBER) {
-        const init = hir.memberInit[nodeId(up)] | 0;
+        const init = hir$.memberInit[nodeId(up)] | 0;
         if (init >= 0 && ((N_EXPR << 26) | init) === inside) {
           func = -1;
           break;
@@ -479,7 +488,7 @@ function isReservedArguments(node: number, at: number): boolean {
       up = nodeParent(up);
     }
   }
-  const isInStaticBlock = func >= 0 && (hir.fnKind[func] | 0) === FN_STATIC_BLOCK;
+  const isInStaticBlock = func >= 0 && (hir$.fnKind[func] | 0) === FN_STATIC_BLOCK;
   const scope = thisScope(node);
   if (scope >= 0 && nodeKind(scope) === N_MEMBER) {
     fail(at, "Cannot use 'arguments' in class field initializer");
@@ -497,26 +506,27 @@ function keywordsAsNames(): void {
     const e = argumentsIdents.data[k] | 0;
     isReservedArguments((N_EXPR << 26) | e, exprStart(e));
   }
-  const np = hir.nPats | 0;
+  const hir$ = hir;
+  const np = hir$.nPats | 0;
   for (let i = 0; i < np; i++) {
-    if ((hir.patTag[i] | 0) !== PAT_IDENT) continue;
-    const name = hir.patA[i] | 0;
+    if ((hir$.patTag[i] | 0) !== PAT_IDENT) continue;
+    const name = hir$.patA[i] | 0;
     if (name !== A_arguments && name !== A_let) continue;
     if (!patInTree(i)) continue;
-    keywordAsBinding((4 << 26) | i, hir.patPos[i] | 0, name);
+    keywordAsBinding((4 << 26) | i, hir$.patPos[i] | 0, name);
   }
-  const nf = hir.nFns | 0;
+  const nf = hir$.nFns | 0;
   for (let i = 0; i < nf; i++) {
-    const name = hir.fnName[i] | 0;
+    const name = hir$.fnName[i] | 0;
     if (name !== A_arguments || !funcInTree(i)) continue;
-    const kind = hir.fnKind[i] | 0;
+    const kind = hir$.fnKind[i] | 0;
     // The name of a method is not a binding.
-    if (kind === FN_DECL || kind === FN_EXPR) isReservedArguments((N_FUNC << 26) | i, hir.fnNamePos[i] | 0);
+    if (kind === FN_DECL || kind === FN_EXPR) isReservedArguments((N_FUNC << 26) | i, hir$.fnNamePos[i] | 0);
   }
-  const nc = hir.nClasses | 0;
+  const nc = hir$.nClasses | 0;
   for (let i = 0; i < nc; i++) {
-    if ((hir.className[i] | 0) !== A_arguments || !classInTree(i)) continue;
-    isReservedArguments((N_CLASS << 26) | i, hir.classNamePos[i] | 0);
+    if ((hir$.className[i] | 0) !== A_arguments || !classInTree(i)) continue;
+    isReservedArguments((N_CLASS << 26) | i, hir$.classNamePos[i] | 0);
   }
 }
 
@@ -533,10 +543,11 @@ function keywordAsBinding(node: number, at: number, name: number): void {
   // `let`: a binding of a lexical declaration.
   let up = nodeParent(node);
   let isLexical = false;
+  const hir$ = hir;
   for (;;) {
     const k = nodeKind(up);
     if (k === N_VAR_DECL) {
-      isLexical = (hir.varDeclKind[nodeId(up)] | 0) !== VAR_VAR_;
+      isLexical = (hir$.varDeclKind[nodeId(up)] | 0) !== VAR_VAR_;
       break;
     }
     if (k === N_PARAM || k === N_FUNC) {
@@ -554,9 +565,10 @@ const VAR_VAR_ = 0;
 // ───────────────────────────── what is assigned to ─────────────────────────────
 
 function isPlainTarget(target: number): boolean {
-  const t = hir.exprTag[target] | 0;
+  const hir$ = hir;
+  const t = hir$.exprTag[target] | 0;
   if (t === EXPR_IDENT) return true;
-  if (t === EXPR_DOT || t === EXPR_INDEX) return (hir.exprAux[target] | 0) === CHAIN_NO;
+  if (t === EXPR_DOT || t === EXPR_INDEX) return (hir$.exprAux[target] | 0) === CHAIN_NO;
   return false;
 }
 
@@ -583,7 +595,8 @@ function nextIsCommaAfterRest(end: number): void {
 /** `toAssignable` */
 function toAssignable(target: number, depth: number): void {
   if (depth > 5000) return;
-  const t = hir.exprTag[target] | 0;
+  const hir$ = hir;
+  const t = hir$.exprTag[target] | 0;
   const isSimple = t === EXPR_IDENT || t === EXPR_DOT || t === EXPR_INDEX;
   const parenthesized = fileIsParenthesized(target);
   if ((t === EXPR_OBJECT || t === EXPR_ARRAY) && parenthesized) {
@@ -599,13 +612,13 @@ function toAssignable(target: number, depth: number): void {
     return;
   }
   if (t === EXPR_OBJECT) {
-    const start = hir.exprA[target] | 0;
-    const count = hir.exprB[target] | 0;
+    const start = hir$.exprA[target] | 0;
+    const count = hir$.exprB[target] | 0;
     for (let i = 0; i < count; i++) {
-      const prop = hir.ids[(start + i) | 0] | 0;
-      const value = hir.propValue[prop] | 0;
+      const prop = hir$.ids[(start + i) | 0] | 0;
+      const value = hir$.propValue[prop] | 0;
       if (value < 0) continue;
-      const kind = hir.propKind[prop] | 0;
+      const kind = hir$.propKind[prop] | 0;
       if (kind === PROP_GETTER || kind === PROP_SETTER) {
         let key: number;
         if (keySpan((12 << 26) | prop)) key = SP[0] | 0;
@@ -630,35 +643,37 @@ function toAssignable(target: number, depth: number): void {
       }
     }
   } else if (t === EXPR_ARRAY) {
-    const start = hir.exprA[target] | 0;
-    const count = hir.exprB[target] | 0;
+    const start = hir$.exprA[target] | 0;
+    const count = hir$.exprB[target] | 0;
     for (let i = 0; i < count; i++) {
-      const element = hir.ids[(start + i) | 0] | 0;
-      if ((hir.exprTag[element] | 0) === EXPR_MISSING) continue;
+      const element = hir$.ids[(start + i) | 0] | 0;
+      if ((hir$.exprTag[element] | 0) === EXPR_MISSING) continue;
       toAssignable(element, depth + 1);
     }
   } else if (t === EXPR_SPREAD) {
-    const argument = hir.exprA[target] | 0;
+    const argument = hir$.exprA[target] | 0;
     toAssignable(argument, depth + 1);
-    if ((hir.exprTag[argument] | 0) === EXPR_ASSIGN) fail(exprStart(argument), "Rest elements cannot have a default value");
+    if ((hir$.exprTag[argument] | 0) === EXPR_ASSIGN) fail(exprStart(argument), "Rest elements cannot have a default value");
     // Babel recovers from a comma after it in what it has parsed as an expression.
   } else if (t === EXPR_ASSIGN) {
-    toAssignable(hir.exprA[target] | 0, depth + 1);
+    toAssignable(hir$.exprA[target] | 0, depth + 1);
   } else {
     checkSimpleTarget(target);
   }
 }
 
 function propFuncOf(prop: number): number {
-  const v = hir.propValue[prop] | 0;
-  return v >= 0 && (hir.exprTag[v] | 0) === EXPR_FN ? hir.exprA[v] | 0 : -1;
+  const hir$ = hir;
+  const v = hir$.propValue[prop] | 0;
+  return v >= 0 && (hir$.exprTag[v] | 0) === EXPR_FN ? hir$.exprA[v] | 0 : -1;
 }
 
 function assignmentTargets(): void {
+  const hir$ = hir;
   for (let k = 0; k < assigns.len; k++) {
     const it = assigns.data[k] | 0;
-    const target = hir.exprA[it] | 0;
-    const op = hir.exprAux[it] | 0;
+    const target = hir$.exprA[it] | 0;
+    const op = hir$.exprAux[it] | 0;
     // A default in a pattern is looked at with the pattern.
     if (isPlainTarget(target) || exprIsAssignmentTarget(it)) continue;
     const saved = noticed;
@@ -675,9 +690,9 @@ function assignmentTargets(): void {
   }
   for (let k = 0; k < unaries.len; k++) {
     const it = unaries.data[k] | 0;
-    const op = hir.exprAux[it] | 0;
+    const op = hir$.exprAux[it] | 0;
     if (!(op === UN_PRE_INC || op === UN_PRE_DEC || op === UN_POST_INC || op === UN_POST_DEC)) continue;
-    const operand = hir.exprA[it] | 0;
+    const operand = hir$.exprA[it] | 0;
     if (isPlainTarget(operand)) continue;
     const saved = noticed;
     noticed = outerEnd(operand);
@@ -689,12 +704,13 @@ function assignmentTargets(): void {
 }
 
 function forLoops(tag: number): void {
-  const n = hir.nStmts | 0;
+  const hir$ = hir;
+  const n = hir$.nStmts | 0;
   for (let i = 0; i < n; i++) {
-    if ((hir.stmtTag[i] | 0) !== tag || !stmtInTree(i)) continue;
-    const left = hir.stmtA[i] | 0;
-    if (left < 0 || (hir.stmtTag[left] | 0) !== STMT_EXPR) continue;
-    const target = hir.stmtA[left] | 0;
+    if ((hir$.stmtTag[i] | 0) !== tag || !stmtInTree(i)) continue;
+    const left = hir$.stmtA[i] | 0;
+    if (left < 0 || (hir$.stmtTag[left] | 0) !== STMT_EXPR) continue;
+    const target = hir$.stmtA[left] | 0;
     const saved = noticed;
     noticed = outerEnd(target);
     toAssignable(target, 0);
@@ -711,10 +727,11 @@ function restElements(): void {
     }
     nextIsCommaAfterRest(end);
   };
-  const ne = hir.nPatElems | 0;
+  const hir$ = hir;
+  const ne = hir$.nPatElems | 0;
   for (let i = 0; i < ne; i++) {
-    if ((hir.patElemIsRest[i] | 0) === 0) continue;
-    const pat = hir.patElemPat[i] | 0;
+    if ((hir$.patElemIsRest[i] | 0) === 0) continue;
+    const pat = hir$.patElemPat[i] | 0;
     if (pat < 0 || !patInTree(pat)) continue;
     // acorn parses the parameters of an arrow function as an expression first.
     let arrow = -1;
@@ -726,7 +743,7 @@ function restElements(): void {
       const k = nodeKind(up);
       if (k === N_FILE) break;
       if (k === N_FUNC) {
-        if (arrow < 0 && (hir.fnKind[nodeId(up)] | 0) === FN_ARROW) arrow = nodeId(up);
+        if (arrow < 0 && (hir$.fnKind[nodeId(up)] | 0) === FN_ARROW) arrow = nodeId(up);
         if (!foundParam) {
           foundParam = true;
           isParameter = false;
@@ -739,55 +756,59 @@ function restElements(): void {
       }
       up = nodeParent(up);
     }
-    const def = hir.patElemDefault[i] | 0;
+    const def = hir$.patElemDefault[i] | 0;
     if (arrow >= 0 && isParameter && def >= 0) {
-      let noticedAt = hir.patElemEnd[i] | 0;
+      let noticedAt = hir$.patElemEnd[i] | 0;
       if (funcArrowSpan(arrow)) noticedAt = SP[0] | 0;
       const saved = noticed;
       noticed = noticedAt;
-      fail(hir.patPos[pat] | 0, "Rest elements cannot have a default value");
+      fail(hir$.patPos[pat] | 0, "Rest elements cannot have a default value");
       noticed = saved;
     } else if (arrow >= 0 && isParameter) {
       // Babel recovers from what is wrong with `...` in the parameters of an arrow function.
     } else {
-      rest(def, hir.patElemEnd[i] | 0);
+      rest(def, hir$.patElemEnd[i] | 0);
     }
   }
-  const np = hir.nPatProps | 0;
+  const np = hir$.nPatProps | 0;
   for (let i = 0; i < np; i++) {
-    if ((hir.patPropIsRest[i] | 0) === 0) continue;
-    const value = hir.patPropValue[i] | 0;
+    if ((hir$.patPropIsRest[i] | 0) === 0) continue;
+    const value = hir$.patPropValue[i] | 0;
     if (value < 0 || !patInTree(value)) continue;
-    rest(hir.patPropDefault[i] | 0, hir.patPropEnd[i] | 0);
+    rest(hir$.patPropDefault[i] | 0, hir$.patPropEnd[i] | 0);
   }
-  const nparam = hir.nParams | 0;
+  const nparam = hir$.nParams | 0;
+  const bound$ = bound;
   for (let i = 0; i < nparam; i++) {
-    if (((hir.paramFlags[i] | 0) & FLAG_REST) === 0) continue;
-    if ((bound.paramFn[i] | 0) < 0) continue;
+    if (((hir$.paramFlags[i] | 0) & FLAG_REST) === 0) continue;
+    if ((bound$.paramFn[i] | 0) < 0) continue;
     paramSpan(i);
-    rest(hir.paramDefault[i] | 0, SP[1] | 0);
+    rest(hir$.paramDefault[i] | 0, SP[1] | 0);
   }
 }
 
 // ───────────────────────────── declarations ─────────────────────────────
 
 function declarations(): void {
-  const n = hir.nStmts | 0;
+  const hir$ = hir;
+  const n = hir$.nStmts | 0;
   for (let i = 0; i < n; i++) {
-    if ((hir.stmtTag[i] | 0) !== STMT_VAR || !stmtInTree(i)) continue;
-    const len = hir.stmtB[i] | 0;
+    if ((hir$.stmtTag[i] | 0) !== STMT_VAR || !stmtInTree(i)) continue;
+    const len = hir$.stmtB[i] | 0;
     if (len === 0) continue;
-    const first = hir.ids[hir.stmtA[i] | 0] | 0;
-    const kind = hir.varDeclKind[first] | 0;
+    const first = hir$.ids[hir$.stmtA[i] | 0] | 0;
+    const kind = hir$.varDeclKind[first] | 0;
     if (kind === VAR_USING || kind === VAR_AWAIT_USING) usingDeclaration(i);
   }
 }
 
 /** `allowUsing`, and what `using` can declare. */
 function usingDeclaration(it: number): void {
-  const start = hir.stmtStart[it] | 0;
-  const parentTag = bound.stmtParentTag[it] | 0;
-  const parent = bound.stmtParentA[it] | 0;
+  const hir$ = hir;
+  const start = hir$.stmtStart[it] | 0;
+  const bound$ = bound;
+  const parentTag = bound$.stmtParentTag[it] | 0;
+  const parent = bound$.stmtParentA[it] | 0;
   const node = nodeParent((N_STMT << 26) | it);
   const isAtTopOfScript = nodeKind(node) === N_FILE && isScriptSource;
   if (isAtTopOfScript || nodeKind(node) === N_CASE) {
@@ -795,47 +816,50 @@ function usingDeclaration(it: number): void {
   }
   void parentTag;
   void parent;
-  if (nodeKind(node) === N_STMT && (hir.stmtTag[nodeId(node)] | 0) === STMT_FOR_IN && (hir.stmtA[nodeId(node)] | 0) === it) {
-    fail(skipTrivia(hir.text, hir.sourceLen | 0, hir.stmtLocEnd[it] | 0), "Using declaration is not allowed in for-in loops");
+  if (nodeKind(node) === N_STMT && (hir$.stmtTag[nodeId(node)] | 0) === STMT_FOR_IN && (hir$.stmtA[nodeId(node)] | 0) === it) {
+    fail(skipTrivia(hir$.text, hir$.sourceLen | 0, hir$.stmtLocEnd[it] | 0), "Using declaration is not allowed in for-in loops");
   }
-  const listStart = hir.stmtA[it] | 0;
-  const listLen = hir.stmtB[it] | 0;
+  const listStart = hir$.stmtA[it] | 0;
+  const listLen = hir$.stmtB[it] | 0;
   for (let k = 0; k < listLen; k++) {
-    const d = hir.ids[(listStart + k) | 0] | 0;
-    const pat = hir.varDeclPat[d] | 0;
-    if (pat >= 0 && (hir.patTag[pat] | 0) !== PAT_IDENT) fail(hir.patPos[pat] | 0, "Using declaration cannot have destructuring patterns");
+    const d = hir$.ids[(listStart + k) | 0] | 0;
+    const pat = hir$.varDeclPat[d] | 0;
+    if (pat >= 0 && (hir$.patTag[pat] | 0) !== PAT_IDENT) fail(hir$.patPos[pat] | 0, "Using declaration cannot have destructuring patterns");
   }
 }
 
 /** `parseStatement` with a `context`: what cannot be the body of an `if`, a loop, a `with` or a label. */
 function statementPositions(): void {
-  const n = hir.nStmts | 0;
+  const hir$ = hir;
+  const n = hir$.nStmts | 0;
+  const bound$ = bound;
   for (let i = 0; i < n; i++) {
-    const tag = hir.stmtTag[i] | 0;
+    const tag = hir$.stmtTag[i] | 0;
     if (tag !== STMT_VAR && tag !== STMT_FN && tag !== STMT_CLASS) continue;
     if (!stmtInTree(i)) continue;
-    if ((bound.stmtParentTag[i] | 0) !== P_STMT) continue;
-    const parent = bound.stmtParentA[i] | 0;
-    if (parent < 0 || parent >= hir.nStmts) continue;
-    const pt = hir.stmtTag[parent] | 0;
+    if ((bound$.stmtParentTag[i] | 0) !== P_STMT) continue;
+    const parent = bound$.stmtParentA[i] | 0;
+    if (parent < 0 || parent >= hir$.nStmts) continue;
+    const pt = hir$.stmtTag[parent] | 0;
     let isBody = false;
     if (stmtIsWith(parent)) isBody = stmtWithBody(parent) === i;
-    else if (pt === STMT_IF) isBody = (hir.stmtB[parent] | 0) === i || (hir.stmtC[parent] | 0) === i;
-    else if (pt === STMT_FOR) isBody = (hir.stmtD[parent] | 0) === i;
-    else if (pt === STMT_FOR_IN || pt === STMT_FOR_OF) isBody = (hir.stmtC[parent] | 0) === i;
-    else if (pt === STMT_WHILE) isBody = (hir.stmtB[parent] | 0) === i;
-    else if (pt === STMT_DO_WHILE) isBody = (hir.stmtA[parent] | 0) === i;
-    else if (pt === STMT_LABELED) isBody = (hir.stmtB[parent] | 0) === i;
+    else if (pt === STMT_IF) isBody = (hir$.stmtB[parent] | 0) === i || (hir$.stmtC[parent] | 0) === i;
+    else if (pt === STMT_FOR) isBody = (hir$.stmtD[parent] | 0) === i;
+    else if (pt === STMT_FOR_IN || pt === STMT_FOR_OF) isBody = (hir$.stmtC[parent] | 0) === i;
+    else if (pt === STMT_WHILE) isBody = (hir$.stmtB[parent] | 0) === i;
+    else if (pt === STMT_DO_WHILE) isBody = (hir$.stmtA[parent] | 0) === i;
+    else if (pt === STMT_LABELED) isBody = (hir$.stmtB[parent] | 0) === i;
     if (isBody) declarationAsBody(i, tag);
   }
 }
 
 function declarationAsBody(it: number, tag: number): void {
-  const start = hir.stmtStart[it] | 0;
+  const hir$ = hir;
+  const start = hir$.stmtStart[it] | 0;
   let isLexical = false;
   if (tag === STMT_VAR) {
-    if ((hir.stmtB[it] | 0) > 0) {
-      const k = hir.varDeclKind[hir.ids[hir.stmtA[it] | 0] | 0] | 0;
+    if ((hir$.stmtB[it] | 0) > 0) {
+      const k = hir$.varDeclKind[hir$.ids[hir$.stmtA[it] | 0] | 0] | 0;
       isLexical = k === VAR_LET || k === VAR_CONST;
     }
   } else if (tag === STMT_CLASS) isLexical = true;
@@ -845,8 +869,8 @@ function declarationAsBody(it: number, tag: number): void {
   }
   // Where else a function cannot be is an error of strict mode for it, or one of sloppy mode.
   if (tag === STMT_FN) {
-    const f = hir.stmtA[it] | 0;
-    if (f >= 0 && ((hir.fnFlags[f] | 0) & FLAG_ASYNC) !== 0) fail(start, "Async functions can only be declared at the top level or inside a block");
+    const f = hir$.stmtA[it] | 0;
+    if (f >= 0 && ((hir$.fnFlags[f] | 0) & FLAG_ASYNC) !== 0) fail(start, "Async functions can only be declared at the top level or inside a block");
   }
 }
 
@@ -854,12 +878,13 @@ function declarationAsBody(it: number, tag: number): void {
 
 /** `isPrivateFieldAccess` */
 function deletedPrivateFields(): void {
+  const hir$ = hir;
   for (let k = 0; k < unaries.len; k++) {
     const it = unaries.data[k] | 0;
-    if ((hir.exprAux[it] | 0) !== UN_DELETE) continue;
-    const operand = hir.exprA[it] | 0;
-    if ((hir.exprTag[operand] | 0) !== EXPR_DOT) continue;
-    if (byte(hir.exprC[operand] | 0) !== 35) continue;
+    if ((hir$.exprAux[it] | 0) !== UN_DELETE) continue;
+    const operand = hir$.exprA[it] | 0;
+    if ((hir$.exprTag[operand] | 0) !== EXPR_DOT) continue;
+    if (byte(hir$.exprC[operand] | 0) !== 35) continue;
     // Babel does not look into parentheses, which Prettier has it keep.
     if (fileIsParenthesized(operand)) continue;
     const saved = noticed;
@@ -881,26 +906,27 @@ function metaProperties(): void {
     if (exprImportCallPhase(it) !== 0 && t !== "defer" && t !== "source") fail(name, ofImport);
   }
   // `import defer * as a from "a"`: `defer` is the name of the default import.
-  const ni = hir.nImports | 0;
+  const hir$ = hir;
+  const ni = hir$.nImports | 0;
   for (let i = 0; i < ni; i++) {
-    if ((hir.importIsDeferred[i] | 0) === 0) continue;
+    if ((hir$.importIsDeferred[i] | 0) === 0) continue;
     // `import defer * as a from "a"`, `import source a from "a"`
-    const hasDefault = (hir.importDefault[i] | 0) >= 0;
-    const hasNamespace = (hir.importNamespace[i] | 0) >= 0;
-    const clause = hir.importClauseStart[i] | 0;
+    const hasDefault = (hir$.importDefault[i] | 0) >= 0;
+    const hasNamespace = (hir$.importNamespace[i] | 0) >= 0;
+    const clause = hir$.importClauseStart[i] | 0;
     const isValid = tokenAt(clause) === "source" ? hasDefault && !hasNamespace : hasNamespace && !hasDefault;
-    if (!isValid || (hir.importHasNamedImports[i] | 0) !== 0) fail(clause, "Only `import defer * as x` is valid");
+    if (!isValid || (hir$.importHasNamedImports[i] | 0) !== 0) fail(clause, "Only `import defer * as x` is valid");
   }
-  const nd = hir.diagnosticsLen | 0;
+  const nd = hir$.diagnosticsLen | 0;
   for (let row = 0; row < nd; row += 5) {
-    if ((hir.diagnostics[row] | 0) !== DK_GRAMMAR) continue;
-    const code = hir.diagnostics[row + 3] | 0;
-    const start = hir.diagnostics[row + 1] | 0;
+    if ((hir$.diagnostics[row] | 0) !== DK_GRAMMAR) continue;
+    const code = hir$.diagnostics[row + 3] | 0;
+    const start = hir$.diagnostics[row + 1] | 0;
     let name: number;
     if (code === 17012 || code === 18061) name = start;
     else if (code === 1005) {
-      const id = hir.diagnostics[row + 4] | 0;
-      if (id < 0 || hir.diagArgs[id].length === 0 || hir.diagArgs[id][0] !== "(") continue;
+      const id = hir$.diagnostics[row + 4] | 0;
+      if (id < 0 || hir$.diagArgs[id].length === 0 || hir$.diagArgs[id][0] !== "(") continue;
       name = beforeToken(start);
     } else continue;
     const keyword = beforeToken(beforeToken(name));
@@ -913,7 +939,7 @@ function metaProperties(): void {
     const it = newTargets.data[k] | 0;
     // acorn throws the first of its three complaints about one `new.target`, wherever the others are.
     const name = afterToken(afterToken(exprStart(it)));
-    const isTarget = atomIs(hir.exprA[it] | 0, "target");
+    const isTarget = atomIs(hir$.exprA[it] | 0, "target");
     if (!isTarget || tokenAt(name) !== "target") fail(name, ofNew);
   }
 }
@@ -950,15 +976,17 @@ function regularExpressions(): void {
 
 /** `??` beside `&&` or `||`, a template after an optional chain. */
 function operators(): void {
+  const hir$ = hir;
   for (let k = 0; k < binaries.len; k++) {
     const it = binaries.data[k] | 0;
-    const op = hir.exprAux[it] | 0;
+    const op = hir$.exprAux[it] | 0;
     if (!(op === BIN_NULLISH || op === BIN_AND || op === BIN_OR)) continue;
-    const left = hir.exprA[it] | 0;
-    const right = hir.exprB[it] | 0;
+    const left = hir$.exprA[it] | 0;
+    const right = hir$.exprB[it] | 0;
     const isMixed = (operand: number): boolean => {
-      if ((hir.exprTag[operand] | 0) !== EXPR_BINARY || fileIsParenthesized(operand)) return false;
-      const inner = hir.exprAux[operand] | 0;
+      const hir$ = hir;
+      if ((hir$.exprTag[operand] | 0) !== EXPR_BINARY || fileIsParenthesized(operand)) return false;
+      const inner = hir$.exprAux[operand] | 0;
       return (op === BIN_NULLISH) !== (inner === BIN_NULLISH) && (inner === BIN_NULLISH || inner === BIN_AND || inner === BIN_OR);
     };
     // It is noticed at the second operator.
@@ -970,9 +998,9 @@ function operators(): void {
   }
   for (let k = 0; k < taggedTemplates.len; k++) {
     const it = taggedTemplates.data[k] | 0;
-    const call = hir.exprA[it] | 0;
-    const tag = hir.callCallee[call] | 0;
-    const afterTag = skipTrivia(hir.text, hir.sourceLen | 0, outerEnd(tag));
+    const call = hir$.exprA[it] | 0;
+    const tag = hir$.callCallee[call] | 0;
+    const afterTag = skipTrivia(hir$.text, hir$.sourceLen | 0, outerEnd(tag));
     if (tokenAt(afterTag) === "?.") {
       fail(afterToken(afterTag), "Optional chaining cannot appear in the tag of tagged template expressions");
     } else if (exprIsInOptionalChain(tag) && !fileIsParenthesized(tag)) {
@@ -983,6 +1011,7 @@ function operators(): void {
 
 /** `parseDynamicImport` */
 function dynamicImports(): void {
+  const hir$ = hir;
   for (let k = 0; k < importCalls.len; k++) {
     const it = importCalls.data[k] | 0;
     const start = exprStart(it);
@@ -991,17 +1020,17 @@ function dynamicImports(): void {
       const parent = exprParent(it);
       if (nodeKind(parent) === N_EXPR) {
         const pe = nodeId(parent);
-        if ((hir.exprTag[pe] | 0) === EXPR_NEW && (hir.callCallee[hir.exprA[pe] | 0] | 0) === it) fail(start, "Cannot use new with import");
+        if ((hir$.exprTag[pe] | 0) === EXPR_NEW && (hir$.callCallee[hir$.exprA[pe] | 0] | 0) === it) fail(start, "Cannot use new with import");
       }
     }
-    const argsStart = hir.exprA[it] | 0;
-    const argsLen = hir.exprB[it] | 0;
+    const argsStart = hir$.exprA[it] | 0;
+    const argsLen = hir$.exprB[it] | 0;
     let written = 0;
     let firstTwoSpread = -1;
     for (let i = 0; i < argsLen; i++) {
-      const a = hir.ids[(argsStart + i) | 0] | 0;
-      if ((hir.exprTag[a] | 0) === EXPR_MISSING) continue;
-      if (written < 2 && (hir.exprTag[a] | 0) === EXPR_SPREAD && firstTwoSpread < 0) firstTwoSpread = a;
+      const a = hir$.ids[(argsStart + i) | 0] | 0;
+      if ((hir$.exprTag[a] | 0) === EXPR_MISSING) continue;
+      if (written < 2 && (hir$.exprTag[a] | 0) === EXPR_SPREAD && firstTwoSpread < 0) firstTwoSpread = a;
       written = (written + 1) | 0;
     }
     if (written !== 1 && written !== 2) fail(start, "`import()` requires exactly one or two arguments");
@@ -1010,25 +1039,26 @@ function dynamicImports(): void {
 }
 
 function switchesAndThrows(): void {
-  const n = hir.nStmts | 0;
+  const hir$ = hir;
+  const n = hir$.nStmts | 0;
   for (let i = 0; i < n; i++) {
-    const tag = hir.stmtTag[i] | 0;
+    const tag = hir$.stmtTag[i] | 0;
     if (tag === STMT_SWITCH) {
       if (!stmtInTree(i)) continue;
-      const cases = hir.stmtB[i] | 0;
-      const count = hir.stmtC[i] | 0;
+      const cases = hir$.stmtB[i] | 0;
+      const count = hir$.stmtC[i] | 0;
       let defaults = 0;
       for (let k = 0; k < count; k++) {
-        const c = hir.ids[(cases + k) | 0] | 0;
-        if ((hir.caseTest[c] | 0) < 0) {
+        const c = hir$.ids[(cases + k) | 0] | 0;
+        if ((hir$.caseTest[c] | 0) < 0) {
           defaults = (defaults + 1) | 0;
-          if (defaults === 2) fail(hir.casePos[c] | 0, "Multiple default clauses");
+          if (defaults === 2) fail(hir$.casePos[c] | 0, "Multiple default clauses");
         }
       }
     } else if (tag === STMT_THROW) {
       if (!stmtInTree(i)) continue;
-      const thrown = hir.stmtA[i] | 0;
-      if (thrown < 0 || thrown >= hir.nExprs || (hir.exprTag[thrown] | 0) === EXPR_MISSING) fail(((hir.stmtStart[i] | 0) + 5) | 0, "Illegal newline after throw");
+      const thrown = hir$.stmtA[i] | 0;
+      if (thrown < 0 || thrown >= hir$.nExprs || (hir$.exprTag[thrown] | 0) === EXPR_MISSING) fail(((hir$.stmtStart[i] | 0) + 5) | 0, "Illegal newline after throw");
     }
   }
 }
@@ -1037,8 +1067,9 @@ function switchesAndThrows(): void {
 
 function mentions(text_: string): boolean {
   const n = text_.length;
-  const len = hir.sourceLen | 0;
-  const t = hir.text;
+  const hir$ = hir;
+  const len = hir$.sourceLen | 0;
+  const t = hir$.text;
   const first = text_.charCodeAt(0);
   outer: for (let i = 0; i + n <= len; i++) {
     if ((t[i] | 0) !== first) continue;
@@ -1049,13 +1080,14 @@ function mentions(text_: string): boolean {
 }
 
 function functions(mayHaveDirective: boolean): void {
-  const n = hir.nFns | 0;
+  const hir$ = hir;
+  const n = hir$.nFns | 0;
   for (let i = 0; i < n; i++) {
-    const kind = hir.fnKind[i] | 0;
+    const kind = hir$.fnKind[i] | 0;
     if (!mayHaveDirective && kind !== FN_GETTER && kind !== FN_SETTER) continue;
     if (!funcInTree(i)) continue;
-    const paramsStart = hir.fnParamsStart[i] | 0;
-    const paramsLen = hir.fnParamsLen[i] | 0;
+    const paramsStart = hir$.fnParamsStart[i] | 0;
+    const paramsLen = hir$.fnParamsLen[i] | 0;
     let wrongAt = -1;
     let wrongMessage = "";
     if (kind === FN_GETTER && paramsLen !== 0) {
@@ -1067,8 +1099,8 @@ function functions(mayHaveDirective: boolean): void {
       wrongAt = SP[0] | 0;
       wrongMessage = "setter should have exactly one param";
     } else if (kind === FN_SETTER) {
-      const first = hir.ids[paramsStart] | 0;
-      if (((hir.paramFlags[first] | 0) & FLAG_REST) !== 0) {
+      const first = hir$.ids[paramsStart] | 0;
+      if (((hir$.paramFlags[first] | 0) & FLAG_REST) !== 0) {
         paramSpan(first);
         wrongAt = SP[0] | 0;
         wrongMessage = "Setter cannot use rest params";
@@ -1084,21 +1116,21 @@ function functions(mayHaveDirective: boolean): void {
     // An error since ES2016.
     let allSimple = true;
     for (let k = 0; k < paramsLen; k++) {
-      const p = hir.ids[(paramsStart + k) | 0] | 0;
-      const pat = hir.paramPat[p] | 0;
-      const isSimple = (hir.paramDefault[p] | 0) < 0 && ((hir.paramFlags[p] | 0) & FLAG_REST) === 0 && pat >= 0 && (hir.patTag[pat] | 0) === PAT_IDENT;
+      const p = hir$.ids[(paramsStart + k) | 0] | 0;
+      const pat = hir$.paramPat[p] | 0;
+      const isSimple = (hir$.paramDefault[p] | 0) < 0 && ((hir$.paramFlags[p] | 0) & FLAG_REST) === 0 && pat >= 0 && (hir$.patTag[pat] | 0) === PAT_IDENT;
       if (!isSimple) {
         allSimple = false;
         break;
       }
     }
     if (allSimple) continue;
-    if ((hir.fnBodyKind[i] | 0) !== BODY_BLOCK) continue;
-    const bodyStart = hir.fnBodyA[i] | 0;
-    const bodyLen = hir.fnBodyB[i] | 0;
+    if ((hir$.fnBodyKind[i] | 0) !== BODY_BLOCK) continue;
+    const bodyStart = hir$.fnBodyA[i] | 0;
+    const bodyLen = hir$.fnBodyB[i] | 0;
     let hasDirective = false;
     for (let k = 0; k < bodyLen; k++) {
-      const st = hir.ids[(bodyStart + k) | 0] | 0;
+      const st = hir$.ids[(bodyStart + k) | 0] | 0;
       if (!stmtDirectiveSpan(st)) break;
       if (SP[1] - SP[0] === 10 && sliceText(SP[0] | 0, SP[1] | 0) === "use strict") {
         hasDirective = true;
@@ -1143,6 +1175,7 @@ function defaultsThatSuspend(): void {
 }
 
 function supersCheck(): void {
+  const hir$ = hir;
   for (let k = 0; k < supers.len; k++) {
     const it = supers.data[k] | 0;
     const start = exprStart(it);
@@ -1150,7 +1183,7 @@ function supersCheck(): void {
     let allowsSuper: boolean;
     if (scope < 0) allowsSuper = false;
     else if (nodeKind(scope) === N_FUNC) {
-      const fk = hir.fnKind[nodeId(scope)] | 0;
+      const fk = hir$.fnKind[nodeId(scope)] | 0;
       allowsSuper = fk === FN_METHOD || fk === FN_GETTER || fk === FN_SETTER || fk === FN_CONSTRUCTOR || fk === FN_STATIC_BLOCK;
     } else allowsSuper = true;
     if (!allowsSuper) {
@@ -1164,10 +1197,10 @@ function supersCheck(): void {
     const pn = exprParent(it);
     if (nodeKind(pn) === N_EXPR) {
       const pe = nodeId(pn);
-      if ((hir.exprTag[pe] | 0) === EXPR_CALL && (hir.callCallee[hir.exprA[pe] | 0] | 0) === it) isCalled = true;
+      if ((hir$.exprTag[pe] | 0) === EXPR_CALL && (hir$.callCallee[hir$.exprA[pe] | 0] | 0) === it) isCalled = true;
     }
     let inConstructorOfSubclass = false;
-    if (scope >= 0 && nodeKind(scope) === N_FUNC && (hir.fnKind[nodeId(scope)] | 0) === FN_CONSTRUCTOR) {
+    if (scope >= 0 && nodeKind(scope) === N_FUNC && (hir$.fnKind[nodeId(scope)] | 0) === FN_CONSTRUCTOR) {
       const owner = funcOwner(nodeId(scope));
       if (nodeKind(owner) === N_MEMBER) {
         const m = nodeId(owner);
@@ -1185,40 +1218,42 @@ function supersCheck(): void {
 
 /** A `#a` has to be declared by a class around it: only `super.#a` has Babel's words. */
 function privateNames(): void {
+  const hir$ = hir;
   for (let k = 0; k < dots.len; k++) {
     const it = dots.data[k] | 0;
-    if (byte(hir.exprC[it] | 0) !== 35) continue;
-    const obj = hir.exprA[it] | 0;
-    if ((hir.exprTag[obj] | 0) === EXPR_SUPER) fail(hir.exprC[it] | 0, "Private fields can't be accessed on super");
+    if (byte(hir$.exprC[it] | 0) !== 35) continue;
+    const obj = hir$.exprA[it] | 0;
+    if ((hir$.exprTag[obj] | 0) === EXPR_SUPER) fail(hir$.exprC[it] | 0, "Private fields can't be accessed on super");
   }
 }
 
 function classes(): void {
-  const nc = hir.nClasses | 0;
+  const hir$ = hir;
+  const nc = hir$.nClasses | 0;
   for (let c = 0; c < nc; c++) {
     if (!classInTree(c)) continue;
-    const membersStart = hir.classMembersStart[c] | 0;
-    const membersLen = hir.classMembersLen[c] | 0;
+    const membersStart = hir$.classMembersStart[c] | 0;
+    const membersLen = hir$.classMembersLen[c] | 0;
     if (membersLen === 0) continue;
     let hasConstructor = false;
     // The private names of the class so far, each with the accessor that another can complete.
     const privNames: string[] = [];
     const privHalf: number[] = [];
     for (let k = 0; k < membersLen; k++) {
-      const m = hir.ids[(membersStart + k) | 0] | 0;
+      const m = hir$.ids[(membersStart + k) | 0] | 0;
       classElement(m);
-      const f = hir.memberFunc[m] | 0;
-      const hasBody = f >= 0 && f < hir.nFns && (hir.fnBodyKind[f] | 0) !== 0;
+      const f = hir$.memberFunc[m] | 0;
+      const hasBody = f >= 0 && f < hir$.nFns && (hir$.fnBodyKind[f] | 0) !== 0;
       if (memberIsConstructor(m) && hasBody) {
-        if (hasConstructor) fail(hir.memberStart[m] | 0, "Duplicate constructor in the same class");
+        if (hasConstructor) fail(hir$.memberStart[m] | 0, "Duplicate constructor in the same class");
         hasConstructor = true;
       }
       const loaded = keyLoad((N_MEMBER << 26) | m);
       if (loaded !== KEY_PRIVATE) continue;
       // An overload in TypeScript: `#m(): void; #m() {}`.
-      if (f >= 0 && f < hir.nFns && (hir.fnBodyKind[f] | 0) === 0) continue;
+      if (f >= 0 && f < hir$.nFns && (hir$.fnBodyKind[f] | 0) === 0) continue;
       const name = atomText(KEY[KEY_NAME] | 0);
-      const mk = hir.memberKind[m] | 0;
+      const mk = hir$.memberKind[m] | 0;
       const half = mk === MEMBER_GETTER || mk === MEMBER_SETTER ? (memberIsStatic(m) ? 2 : 0) | (mk === MEMBER_GETTER ? 4 : 8) : 0;
       let seen = -1;
       for (let j = 0; j < privNames.length; j++) {
@@ -1244,15 +1279,16 @@ function classes(): void {
 }
 
 function classElement(member: number): void {
-  const mk = hir.memberKind[member] | 0;
-  const f = hir.memberFunc[member] | 0;
+  const hir$ = hir;
+  const mk = hir$.memberKind[member] | 0;
+  const f = hir$.memberFunc[member] | 0;
   const loaded = keyLoad((N_MEMBER << 26) | member);
   if (loaded < 0) {
     // A constructor.
     const keyword = memberConstructorKeyword(member);
     if (keyword < 0 || f < 0) return;
-    const at = hir.memberNamePos[member] | 0;
-    const flags = hir.fnFlags[f] | 0;
+    const at = hir$.memberNamePos[member] | 0;
+    const flags = hir$.fnFlags[f] | 0;
     if (memberIsConstructor(member) && (flags & FLAG_GENERATOR) !== 0) fail(at, "Constructor can't be a generator");
     else if (memberIsConstructor(member) && (flags & FLAG_ASYNC) !== 0) fail(at, "Constructor can't be an async method");
     return;
@@ -1276,9 +1312,9 @@ function classElement(member: number): void {
     // Not a constructor.
   } else if (mk === MEMBER_GETTER || mk === MEMBER_SETTER) {
     fail(start, "Constructor can't have get/set modifier");
-  } else if (f >= 0 && ((hir.fnFlags[f] | 0) & FLAG_GENERATOR) !== 0) {
+  } else if (f >= 0 && ((hir$.fnFlags[f] | 0) & FLAG_GENERATOR) !== 0) {
     fail(start, "Constructor can't be a generator");
-  } else if (f >= 0 && ((hir.fnFlags[f] | 0) & FLAG_ASYNC) !== 0) {
+  } else if (f >= 0 && ((hir$.fnFlags[f] | 0) & FLAG_ASYNC) !== 0) {
     fail(start, "Constructor can't be an async method");
   }
 }
@@ -1287,9 +1323,10 @@ function classElement(member: number): void {
 
 /** No line break before `=>`. */
 function arrows(): void {
-  const n = hir.nFns | 0;
+  const hir$ = hir;
+  const n = hir$.nFns | 0;
   for (let i = 0; i < n; i++) {
-    if ((hir.fnKind[i] | 0) !== FN_ARROW || !funcInTree(i)) continue;
+    if ((hir$.fnKind[i] | 0) !== FN_ARROW || !funcInTree(i)) continue;
     if (!funcArrowSpan(i)) continue;
     const arrow = SP[0] | 0;
     const before = fileEndOfTokenBefore(arrow);
@@ -1310,30 +1347,32 @@ function hasName(text_: string): number {
 }
 
 function objectLiterals(proto: number): void {
-  const n = hir.nProps | 0;
+  const hir$ = hir;
+  const n = hir$.nProps | 0;
+  const bound$ = bound;
   for (let i = 0; i < n; i++) {
-    const kind = hir.propKind[i] | 0;
-    const value = hir.propValue[i] | 0;
-    const isDefault = kind === PROP_SHORTHAND && value >= 0 && value < hir.nExprs && (hir.exprTag[value] | 0) === EXPR_ASSIGN;
-    const mayBeProto = kind === PROP_INIT && proto >= 0 && (hir.propKeyKind[i] | 0) === PK_NAME && (hir.propKeyVal[i] | 0) === proto;
+    const kind = hir$.propKind[i] | 0;
+    const value = hir$.propValue[i] | 0;
+    const isDefault = kind === PROP_SHORTHAND && value >= 0 && value < hir$.nExprs && (hir$.exprTag[value] | 0) === EXPR_ASSIGN;
+    const mayBeProto = kind === PROP_INIT && proto >= 0 && (hir$.propKeyKind[i] | 0) === PK_NAME && (hir$.propKeyVal[i] | 0) === proto;
     if (!isDefault && !mayBeProto) continue;
-    const object = bound.propOwner[i] | 0;
+    const object = bound$.propOwner[i] | 0;
     if (object < 0 || !propInTree(i) || propIsJsxAttribute(i)) continue;
     // `{ a = 1 }` is a pattern only.
     if (isDefault && !exprIsAssignmentTarget(object)) {
-      const target = hir.exprA[value] | 0;
-      const equals = skipTrivia(hir.text, hir.sourceLen | 0, exprEnd(target));
+      const target = hir$.exprA[value] | 0;
+      const equals = skipTrivia(hir$.text, hir$.sourceLen | 0, exprEnd(target));
       const saved = noticed;
       noticed = outerEnd(object);
       fail(equals, "Shorthand property assignments are valid only in destructuring patterns");
       noticed = saved;
     }
     if (proto >= 0 && isProto(i, proto) && !exprIsAssignmentTarget(object)) {
-      const propsStart = hir.exprA[object] | 0;
-      const propsLen = hir.exprB[object] | 0;
+      const propsStart = hir$.exprA[object] | 0;
+      const propsLen = hir$.exprB[object] | 0;
       let first = -1;
       for (let k = 0; k < propsLen; k++) {
-        const q = hir.ids[(propsStart + k) | 0] | 0;
+        const q = hir$.ids[(propsStart + k) | 0] | 0;
         if (q === i) break;
         if (isProto(q, proto)) {
           first = q;
@@ -1343,7 +1382,7 @@ function objectLiterals(proto: number): void {
       if (first >= 0) {
         const saved = noticed;
         noticed = outerEnd(object);
-        fail(hir.propPos[i] | 0, "Redefinition of __proto__ property");
+        fail(hir$.propPos[i] | 0, "Redefinition of __proto__ property");
         noticed = saved;
       }
     }
@@ -1351,7 +1390,8 @@ function objectLiterals(proto: number): void {
 }
 
 function isProto(prop: number, proto: number): boolean {
-  return (hir.propKind[prop] | 0) === PROP_INIT && (hir.propKeyKind[prop] | 0) === PK_NAME && (hir.propKeyVal[prop] | 0) === proto && (hir.propNameKind[prop] | 0) !== NK_COMPUTED_STRING && (hir.propNameKind[prop] | 0) !== NK_COMPUTED_NUMBER;
+  const hir$ = hir;
+  return (hir$.propKind[prop] | 0) === PROP_INIT && (hir$.propKeyKind[prop] | 0) === PK_NAME && (hir$.propKeyVal[prop] | 0) === proto && (hir$.propNameKind[prop] | 0) !== NK_COMPUTED_STRING && (hir$.propNameKind[prop] | 0) !== NK_COMPUTED_NUMBER;
 }
 
 /** Whether the string that is written as `written` has half of a surrogate pair. It can only be written as an escape. */
@@ -1398,45 +1438,47 @@ function namesInQuotes(): void {
     identSpan(atom, pos_);
     if (hasLoneSurrogate(sliceText(SP[0] | 0, SP[1] | 0))) fail(pos_, "An export name cannot include a lone surrogate.");
   };
-  const bodyStart = hir.bodyStart | 0;
-  const bodyLen = hir.bodyLen | 0;
+  const hir$ = hir;
+  const bodyStart = hir$.bodyStart | 0;
+  const bodyLen = hir$.bodyLen | 0;
   for (let k = 0; k < bodyLen; k++) {
-    const st = hir.ids[(bodyStart + k) | 0] | 0;
-    const tag = hir.stmtTag[st] | 0;
+    const st = hir$.ids[(bodyStart + k) | 0] | 0;
+    const tag = hir$.stmtTag[st] | 0;
     if (tag === STMT_IMPORT) {
-      const imp = hir.stmtA[st] | 0;
-      const ns = hir.importNamedStart[imp] | 0;
-      const nl = hir.importNamedLen[imp] | 0;
+      const imp = hir$.stmtA[st] | 0;
+      const ns = hir$.importNamedStart[imp] | 0;
+      const nl = hir$.importNamedLen[imp] | 0;
       for (let i = 0; i < nl; i++) {
-        const sp = hir.ids[(ns + i) | 0] | 0;
-        check(hir.importSpecImported[sp] | 0, hir.importSpecImportedPos[sp] | 0);
+        const sp = hir$.ids[(ns + i) | 0] | 0;
+        check(hir$.importSpecImported[sp] | 0, hir$.importSpecImportedPos[sp] | 0);
       }
     } else if (tag === STMT_EXPORT_NAMED) {
-      const ex = hir.stmtA[st] | 0;
-      const is_ = hir.exportItemsStart[ex] | 0;
-      const il = hir.exportItemsLen[ex] | 0;
+      const ex = hir$.stmtA[st] | 0;
+      const is_ = hir$.exportItemsStart[ex] | 0;
+      const il = hir$.exportItemsLen[ex] | 0;
       for (let i = 0; i < il; i++) {
-        const sp = hir.ids[(is_ + i) | 0] | 0;
-        check(hir.exportSpecLocal[sp] | 0, hir.exportSpecLocalPos[sp] | 0);
-        check(hir.exportSpecExported[sp] | 0, hir.exportSpecPos[sp] | 0);
+        const sp = hir$.ids[(is_ + i) | 0] | 0;
+        check(hir$.exportSpecLocal[sp] | 0, hir$.exportSpecLocalPos[sp] | 0);
+        check(hir$.exportSpecExported[sp] | 0, hir$.exportSpecPos[sp] | 0);
       }
     } else if (tag === STMT_EXPORT_STAR) {
-      const alias = hir.stmtB[st] | 0;
-      if (alias >= 0) check(alias, hir.stmtD[st] | 0);
+      const alias = hir$.stmtB[st] | 0;
+      if (alias >= 0) check(alias, hir$.stmtD[st] | 0);
     }
   }
 }
 
 /** `for (async of a)`: it could be the start of `for (async of => {};;)`. */
 function asyncBeforeOf(): void {
-  const n = hir.nStmts | 0;
+  const hir$ = hir;
+  const n = hir$.nStmts | 0;
   for (let i = 0; i < n; i++) {
-    if ((hir.stmtTag[i] | 0) !== STMT_FOR_OF || !stmtInTree(i)) continue;
-    if ((hir.stmtAux[i] | 0) !== 0) continue;
-    const left = hir.stmtA[i] | 0;
-    if (left < 0 || (hir.stmtTag[left] | 0) !== STMT_EXPR) continue;
-    const target = hir.stmtA[left] | 0;
-    if ((hir.exprTag[target] | 0) === EXPR_IDENT && !fileIsParenthesized(target) && tokenAt(exprStart(target)) === "async") {
+    if ((hir$.stmtTag[i] | 0) !== STMT_FOR_OF || !stmtInTree(i)) continue;
+    if ((hir$.stmtAux[i] | 0) !== 0) continue;
+    const left = hir$.stmtA[i] | 0;
+    if (left < 0 || (hir$.stmtTag[left] | 0) !== STMT_EXPR) continue;
+    const target = hir$.stmtA[left] | 0;
+    if ((hir$.exprTag[target] | 0) === EXPR_IDENT && !fileIsParenthesized(target) && tokenAt(exprStart(target)) === "async") {
       fail(exprStart(target), "The left-hand side of a for-of loop may not be 'async'.");
     }
   }
@@ -1446,28 +1488,30 @@ function asyncBeforeOf(): void {
 function sequencesInJsx(): void {
   const isSequence = (e: number): boolean => e >= 0 && (hir.exprTag[e] | 0) === EXPR_BINARY && (hir.exprAux[e] | 0) === BIN_COMMA && !fileIsParenthesized(e);
   const message = "Sequence expressions cannot be directly nested inside JSX";
-  const n = hir.nJsxExpressions | 0;
+  const hir$ = hir;
+  const n = hir$.nJsxExpressions | 0;
   for (let i = 0; i < n; i++) {
-    const e = hir.jsxExpressionExpr[i] | 0;
+    const e = hir$.jsxExpressionExpr[i] | 0;
     if (isSequence(e)) fail(exprStart(e), message);
   }
-  if ((hir.nJsx | 0) === 0) return;
-  const np = hir.nProps | 0;
+  if ((hir$.nJsx | 0) === 0) return;
+  const np = hir$.nProps | 0;
   for (let i = 0; i < np; i++) {
-    if ((hir.propKind[i] | 0) !== PROP_SPREAD || !propIsJsxAttribute(i)) continue;
-    const v = hir.propValue[i] | 0;
+    if ((hir$.propKind[i] | 0) !== PROP_SPREAD || !propIsJsxAttribute(i)) continue;
+    const v = hir$.propValue[i] | 0;
     if (isSequence(v)) fail(exprStart(v), message);
   }
 }
 
 /** `export @a default class {}` */
 function decoratorsBeforeDefault(): void {
-  const bodyStart = hir.bodyStart | 0;
-  const bodyLen = hir.bodyLen | 0;
+  const hir$ = hir;
+  const bodyStart = hir$.bodyStart | 0;
+  const bodyLen = hir$.bodyLen | 0;
   for (let k = 0; k < bodyLen; k++) {
-    const st = hir.ids[(bodyStart + k) | 0] | 0;
+    const st = hir$.ids[(bodyStart + k) | 0] | 0;
     let exportAt = -1;
-    if ((hir.stmtTag[st] | 0) === STMT_EXPORT_DEFAULT) exportAt = hir.stmtStart[st] | 0;
+    if ((hir$.stmtTag[st] | 0) === STMT_EXPORT_DEFAULT) exportAt = hir$.stmtStart[st] | 0;
     else if (stmtIsDefaultExport(st) && stmtExportSpan(st)) exportAt = SP[0] | 0;
     if (exportAt >= 0 && tokenAt(exportAt) === "export" && tokenAt(afterToken(exportAt)).startsWith("@")) {
       fail(exportAt, "Leading decorators must be attached to a class declaration");
@@ -1495,29 +1539,31 @@ function exports_(): void {
       if (secondDefault < 0 || b < secondDefault) secondDefault = b;
     }
   };
-  const bodyStart = hir.bodyStart | 0;
-  const bodyLen = hir.bodyLen | 0;
+  const hir$ = hir;
+  const bodyStart = hir$.bodyStart | 0;
+  const bodyLen = hir$.bodyLen | 0;
+  const names$ = names;
   for (let k = 0; k < bodyLen; k++) {
-    const st = hir.ids[(bodyStart + k) | 0] | 0;
-    const tag = hir.stmtTag[st] | 0;
+    const st = hir$.ids[(bodyStart + k) | 0] | 0;
+    const tag = hir$.stmtTag[st] | 0;
     if (tag === STMT_EXPORT_DEFAULT) {
-      note(afterToken(hir.stmtStart[st] | 0));
+      note(afterToken(hir$.stmtStart[st] | 0));
     } else if (tag === STMT_EXPORT_STAR) {
-      const alias = hir.stmtB[st] | 0;
-      if (alias >= 0 && names.atomIs(alias, "default")) note(hir.stmtD[st] | 0);
+      const alias = hir$.stmtB[st] | 0;
+      if (alias >= 0 && names$.atomIs(alias, "default")) note(hir$.stmtD[st] | 0);
     } else if (tag === STMT_EXPORT_NAMED) {
-      const ex = hir.stmtA[st] | 0;
-      const items = hir.exportItemsStart[ex] | 0;
-      const count = hir.exportItemsLen[ex] | 0;
-      const hasFrom = (hir.exportHasModuleSpecifier[ex] | 0) !== 0;
+      const ex = hir$.stmtA[st] | 0;
+      const items = hir$.exportItemsStart[ex] | 0;
+      const count = hir$.exportItemsLen[ex] | 0;
+      const hasFrom = (hir$.exportHasModuleSpecifier[ex] | 0) !== 0;
       for (let i = 0; i < count; i++) {
-        const sp = hir.ids[(items + i) | 0] | 0;
-        if (names.atomIs(hir.exportSpecExported[sp] | 0, "default")) note(hir.exportSpecPos[sp] | 0);
+        const sp = hir$.ids[(items + i) | 0] | 0;
+        if (names$.atomIs(hir$.exportSpecExported[sp] | 0, "default")) note(hir$.exportSpecPos[sp] | 0);
         if (hasFrom) continue;
-        const localPos = hir.exportSpecLocalPos[sp] | 0;
+        const localPos = hir$.exportSpecLocalPos[sp] | 0;
         if (identIsString(localPos)) {
           const saved = noticed;
-          noticed = hir.stmtLocEnd[st] | 0;
+          noticed = hir$.stmtLocEnd[st] | 0;
           fail(localPos, "A string literal cannot be used as an exported binding without `from`.");
           noticed = saved;
         }
@@ -1534,13 +1580,14 @@ function exports_(): void {
 
 /** `parseBreakContinueStatement` */
 function jumps(): void {
-  const n = hir.nStmts | 0;
+  const hir$ = hir;
+  const n = hir$.nStmts | 0;
   for (let i = 0; i < n; i++) {
-    const tag = hir.stmtTag[i] | 0;
+    const tag = hir$.stmtTag[i] | 0;
     if (tag !== STMT_BREAK && tag !== STMT_CONTINUE) continue;
     if (!stmtInTree(i)) continue;
     const isBreak = tag === STMT_BREAK;
-    const label = hir.stmtA[i] | 0;
+    const label = hir$.stmtA[i] | 0;
     let hasTarget = false;
     let up = nodeParent((N_STMT << 26) | i);
     for (let guard = 0; guard < 1000000; guard++) {
@@ -1548,11 +1595,11 @@ function jumps(): void {
       if (k === N_FILE || k === N_FUNC) break;
       if (k === N_STMT) {
         const st = nodeId(up);
-        const stag = hir.stmtTag[st] | 0;
-        if (stag === STMT_LABELED && label >= 0 && (hir.stmtA[st] | 0) === label) {
+        const stag = hir$.stmtTag[st] | 0;
+        if (stag === STMT_LABELED && label >= 0 && (hir$.stmtA[st] | 0) === label) {
           // `continue` wants a loop, under this label and others.
-          let body = hir.stmtB[st] | 0;
-          while (body >= 0 && (hir.stmtTag[body] | 0) === STMT_LABELED) body = hir.stmtB[body] | 0;
+          let body = hir$.stmtB[st] | 0;
+          while (body >= 0 && (hir$.stmtTag[body] | 0) === STMT_LABELED) body = hir$.stmtB[body] | 0;
           hasTarget = isBreak || (body >= 0 && stmtIsLoop(body));
         } else if (stag === STMT_SWITCH && label < 0) {
           hasTarget = isBreak;
@@ -1563,15 +1610,16 @@ function jumps(): void {
       }
       up = nodeParent(up);
     }
-    if (!hasTarget) fail(hir.stmtStart[i] | 0, isBreak ? "Unsyntactic break" : "Unsyntactic continue");
+    if (!hasTarget) fail(hir$.stmtStart[i] | 0, isBreak ? "Unsyntactic break" : "Unsyntactic continue");
   }
 }
 
 function labels(): void {
-  const n = hir.nStmts | 0;
+  const hir$ = hir;
+  const n = hir$.nStmts | 0;
   for (let i = 0; i < n; i++) {
-    if ((hir.stmtTag[i] | 0) !== STMT_LABELED || !stmtInTree(i)) continue;
-    const label = hir.stmtA[i] | 0;
+    if ((hir$.stmtTag[i] | 0) !== STMT_LABELED || !stmtInTree(i)) continue;
+    const label = hir$.stmtA[i] | 0;
     let up = nodeParent((N_STMT << 26) | i);
     let isRepeated = false;
     for (let guard = 0; guard < 1000000; guard++) {
@@ -1579,14 +1627,14 @@ function labels(): void {
       if (k === N_FILE || k === N_FUNC) break;
       if (k === N_STMT) {
         const st = nodeId(up);
-        if ((hir.stmtTag[st] | 0) === STMT_LABELED && (hir.stmtA[st] | 0) === label) {
+        if ((hir$.stmtTag[st] | 0) === STMT_LABELED && (hir$.stmtA[st] | 0) === label) {
           isRepeated = true;
           break;
         }
       }
       up = nodeParent(up);
     }
-    if (isRepeated) fail(hir.stmtStart[i] | 0, "Label '" + atomText(label) + "' is already declared");
+    if (isRepeated) fail(hir$.stmtStart[i] | 0, "Label '" + atomText(label) + "' is already declared");
   }
 }
 

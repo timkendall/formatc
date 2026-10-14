@@ -7,7 +7,8 @@ export class CheckSlot {
 export const check: CheckSlot = new CheckSlot();
 
 export function setCheck(message: string, at: number, has: boolean): void {
-  check.has = has;
-  check.message = message;
-  check.at = at;
+  const check$ = check;
+  check$.has = has;
+  check$.message = message;
+  check$.at = at;
 }

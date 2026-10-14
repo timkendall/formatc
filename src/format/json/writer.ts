@@ -589,33 +589,34 @@ function pushWtf8(buf: ByteBuf, cp: number): void {
 /** `JSON.stringify` of the value of the template text[start, end), which has no substitutions. */
 function writeTemplateAsString(text: Uint8Array, start: number, end: number, out: ByteBuf): void {
   const rawEnd = end > start + 1 ? end - 1 : start + 1;
-  cooked.reset();
+  const cooked$ = cooked;
+  cooked$.reset();
   let i = start + 1;
   while (i < rawEnd) {
     const byte = text[i] | 0;
     i = i + 1;
     if (byte !== 92) {
-      cooked.push(byte);
+      cooked$.push(byte);
       continue;
     }
     if (i >= rawEnd) break;
     const escaped = text[i] | 0;
     i = i + 1;
     switch (escaped) {
-      case 110: cooked.push(10); break;
-      case 116: cooked.push(9); break;
-      case 114: cooked.push(13); break;
-      case 98: cooked.push(8); break;
-      case 102: cooked.push(12); break;
-      case 118: cooked.push(11); break;
-      case 48: cooked.push(0); break;
+      case 110: cooked$.push(10); break;
+      case 116: cooked$.push(9); break;
+      case 114: cooked$.push(13); break;
+      case 98: cooked$.push(8); break;
+      case 102: cooked$.push(12); break;
+      case 118: cooked$.push(11); break;
+      case 48: cooked$.push(0); break;
       // A line continuation
       case 10: break;
       case 120: {
         if (i + 2 <= rawEnd) {
           const v = hexRun(text, i, i + 2);
           if (v >= 0) {
-            pushWtf8(cooked, v);
+            pushWtf8(cooked$, v);
             i = i + 2;
           }
         }
@@ -628,21 +629,21 @@ function writeTemplateAsString(text: Uint8Array, start: number, end: number, out
           // rest.get(1..len)
           if (len >= 1) {
             const v = hexRun(text, i + 1, i + len);
-            if (v >= 0) pushWtf8(cooked, v);
+            if (v >= 0) pushWtf8(cooked$, v);
           }
           i = i + len + 1 <= rawEnd ? i + len + 1 : rawEnd;
         } else if (i + 4 <= rawEnd) {
           const v = hexRun(text, i, i + 4);
           if (v >= 0) {
-            pushWtf8(cooked, v);
+            pushWtf8(cooked$, v);
             i = i + 4;
           }
         }
         break;
       }
       default:
-        cooked.push(escaped);
+        cooked$.push(escaped);
     }
   }
-  jsonStringify(cooked.data, 0, cooked.len, out);
+  jsonStringify(cooked$.data, 0, cooked$.len, out);
 }

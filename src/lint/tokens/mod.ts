@@ -63,8 +63,9 @@ let htmlComments: boolean = false;
 
 /** Per file: finds the `#!` line. `isTypeScriptDialect`: `Dialect::of(file) == TypeScript`. `isModule`: `languageOptions.sourceType`. */
 export function commentsBegin(isTypeScriptDialect: boolean, isModule: boolean): void {
-  const text = hir.text;
-  const len = hir.sourceLen | 0;
+  const hir$ = hir;
+  const text = hir$.text;
+  const len = hir$.sourceLen | 0;
   const start = len >= 3 && (text[0] | 0) === 0xef && (text[1] | 0) === 0xbb && (text[2] | 0) === 0xbf ? 3 : 0;
   shebangEnd = -1;
   shebangStart = start;
@@ -108,20 +109,22 @@ export function commentsLen(): number {
 
 /** Start of the comment `i` of `file.comments()`. */
 export function commentStartAt(i: number): number {
+  const hir$ = hir;
   if (shebangEnd >= 0) {
     if (i === 0) return shebangStart;
-    return hir.comments.data[(i - 1) * 2] | 0;
+    return hir$.comments.data[(i - 1) * 2] | 0;
   }
-  return hir.comments.data[i * 2] | 0;
+  return hir$.comments.data[i * 2] | 0;
 }
 
 /** End of the comment `i`. */
 export function commentEndAt(i: number): number {
+  const hir$ = hir;
   if (shebangEnd >= 0) {
     if (i === 0) return shebangEnd;
-    return hir.comments.data[(i - 1) * 2 + 1] | 0;
+    return hir$.comments.data[(i - 1) * 2 + 1] | 0;
   }
-  return hir.comments.data[i * 2 + 1] | 0;
+  return hir$.comments.data[i * 2 + 1] | 0;
 }
 
 /** `Token::kind` of the comment `i`: `TK_LINE`, `TK_BLOCK` or `TK_SHEBANG`. */

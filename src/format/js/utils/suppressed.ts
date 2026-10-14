@@ -44,21 +44,22 @@ function writeSource(start0: number, end0: number, isOneString: boolean, f: Form
   let buf = text;
   let a = start;
   let b = end;
+  const converted$ = converted;
   if (hasCr) {
-    converted.reset();
+    converted$.reset();
     let rest = start;
     while (rest < end) {
       let at = rest;
       while (at < end && (text[at] | 0) !== 13) at = at + 1;
-      converted.append(text, rest, at);
+      converted$.append(text, rest, at);
       if (at >= end) break;
-      converted.push(10);
+      converted$.push(10);
       rest = at + 1;
       if (rest < end && (text[rest] | 0) === 10) rest = rest + 1;
     }
-    buf = converted.data;
+    buf = converted$.data;
     a = 0;
-    b = converted.len;
+    b = converted$.len;
   }
   // For Prettier it is one string, and a line break in a string has no width: whether it fits is asked of all its lines together.
   let width = f.textWidth(buf, a, b);

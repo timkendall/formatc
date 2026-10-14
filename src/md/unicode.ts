@@ -120,10 +120,11 @@ function caseFoldFromMap(m: FoldMap, codepoint: number): boolean {
       c0 = c0 + (codepoint - mapCp);
     }
   }
-  FOLD.n = n;
-  FOLD.c0 = c0;
-  FOLD.c1 = c1;
-  FOLD.c2 = c2;
+  const FOLD$ = FOLD;
+  FOLD$.n = n;
+  FOLD$.c0 = c0;
+  FOLD$.c1 = c1;
+  FOLD$.c2 = c2;
   return true;
 }
 
@@ -132,12 +133,13 @@ function caseFoldFromMap(m: FoldMap, codepoint: number): boolean {
  * A direct port of md4c's `md_get_unicode_fold_info`.
  */
 export function caseFold(codepoint: number): void {
-  FOLD.c1 = 0;
-  FOLD.c2 = 0;
+  const FOLD$ = FOLD;
+  FOLD$.c1 = 0;
+  FOLD$.c2 = 0;
   // Fast path for ASCII characters.
   if (codepoint <= 0x7f) {
-    FOLD.n = 1;
-    FOLD.c0 = codepoint >= 65 && codepoint <= 90 ? codepoint + 32 : codepoint;
+    FOLD$.n = 1;
+    FOLD$.c0 = codepoint >= 65 && codepoint <= 90 ? codepoint + 32 : codepoint;
     return;
   }
   if (map1 === null) {
@@ -149,6 +151,6 @@ export function caseFold(codepoint: number): void {
   if (caseFoldFromMap(map2 as FoldMap, codepoint)) return;
   if (caseFoldFromMap(map3 as FoldMap, codepoint)) return;
   // No mapping found -- map the codepoint to itself.
-  FOLD.n = 1;
-  FOLD.c0 = codepoint;
+  FOLD$.n = 1;
+  FOLD$.c0 = codepoint;
 }

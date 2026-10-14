@@ -70,6 +70,7 @@ const argTo = new Int32Array(5);
  */
 export function processPragmasIntoFields(text: Uint8Array, leading: I32Vec, recovers: boolean, names: Names): boolean {
   const n = leading.len;
+  const hir$ = hir;
   for (let i = 0; i < n; i += 2) {
     const start = leading.data[i] | 0;
     const end = leading.data[i + 1] | 0;
@@ -78,7 +79,7 @@ export function processPragmasIntoFields(text: Uint8Array, leading: I32Vec, reco
     const c1 = text[start + 1] | 0;
     if (c0 === 47 && c1 === 47) {
       if (!singleLinePragma(text, start, end, recovers, names)) return false;
-    } else if (c0 === 47 && c1 === 42 && hir.kind === FK_TSX) {
+    } else if (c0 === 47 && c1 === 42 && hir$.kind === FK_TSX) {
       // Only read for files that can contain JSX.
       multiLinePragmas(text, start, end, names);
     }
@@ -92,11 +93,12 @@ function singleLinePragma(t: Uint8Array, commentPos: number, end: number, recove
   const tripleSlash = (t[pos] | 0) === 47 && pos < end;
   if (tripleSlash) pos = (pos + 1) | 0;
   pos = skipBlanks(t, pos, end);
+  const hir$ = hir;
   if (pos < end && (t[pos] | 0) === 64) {
     // "_last_ of either nocheck or check in a file is the "winner""
     const ne = nameEnd(t, (pos + 1) | 0, end);
-    if (eqIgnoreCase(t, (pos + 1) | 0, ne, "ts-check")) hir.checkDirective = 1;
-    else if (eqIgnoreCase(t, (pos + 1) | 0, ne, "ts-nocheck")) hir.checkDirective = 0;
+    if (eqIgnoreCase(t, (pos + 1) | 0, ne, "ts-check")) hir$.checkDirective = 1;
+    else if (eqIgnoreCase(t, (pos + 1) | 0, ne, "ts-nocheck")) hir$.checkDirective = 0;
     return true;
   }
   if (!tripleSlash || pos >= end || (t[pos] | 0) !== 60) return true;
@@ -148,7 +150,7 @@ function singleLinePragma(t: Uint8Array, commentPos: number, end: number, recove
     from = argFrom[2];
     to = argTo[2];
   } else {
-    if (recovers) hir.pushDiagnostics(DK_PARSE, commentPos, end, 1084, -1);
+    if (recovers) hir$.pushDiagnostics(DK_PARSE, commentPos, end, 1084, -1);
     return recovers;
   }
   // `parseResolutionMode`
@@ -158,12 +160,12 @@ function singleLinePragma(t: Uint8Array, commentPos: number, end: number, recove
     else if (eqExact(t, argFrom[3], argTo[3], "require")) mode = RM_REQUIRE;
     else if (!recovers) return false;
     else {
-      hir.pushDiagnostics(DK_PARSE, argFrom[3], argTo[3], 1453, -1);
+      hir$.pushDiagnostics(DK_PARSE, argFrom[3], argTo[3], 1453, -1);
       mode = RM_NONE;
     }
   }
   const atom = names.atomOfBytes(t, from, to);
-  hir.pushReferences(kind, atom, from, mode);
+  hir$.pushReferences(kind, atom, from, mode);
   return true;
 }
 
@@ -172,6 +174,7 @@ function multiLinePragmas(t: Uint8Array, start: number, end0: number, names: Nam
   let end = end0;
   if (end - start >= 2 && (t[end - 2] | 0) === 42 && (t[end - 1] | 0) === 47) end = (end - 2) | 0;
   let pos = (start + 2) | 0;
+  const hir$ = hir;
   while (true) {
     // skipTo '@'
     let at = pos;
@@ -189,14 +192,14 @@ function multiLinePragmas(t: Uint8Array, start: number, end0: number, names: Nam
     const argEnd = skipNonBlanks(t, argStart, end);
     const hasArg = argEnd > argStart;
     const ns = (pos + 1) | 0;
-    if (hasArg && eqIgnoreCase(t, ns, nameEnd_, "jsx")) hir.jsxFactory = names.atomOfBytes(t, argStart, argEnd);
-    else if (hasArg && eqIgnoreCase(t, ns, nameEnd_, "jsxfrag")) hir.jsxFragmentFactory = names.atomOfBytes(t, argStart, argEnd);
-    else if (hasArg && eqIgnoreCase(t, ns, nameEnd_, "jsximportsource")) hir.jsxImportSource = names.atomOfBytes(t, argStart, argEnd);
+    if (hasArg && eqIgnoreCase(t, ns, nameEnd_, "jsx")) hir$.jsxFactory = names.atomOfBytes(t, argStart, argEnd);
+    else if (hasArg && eqIgnoreCase(t, ns, nameEnd_, "jsxfrag")) hir$.jsxFragmentFactory = names.atomOfBytes(t, argStart, argEnd);
+    else if (hasArg && eqIgnoreCase(t, ns, nameEnd_, "jsximportsource")) hir$.jsxImportSource = names.atomOfBytes(t, argStart, argEnd);
     else if (hasArg && eqIgnoreCase(t, ns, nameEnd_, "jsxruntime")) {
       // `GetJSXImplicitImportBase`
-      if (eqExact(t, argStart, argEnd, "classic")) hir.jsxClassic = 1;
-      else if (eqExact(t, argStart, argEnd, "automatic")) hir.jsxClassic = 0;
-      else hir.jsxClassic = -1;
+      if (eqExact(t, argStart, argEnd, "classic")) hir$.jsxClassic = 1;
+      else if (eqExact(t, argStart, argEnd, "automatic")) hir$.jsxClassic = 0;
+      else hir$.jsxClassic = -1;
     }
     pos = lineEndPos(t, pos, end);
   }

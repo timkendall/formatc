@@ -132,7 +132,8 @@ function parseVueVForDirective(b: Uint8Array, vs: number, ve: number): boolean {
       }
     }
   }
-  const l = vfor.l;
+  const vfor$ = vfor;
+  const l = vfor$.l;
   const set = (k: number, s: number, e: number): void => {
     l[2 * k] = s;
     l[2 * k + 1] = e;
@@ -166,19 +167,20 @@ function parseVueVForDirective(b: Uint8Array, vs: number, ve: number): boolean {
       if (isMissing) return false;
     }
   }
-  vfor.opS = opS;
-  vfor.rS = rs;
-  vfor.rE = re;
+  vfor$.opS = opS;
+  vfor$.rS = rs;
+  vfor$.rE = re;
   return true;
 }
 
 /** `printVueVForDirective` */
 function printVueVForDirective(p: Printer, b: Uint8Array, vs: number, ve: number, isTypescript: boolean, inHtml: InHtml): boolean {
   if (!parseVueVForDirective(b, vs, ve)) return false;
-  const l = vfor.l;
-  const opS = vfor.opS;
-  const rS = vfor.rS;
-  const rE = vfor.rE;
+  const vfor$ = vfor;
+  const l = vfor$.l;
+  const opS = vfor$.opS;
+  const rS = vfor$.rS;
+  const rE = vfor$.rE;
   const left = new ByteBuf(64);
   let any = false;
   for (let k = 0; k < 3; k++) {

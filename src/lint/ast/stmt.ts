@@ -131,11 +131,12 @@ export function stmtSpanWithoutExport(s: number): void {
   const end = SP[1] | 0;
   const ms = stmtModifiersStart(s);
   const ml = stmtModifiersLen(s);
+  const hir$ = hir;
   for (let i = 0; i < ml; i++) {
-    const m = hir.ids[(ms + i) | 0] | 0;
+    const m = hir$.ids[(ms + i) | 0] | 0;
     if ((modifierFlagOf(m) & (FLAG_EXPORT | FLAG_DEFAULT)) !== 0) {
       modifierSpan(m);
-      start = skipTrivia(hir.text, hir.sourceLen | 0, SP[1] | 0);
+      start = skipTrivia(hir$.text, hir$.sourceLen | 0, SP[1] | 0);
     }
   }
   SP[0] = start;
@@ -146,8 +147,9 @@ export function stmtSpanWithoutExport(s: number): void {
 export function stmtExportSpan(s: number): boolean {
   const ms = stmtModifiersStart(s);
   const ml = stmtModifiersLen(s);
+  const hir$ = hir;
   for (let i = 0; i < ml; i++) {
-    const m = hir.ids[(ms + i) | 0] | 0;
+    const m = hir$.ids[(ms + i) | 0] | 0;
     if (modifierFlagOf(m) === FLAG_EXPORT) {
       modifierSpan(m);
       const start = SP[0] | 0;
@@ -200,11 +202,12 @@ export function stmtSemicolon(s: number): boolean {
 /** `Stmt::catch_clause_span` into `SP`: of a `Try` with a `catch`: from the `catch` to the end of its block. */
 export function stmtCatchClauseSpan(s: number): boolean {
   if (stmtTag(s) !== STMT_TRY) return false;
-  const handler = hir.stmtC[s] | 0;
+  const hir$ = hir;
+  const handler = hir$.stmtC[s] | 0;
   if (handler < 0) return false;
-  const block = hir.stmtA[s] | 0;
+  const block = hir$.stmtA[s] | 0;
   stmtSpan(block);
-  const start = skipTrivia(hir.text, hir.sourceLen | 0, SP[1] | 0);
+  const start = skipTrivia(hir$.text, hir$.sourceLen | 0, SP[1] | 0);
   SP[0] = start;
   SP[1] = stmtEnd(handler);
   return true;
@@ -229,31 +232,32 @@ function past(text: Uint8Array, len: number, at: number, token: string): number 
  */
 export function stmtModuleSpecifierSpan(s: number): boolean {
   if (!stmtInRange(s)) return false;
-  const text = hir.text;
-  const len = hir.sourceLen | 0;
+  const hir$ = hir;
+  const text = hir$.text;
+  const len = hir$.sourceLen | 0;
   let start = -1;
-  switch (hir.stmtTag[s] | 0) {
+  switch (hir$.stmtTag[s] | 0) {
     case STMT_IMPORT: {
-      const imp = hir.stmtA[s] | 0;
-      if (imp < 0 || imp >= hir.nImports) return false;
-      const cs = hir.importClauseStart[imp] | 0;
+      const imp = hir$.stmtA[s] | 0;
+      if (imp < 0 || imp >= hir$.nImports) return false;
+      const cs = hir$.importClauseStart[imp] | 0;
       if (isAt(text, len, cs, "\"") || isAt(text, len, cs, "'")) start = cs;
-      else start = past(text, len, skipTrivia(text, len, hir.importClauseEnd[imp] | 0), "from");
+      else start = past(text, len, skipTrivia(text, len, hir$.importClauseEnd[imp] | 0), "from");
       break;
     }
     case STMT_EXPORT_STAR: {
-      const alias = hir.stmtB[s] | 0;
+      const alias = hir$.stmtB[s] | 0;
       let before = 0;
-      if (alias >= 0) before = identEndOf(alias, hir.stmtD[s] | 0);
-      else before = ((hir.stmtC[s] | 0) + 1) | 0;
+      if (alias >= 0) before = identEndOf(alias, hir$.stmtD[s] | 0);
+      else before = ((hir$.stmtC[s] | 0) + 1) | 0;
       start = past(text, len, skipTrivia(text, len, before), "from");
       break;
     }
     case STMT_EXPORT_NAMED: {
-      const x = hir.stmtA[s] | 0;
+      const x = hir$.stmtA[s] | 0;
       if (x < 0) return false;
       let close = -1;
-      if ((hir.exportItemsLen[x] | 0) > 0) {
+      if ((hir$.exportItemsLen[x] | 0) > 0) {
         const after = skipTrivia(text, len, exportItemsLastEnd(x));
         const comma = past(text, len, after, ",");
         close = comma >= 0 ? comma : after;
@@ -273,7 +277,7 @@ export function stmtModuleSpecifierSpan(s: number): boolean {
       break;
     }
     case STMT_IMPORT_EQUALS: {
-      const ie = hir.stmtA[s] | 0;
+      const ie = hir$.stmtA[s] | 0;
       if (ie < 0) return false;
       const equals = skipTrivia(text, len, importEqualsNameEnd(ie));
       const a = past(text, len, equals, "=");
@@ -321,8 +325,9 @@ export function stmtNamespaceExportName(s: number): number {
   return stmtTag(s) === STMT_EXPORT_AS_NAMESPACE ? hir.stmtA[s] | 0 : -1;
 }
 export function stmtNamespaceExportNamePos(s: number): number {
-  const text = hir.text;
-  const len = hir.sourceLen | 0;
+  const hir$ = hir;
+  const text = hir$.text;
+  const len = hir$.sourceLen | 0;
   let at = stmtStart(s);
   at = skipTrivia(text, len, at + 6);
   at = skipTrivia(text, len, at + 2);
@@ -332,17 +337,19 @@ export function stmtNamespaceExportNamePos(s: number): number {
 
 /** `Stmt::wrapped_in`: the `for` or `with` statement that the expression statement `id` is a wrapper in, or -1. */
 export function stmtWrappedIn(id: number): number {
-  if (!stmtInRange(id) || (hir.stmtTag[id] | 0) !== STMT_EXPR) return -1;
-  if ((bound.stmtParentTag[id] | 0) !== P_STMT) return -1;
-  const parent = bound.stmtParentA[id] | 0;
+  const hir$ = hir;
+  if (!stmtInRange(id) || (hir$.stmtTag[id] | 0) !== STMT_EXPR) return -1;
+  const bound$ = bound;
+  if ((bound$.stmtParentTag[id] | 0) !== P_STMT) return -1;
+  const parent = bound$.stmtParentA[id] | 0;
   if (!stmtInRange(parent)) return -1;
-  switch (hir.stmtTag[parent] | 0) {
+  switch (hir$.stmtTag[parent] | 0) {
     case STMT_FOR:
     case STMT_FOR_IN:
     case STMT_FOR_OF:
-      return (hir.stmtA[parent] | 0) === id ? parent : -1;
+      return (hir$.stmtA[parent] | 0) === id ? parent : -1;
     case STMT_BLOCK:
-      return stmtIsWithRaw(parent) && (hir.ids[hir.stmtA[parent] | 0] | 0) === id ? parent : -1;
+      return stmtIsWithRaw(parent) && (hir$.ids[hir$.stmtA[parent] | 0] | 0) === id ? parent : -1;
     default:
       return -1;
   }
@@ -358,8 +365,9 @@ export function stmtIsWrapper(s: number): boolean {
 
 /** `File::is_with(raw)`: the HIR stores `with (object) body` as a block of the two, positioned at the keyword. */
 function stmtIsWithRaw(s: number): boolean {
-  if (hir.withBodiesLen === 0 || (hir.stmtTag[s] | 0) !== STMT_BLOCK || (hir.stmtB[s] | 0) !== 2) return false;
-  return isAt(hir.text, hir.sourceLen | 0, hir.stmtStart[s] | 0, "with");
+  const hir$ = hir;
+  if (hir$.withBodiesLen === 0 || (hir$.stmtTag[s] | 0) !== STMT_BLOCK || (hir$.stmtB[s] | 0) !== 2) return false;
+  return isAt(hir$.text, hir$.sourceLen | 0, hir$.stmtStart[s] | 0, "with");
 }
 
 /** `Stmt::is_with`: it is a `With` (its tag is `STMT_BLOCK`). Its `object` is `stmtWithObject(s)`, its `body` `stmtWithBody(s)`. */
@@ -368,11 +376,13 @@ export function stmtIsWith(s: number): boolean {
 }
 /** The `object` of a `With`: an ExprId. */
 export function stmtWithObject(s: number): number {
-  return stmtAsExpr(hir.ids[hir.stmtA[s] | 0] | 0);
+  const hir$ = hir;
+  return stmtAsExpr(hir$.ids[hir$.stmtA[s] | 0] | 0);
 }
 /** The `body` of a `With`: a StmtId. */
 export function stmtWithBody(s: number): number {
-  return hir.ids[((hir.stmtA[s] | 0) + 1) | 0] | 0;
+  const hir$ = hir;
+  return hir$.ids[((hir$.stmtA[s] | 0) + 1) | 0] | 0;
 }
 
 /** `Stmt::as_block`: whether it is a `Block` (and not a `With`); the statements are the list `(stmtBlockStmtsStart(s), stmtBlockStmtsLen(s))`. */
@@ -382,7 +392,8 @@ export function stmtIsBlock(s: number): boolean {
 
 /** `Stmt::as_expr`: the expression of an `Expr` statement, or -1. */
 export function stmtAsExpr(s: number): number {
-  return stmtInRange(s) && (hir.stmtTag[s] | 0) === STMT_EXPR ? hir.stmtA[s] | 0 : -1;
+  const hir$ = hir;
+  return stmtInRange(s) && (hir$.stmtTag[s] | 0) === STMT_EXPR ? hir$.stmtA[s] | 0 : -1;
 }
 
 /** `Stmt::is_loop`: `for`, `for`-`in`, `for`-`of`, `while`, `do`-`while` */
@@ -406,8 +417,9 @@ export function stmtLabelPos(s: number): number {
   const t = stmtTag(s);
   const start = stmtStart(s);
   if (t === STMT_LABELED) return start;
-  const text = hir.text;
-  const len = hir.sourceLen | 0;
+  const hir$ = hir;
+  const text = hir$.text;
+  const len = hir$.sourceLen | 0;
   if (t === STMT_BREAK) return skipTrivia(text, len, start + 5);
   if (t === STMT_CONTINUE) return skipTrivia(text, len, start + 8);
   return -1;
@@ -423,18 +435,19 @@ export function stmtDirectiveSpan(s: number): boolean {
   const p = nodeParent(nodeOfStmt(s));
   let listStart = 0;
   let listLen = 0;
+  const hir$ = hir;
   if (p === 0) {
-    listStart = hir.bodyStart | 0;
-    listLen = hir.bodyLen | 0;
+    listStart = hir$.bodyStart | 0;
+    listLen = hir$.bodyLen | 0;
   } else if (nodeKind(p) === N_FUNC) {
     const f = nodeId(p);
-    if ((hir.fnKind[f] | 0) === FN_STATIC_BLOCK || (hir.fnBodyKind[f] | 0) !== BODY_BLOCK) return false;
-    listStart = hir.fnBodyA[f] | 0;
-    listLen = hir.fnBodyB[f] | 0;
+    if ((hir$.fnKind[f] | 0) === FN_STATIC_BLOCK || (hir$.fnBodyKind[f] | 0) !== BODY_BLOCK) return false;
+    listStart = hir$.fnBodyA[f] | 0;
+    listLen = hir$.fnBodyB[f] | 0;
   } else if (nodeKind(p) === N_STMT) {
     const ps = nodeId(p);
-    if ((hir.stmtTag[ps] | 0) !== STMT_MODULE) return false;
-    const inner = moduleInnermost(hir.stmtA[ps] | 0);
+    if ((hir$.stmtTag[ps] | 0) !== STMT_MODULE) return false;
+    const inner = moduleInnermost(hir$.stmtA[ps] | 0);
     listStart = moduleBodyStartOf(inner);
     listLen = moduleBodyLenOf(inner);
   } else {
@@ -443,21 +456,22 @@ export function stmtDirectiveSpan(s: number): boolean {
   if (listLen === 0) return false;
   // Where the statements start, and where the strings that they start with end. The next question is about the same ones
   // if there are many strings.
-  const start = stmtStart(hir.ids[listStart] | 0);
+  const start = stmtStart(hir$.ids[listStart] | 0);
   let end = 0;
-  if (F.directivesKnown && F.directivesStart === start) {
-    end = F.directivesEnd;
+  const F$ = F;
+  if (F$.directivesKnown && F$.directivesStart === start) {
+    end = F$.directivesEnd;
   } else {
     end = start;
     for (let i = 0; i < listLen; i++) {
-      const it = hir.ids[(listStart + i) | 0] | 0;
+      const it = hir$.ids[(listStart + i) | 0] | 0;
       const ie = stmtAsExpr(it);
       if (ie < 0 || exprAsString(ie) < 0 || exprIsParenthesized(ie)) break;
       end = stmtEnd(it);
     }
-    F.directivesStart = start;
-    F.directivesEnd = end;
-    F.directivesKnown = true;
+    F$.directivesStart = start;
+    F$.directivesEnd = end;
+    F$.directivesKnown = true;
   }
   if (!(stmtStart(s) < end)) return false;
   exprSpan(e);
@@ -495,15 +509,17 @@ export function varDeclIsDefinite(d: number): boolean {
 }
 /** `VarDecl::span` into `SP`: from the pattern to the end of the initializer. */
 export function varDeclSpan(d: number): void {
-  patSpan(hir.varDeclPat[d] | 0);
-  SP[1] = hir.varDeclLocEnd[d] | 0;
+  const hir$ = hir;
+  patSpan(hir$.varDeclPat[d] | 0);
+  SP[1] = hir$.varDeclLocEnd[d] | 0;
 }
 /** `VarDecl::binding_span` into `SP`: the pattern and its type annotation, which is the range of ESLint's `id`. */
 export function varDeclBindingSpan(d: number): void {
-  patSpan(hir.varDeclPat[d] | 0);
+  const hir$ = hir;
+  patSpan(hir$.varDeclPat[d] | 0);
   const s = SP[0] | 0;
   const e = SP[1] | 0;
-  const ty = hir.varDeclTy[d] | 0;
+  const ty = hir$.varDeclTy[d] | 0;
   if (ty >= 0) {
     typeOuterSpan(ty);
     SP[0] = s;
@@ -535,8 +551,9 @@ export function caseBodyLen(c: number): number {
   return hir.caseBodyLen[c] | 0;
 }
 export function caseSpan(c: number): void {
-  SP[0] = hir.casePos[c] | 0;
-  SP[1] = hir.caseEnd[c] | 0;
+  const hir$ = hir;
+  SP[0] = hir$.casePos[c] | 0;
+  SP[1] = hir$.caseEnd[c] | 0;
 }
 /** `Case::parent`: the `Switch` statement (a Node). */
 export function caseParent(c: number): number {

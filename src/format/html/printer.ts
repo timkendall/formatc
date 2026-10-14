@@ -896,9 +896,10 @@ function printAttribute(p: Printer, element: number, a: number): void {
   const ab = a * A_STRIDE;
   if ((t.a[ab + AF_HAS_VAL] | 0) === 0) return;
   unescapeQuoteEntities(t.pool.data, t.a[ab + AF_VAL_S] | 0, t.a[ab + AF_VAL_E] | 0);
-  const vb = UQ.buf;
-  const vs = UQ.s;
-  const ve = UQ.e;
+  const UQ$ = UQ;
+  const vb = UQ$.buf;
+  const vs = UQ$.s;
+  const ve = UQ$.e;
   p.w.token(TK_EQ);
   if (shouldUnquoteAttributeValue(t, a, p.o)) {
     p.w.textReplacing(vb, vs, ve, 39, "&apos;");

@@ -32,8 +32,9 @@ export const FORMAT_RETRY = -1;
  * there is one in it, the answer is `FORMAT_RETRY`.
  */
 export function formatNormalized(text: Uint8Array, cfg: Config, options: FormatOptions, out: ByteBuf, mayHaveCr: boolean): number {
-  const refused = tree.parse(text, cfg) < 0;
-  if (mayHaveCr && (tree.sawCr || (refused && hasCarriageReturn(text)))) return FORMAT_RETRY;
+  const tree$ = tree;
+  const refused = tree$.parse(text, cfg) < 0;
+  if (mayHaveCr && (tree$.sawCr || (refused && hasCarriageReturn(text)))) return FORMAT_RETRY;
   if (refused) return FORMAT_SYNTAX_ERROR_AT;
   // The writer does not mark a line break in a string. See `FormatOptions::is_in_markdown`.
   let hasMarks = false;
@@ -45,21 +46,22 @@ export function formatNormalized(text: Uint8Array, cfg: Config, options: FormatO
       }
     }
   }
-  if (tree.commentCount === 0 && !hasMarks) {
-    if (tree.nodeCount > 0) return write(text, tree, cfg, out);
+  if (tree$.commentCount === 0 && !hasMarks) {
+    if (tree$.nodeCount > 0) return write(text, tree$, cfg, out);
     return FORMAT_OK;
   }
   // Only `jsonc` takes a document that is nothing but comments.
-  if (tree.commentCount > 0 && (cfg.parser === PARSER_STRINGIFY || (tree.nodeCount === 0 && cfg.parser !== PARSER_JSONC))) {
-    if (cfg.parser === PARSER_STRINGIFY) noteRefusal(MSG_UNEXPECTED_TOKEN, tree.comments[C_START] | 0);
+  if (tree$.commentCount > 0 && (cfg.parser === PARSER_STRINGIFY || (tree$.nodeCount === 0 && cfg.parser !== PARSER_JSONC))) {
+    if (cfg.parser === PARSER_STRINGIFY) noteRefusal(MSG_UNEXPECTED_TOKEN, tree$.comments[C_START] | 0);
     else noteRefusal(MSG_UNEXPECTED_END, text.length);
     return FORMAT_SYNTAX_ERROR_AT;
   }
-  attach(text, tree);
-  const rootEnd = build(text, tree, cfg, storage);
+  attach(text, tree$);
+  const storage$ = storage;
+  const rootEnd = build(text, tree$, cfg, storage$);
   propagateExpand(RESERVED, rootEnd, tracker);
   // The line breaks of `cfg`: those of the options, or of the text if they leave it to that.
   const le = cfg.lineEnding === LE_CRLF ? LINE_ENDING_CRLF : cfg.lineEnding === LE_CR ? LINE_ENDING_CR : LINE_ENDING_LF;
-  const r = printDocumentWithLineEnding(storage, RESERVED, rootEnd, text, options, le, out);
+  const r = printDocumentWithLineEnding(storage$, RESERVED, rootEnd, text, options, le, out);
   return formatErrorOfPrintError(r);
 }

@@ -143,16 +143,18 @@ function breakTies(text: Uint8Array, tree: Tree): void {
     gapEnd = cm[(c << 3) + C_START] | 0;
     leadingFrom = leadingFrom - 1;
   }
+  const attached$ = attached;
   for (let index = 0; index < count; index++) {
     const c = first + index;
-    if (index < leadingFrom) attached.push(cm[(c << 3) + C_PRECEDING] | 0, c, P_TRAILING);
-    else attached.push(cm[(c << 3) + C_FOLLOWING] | 0, c, P_LEADING);
+    if (index < leadingFrom) attached$.push(cm[(c << 3) + C_PRECEDING] | 0, c, P_TRAILING);
+    else attached$.push(cm[(c << 3) + C_FOLLOWING] | 0, c, P_LEADING);
   }
 }
 
 /** Fills `attached`, which ends up sorted by owner, and for one owner by position. */
 export function attach(text: Uint8Array, tree: Tree): void {
-  attached.count = 0;
+  const attached$ = attached;
+  attached$.count = 0;
   const cm = tree.comments;
   const total = tree.commentCount;
   tiesFirst = 0;
@@ -241,22 +243,22 @@ export function attach(text: Uint8Array, tree: Tree): void {
       secondOwner = following;
       secondPlacement = P_LEADING;
     }
-    if (firstOwner !== OWNER_NONE) attached.push(firstOwner, index, firstPlacement);
-    else if (secondOwner !== OWNER_NONE) attached.push(secondOwner, index, secondPlacement);
-    else attached.push(enclosing, index, P_DANGLING);
+    if (firstOwner !== OWNER_NONE) attached$.push(firstOwner, index, firstPlacement);
+    else if (secondOwner !== OWNER_NONE) attached$.push(secondOwner, index, secondPlacement);
+    else attached$.push(enclosing, index, P_DANGLING);
   }
   breakTies(text, tree);
 
   // Sort by (owner, comment).
-  const n = attached.count;
-  if (attached.order.length < n) attached.order = new Int32Array(n * 2);
-  const order = attached.order;
+  const n = attached$.count;
+  if (attached$.order.length < n) attached$.order = new Int32Array(n * 2);
+  const order = attached$.order;
   for (let i = 0; i < n; i++) order[i] = i | 0;
-  sortKeys = attached.data;
+  sortKeys = attached$.data;
   sortInt32By(order, 0, n, compareAttached);
-  if (attached.sorted.length < n * 4) attached.sorted = new Int32Array(n * 8);
-  const sorted = attached.sorted;
-  const data = attached.data;
+  if (attached$.sorted.length < n * 4) attached$.sorted = new Int32Array(n * 8);
+  const sorted = attached$.sorted;
+  const data = attached$.data;
   for (let i = 0; i < n; i++) {
     const s = (order[i] | 0) << 2;
     const d = i << 2;

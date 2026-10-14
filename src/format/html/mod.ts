@@ -109,10 +109,11 @@ export function lastCursor(): number {
 }
 
 function scratchFor(options: FormatOptions): Scratch {
-  let s = state.scratch;
+  const state$ = state;
+  let s = state$.scratch;
   if (s === null) {
     s = new Scratch(options);
-    state.scratch = s;
+    state$.scratch = s;
   }
   return s;
 }
@@ -197,16 +198,17 @@ function preparedText(text: Uint8Array, options: FormatOptions): boolean {
     return false;
   }
   const isRange = start > 0 || end < lf.length;
+  const prepared$ = prepared;
   if (!isRange && options.insertPragma && !options.requirePragma && !hasFormatPragma) {
     const buf = new ByteBuf(lf.length + 24);
     buf.appendAscii(PRAGMA_COMMENT);
     buf.appendAll(lf);
-    prepared.text = buf.view();
-    prepared.isRange = false;
+    prepared$.text = buf.view();
+    prepared$.isRange = false;
     return true;
   }
-  prepared.text = lf;
-  prepared.isRange = isRange;
+  prepared$.text = lf;
+  prepared$.isRange = isRange;
   return true;
 }
 
@@ -233,9 +235,10 @@ export function hasSameContent(before: Uint8Array, after: Uint8Array, parser: nu
   plain.jsdoc = null;
   plain.tailwind = -1;
   const out = new ByteBuf(before.length + 64);
-  const saved = state.cursor;
+  const state$ = state;
+  const saved = state$.cursor;
   const r = format("", before, parser, plain, out);
-  state.cursor = saved;
+  state$.cursor = saved;
   return r === FORMAT_OK && keepsContent(before, out.view(), parser, plain);
 }
 
@@ -265,22 +268,24 @@ const withoutFm = new WithoutFrontMatter();
 
 function withoutFrontMatter(text: Uint8Array): void {
   const fm = parseFrontMatter(text);
+  const withoutFm$ = withoutFm;
   if (fm === null) {
-    withoutFm.content = text;
-    withoutFm.len = -1;
+    withoutFm$.content = text;
+    withoutFm$.len = -1;
     return;
   }
   const blanked = text.slice();
   for (let i = 0; i < fm.end; i++) {
     if ((blanked[i] | 0) !== 10) blanked[i] = 32;
   }
-  withoutFm.content = blanked;
-  withoutFm.len = fm.end;
+  withoutFm$.content = blanked;
+  withoutFm$.len = fm.end;
 }
 
 function treeAt(depth: number): HTree {
-  while (state.trees.length <= depth) state.trees.push(new HTree());
-  return state.trees[depth];
+  const state$ = state;
+  while (state$.trees.length <= depth) state$.trees.push(new HTree());
+  return state$.trees[depth];
 }
 
 /** The message of the syntax error of the last `syntaxError` that said yes, and its offset in the original text. */
@@ -307,13 +312,15 @@ export function syntaxError(text: Uint8Array, parser: number): boolean {
   const lf = crlfAsLf(original, 0);
   withoutFrontMatter(lf);
   const t = treeAt(state.depth);
-  t.reset(withoutFm.content);
-  const r = parseTree(t, withoutFm.len, parser);
+  const withoutFm$ = withoutFm;
+  t.reset(withoutFm$.content);
+  const r = parseTree(t, withoutFm$.len, parser);
+  const lastSyntaxError$ = lastSyntaxError;
   if (r !== PARSE_OK) {
     if (r === PARSE_NESTED_TOO_DEEPLY) return false;
     const msg = new ByteBuf(64);
     parseErrorMessage(t.pool.data, msg);
-    lastSyntaxError.message = msg.toUtf8();
+    lastSyntaxError$.message = msg.toUtf8();
     // A line break of two bytes is one in what has been parsed.
     let at = 0;
     let left = parseErrorAt();
@@ -321,7 +328,7 @@ export function syntaxError(text: Uint8Array, parser: number): boolean {
       at = at + ((original[at] | 0) === 13 && at + 1 < original.length && (original[at + 1] | 0) === 10 ? 2 : 1);
       left = left - 1;
     }
-    lastSyntaxError.offset = at;
+    lastSyntaxError$.offset = at;
     return true;
   }
   return false;
@@ -331,8 +338,9 @@ export function syntaxError(text: Uint8Array, parser: number): boolean {
 export function canBeParsed(text: Uint8Array, parser: number): boolean {
   withoutFrontMatter(text);
   const t = treeAt(state.depth);
-  t.reset(withoutFm.content);
-  return parseTree(t, withoutFm.len, parser) === PARSE_OK;
+  const withoutFm$ = withoutFm;
+  t.reset(withoutFm$.content);
+  return parseTree(t, withoutFm$.len, parser) === PARSE_OK;
 }
 
 /**
@@ -355,10 +363,12 @@ export function writeDocument(
   scriptFlavor: number,
 ): number {
   withoutFrontMatter(text);
-  const fmLen = withoutFm.len;
-  const depth = state.depth;
+  const withoutFm$ = withoutFm;
+  const fmLen = withoutFm$.len;
+  const state$ = state;
+  const depth = state$.depth;
   const t = treeAt(depth);
-  t.reset(withoutFm.content);
+  t.reset(withoutFm$.content);
   const r = parseTree(t, fmLen, parser);
   if (r !== PARSE_OK) return r === PARSE_NESTED_TOO_DEEPLY ? FORMAT_NESTED_TOO_DEEPLY : FORMAT_SYNTAX_ERROR;
   const cursor = cursorOffset >= 0 ? locate(t, cursorOffset) : new Cursor();
@@ -367,16 +377,16 @@ export function writeDocument(
   if (options.htmlTemplateDepth > 0 && wouldRepeatSubstitution(t)) return FORMAT_SYNTAX_ERROR;
   const w = new Writer(f, indentLevel, !isEmbedded);
   const p = new Printer(t, o, w, cursor);
-  state.depth = depth + 1;
+  state$.depth = depth + 1;
   printRoot(p, !isEmbedded);
-  state.depth = depth;
+  state$.depth = depth;
   const isNestedTooDeeply = p.isNestedTooDeeply;
   w.finish();
   if (isNestedTooDeeply) return FORMAT_NESTED_TOO_DEEPLY;
   let count = 0;
   for (let c = firstChild(t, t.root); c >= 0; c = nextOf(t, c)) count = count + 1;
-  state.topLevelCount = count;
-  state.region = cursor.kind !== CUR_NOWHERE ? regionOf(t, cursor) : null;
+  state$.topLevelCount = count;
+  state$.region = cursor.kind !== CUR_NOWHERE ? regionOf(t, cursor) : null;
   return FORMAT_OK;
 }
 
@@ -424,17 +434,19 @@ function formatAngularExpression(text: Uint8Array, parser: number, options: Form
 
 /** Appends the formatted `text` to `out`. `path`: the name of the file. Returns a `FORMAT_*` code. */
 export function format(path: string, text: Uint8Array, parser: number, options: FormatOptions, out: ByteBuf): number {
-  state.cursor = -1;
+  const state$ = state;
+  state$.cursor = -1;
   if (parser >= PARSER_NG_ACTION) return formatAngularExpression(text, parser, options, out);
   const original = text;
   const hasBom = startsWithBom(text, 0);
   if (!preparedText(text, options)) {
     out.appendAll(original);
-    state.cursor = options.cursorOffset;
+    state$.cursor = options.cursorOffset;
     return FORMAT_OK;
   }
-  const body = prepared.text;
-  const isRange = prepared.isRange;
+  const prepared$ = prepared;
+  const body = prepared$.text;
+  const isRange = prepared$.isRange;
   const bomStart = out.len;
   if (hasBom) out.appendAll(BOM_BYTES);
   // Prettier goes by what is white space in JavaScript, and makes nothing of a no-break space.
@@ -457,7 +469,7 @@ export function format(path: string, text: Uint8Array, parser: number, options: 
     const from = bomStart;
     writeWithLineEnding(body, 0, body.length, resolveLineEnding(options.lineEnding, original), out);
     // `options.cursor_offset` counts in `original`.
-    state.cursor = options.cursorOffset >= 0 ? cursorInFormattedText(original, options, out.data.subarray(from, out.len)) : -1;
+    state$.cursor = options.cursorOffset >= 0 ? cursorInFormattedText(original, options, out.data.subarray(from, out.len)) : -1;
     return FORMAT_OK;
   }
   // (TODO(port): `with_sorted_scripts` for the plugins that sort imports in Vue, and `tailwind::with_sorted_classes`.)
@@ -485,7 +497,7 @@ export function format(path: string, text: Uint8Array, parser: number, options: 
     out.truncate(bomStart);
     return status;
   }
-  const region = state.region;
+  const region = state$.region;
   const printedFrom = out.len;
   const r = finishAndPrint(f, out);
   if (r !== FORMAT_OK) {
@@ -506,7 +518,7 @@ export function format(path: string, text: Uint8Array, parser: number, options: 
     m0 = -1;
     m1 = -1;
   }
-  state.cursor = cursorInRegion(body, cursorOffset, region, out.data, printedFrom, out.len, m0, m1) + (hasBom ? 1 : 0);
+  state$.cursor = cursorInRegion(body, cursorOffset, region, out.data, printedFrom, out.len, m0, m1) + (hasBom ? 1 : 0);
   return FORMAT_OK;
 }
 

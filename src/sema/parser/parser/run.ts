@@ -59,35 +59,36 @@ import { srcText } from "./mod.ts";
 
 /** `isAnExternalModuleIndicatorNode` */
 function isAnExternalModuleIndicator(id: number): boolean {
-  if (id < 0 || id >= hir.nStmts) return false;
-  const a = hir.stmtA[id] | 0;
+  const hir$ = hir;
+  if (id < 0 || id >= hir$.nStmts) return false;
+  const a = hir$.stmtA[id] | 0;
   let flags = 0;
-  switch (hir.stmtTag[id] | 0) {
+  switch (hir$.stmtTag[id] | 0) {
     case STMT_VAR:
-      flags = modifiersToFlags(hir.stmtModStart[id] | 0, hir.stmtModLen[id] | 0);
+      flags = modifiersToFlags(hir$.stmtModStart[id] | 0, hir$.stmtModLen[id] | 0);
       break;
     case STMT_FN:
-      flags = hir.fnFlags[a] | 0;
+      flags = hir$.fnFlags[a] | 0;
       break;
     case STMT_CLASS:
-      flags = hir.classFlags[a] | 0;
+      flags = hir$.classFlags[a] | 0;
       break;
     case STMT_INTERFACE:
-      flags = hir.interfaceFlags[a] | 0;
+      flags = hir$.interfaceFlags[a] | 0;
       break;
     case STMT_TYPE_ALIAS:
-      flags = hir.aliasFlags[a] | 0;
+      flags = hir$.aliasFlags[a] | 0;
       break;
     case STMT_ENUM:
-      flags = hir.enumFlags[a] | 0;
+      flags = hir$.enumFlags[a] | 0;
       break;
     case STMT_MODULE:
-      flags = hir.moduleFlags[a] | 0;
+      flags = hir$.moduleFlags[a] | 0;
       break;
     // `import a = b.c` aliases an existing entity. It does not make the file a module.
     case STMT_IMPORT_EQUALS:
-      if ((hir.importEqualsTargetKind[a] | 0) === IET_REQUIRE) return true;
-      flags = hir.importEqualsFlags[a] | 0;
+      if ((hir$.importEqualsTargetKind[a] | 0) === IET_REQUIRE) return true;
+      flags = hir$.importEqualsFlags[a] | 0;
       break;
     case STMT_IMPORT:
     case STMT_EXPORT_NAMED:
@@ -103,38 +104,43 @@ function isAnExternalModuleIndicator(id: number): boolean {
 
 /** `parseSourceFileWorker` */
 function sourceFile(): void {
-  hir.kind = p.isJson ? FK_JSON : p.isDeclarationFile ? FK_DECLARATION : p.isJsx ? FK_TSX : FK_TS;
-  hir.isJs = p.isJavascript && !p.isJson;
-  hir.isFlow = p.isFlow;
+  const hir$ = hir;
+  const p$ = p;
+  hir$.kind = p$.isJson ? FK_JSON : p$.isDeclarationFile ? FK_DECLARATION : p$.isJsx ? FK_TSX : FK_TS;
+  hir$.isJs = p$.isJavascript && !p$.isJson;
+  hir$.isFlow = p$.isFlow;
   next();
-  const base = s.ids.len;
-  p.lists = 1 << LK_SOURCE_ELEMENTS;
-  if (p.isJson) {
+  const s$ = s;
+  const base = s$.ids.len;
+  p$.lists = 1 << LK_SOURCE_ELEMENTS;
+  if (p$.isJson) {
     const value = jsonText();
-    hir.hasModuleSyntax = true;
-    s.ids.push(value);
+    hir$.hasModuleSyntax = true;
+    s$.ids.push(value);
   }
-  while (lx.token !== T_EOF && isAtElement(LK_SOURCE_ELEMENTS)) {
-    const stmt = p.recovers ? topLevelStatement() : statement();
+  const lx$ = lx;
+  while (lx$.token !== T_EOF && isAtElement(LK_SOURCE_ELEMENTS)) {
+    const stmt = p$.recovers ? topLevelStatement() : statement();
     takeStrayDecorators(0);
-    if (isAnExternalModuleIndicator(stmt)) hir.hasModuleSyntax = true;
+    if (isAnExternalModuleIndicator(stmt)) hir$.hasModuleSyntax = true;
     // TODO(jsdoc): `statement_jsdoc`, `list_reparsed`
-    s.ids.push(stmt);
+    s$.ids.push(stmt);
   }
-  hir.bodyStart = takeIds(base);
-  hir.bodyLen = p.outLen | 0;
+  hir$.bodyStart = takeIds(base);
+  hir$.bodyLen = p$.outLen | 0;
   // TODO(oxc): `module_statements`, `statements_in_ambient_context`
   takeErrorsOfScanner();
   // TODO(checker): `forget_specifiers_of_misplaced_declarations` (1141 is of the type checker).
-  if (p.unclaimedNullableTypes > 0) refuse(R_REPORTED);
-  if (p.isEcmascript && !p.isFlow && !hasFailed()) reportSyntaxOfTypescript();
-  if (p.recovers && hasParseDiagnostic()) hir.hasParseDiagnostics = true;
-  sortRows2(hir.importAttributes, hir.importAttributesLen);
+  if (p$.unclaimedNullableTypes > 0) refuse(R_REPORTED);
+  if (p$.isEcmascript && !p$.isFlow && !hasFailed()) reportSyntaxOfTypescript();
+  if (p$.recovers && hasParseDiagnostic()) hir$.hasParseDiagnostics = true;
+  sortRows2(hir$.importAttributes, hir$.importAttributesLen);
 }
 
 function hasParseDiagnostic(): boolean {
-  const n = hir.diagnosticsLen;
-  for (let i = 0; i < n; i += 5) if ((hir.diagnostics[i] | 0) === DK_PARSE) return true;
+  const hir$ = hir;
+  const n = hir$.diagnosticsLen;
+  for (let i = 0; i < n; i += 5) if ((hir$.diagnostics[i] | 0) === DK_PARSE) return true;
   return false;
 }
 
@@ -158,6 +164,7 @@ function sortRows2(a: Int32Array, len: number): void {
 /** `Lexer::flagged` as diagnostics (`report_what_the_scanner_flagged`). */
 function reportWhatTheScannerFlagged(): void {
   const f = lx.flagged;
+  const hir$ = hir;
   for (let i = 0; i < f.len; i += 3) {
     const code = f.data[i] | 0;
     const start = f.data[i + 1] | 0;
@@ -171,7 +178,7 @@ function reportWhatTheScannerFlagged(): void {
       else if (written.charCodeAt(0) === 45) argument = "-0o" + radixText(octalOf(written, 1), 8);
       else argument = "0o" + radixText(octalOf(written, 0), 8);
       pushDiagnosticArgs(DK_GRAMMAR, start, end, code, argument === "" ? [] : [argument]);
-    } else hir.pushDiagnostics(DK_GRAMMAR, start, end, code, -1);
+    } else hir$.pushDiagnostics(DK_GRAMMAR, start, end, code, -1);
   }
   f.len = 0;
 }
@@ -212,16 +219,18 @@ export function parseSource(
 ): number {
   if (len >= 1 << 30) return R_TOO_LARGE;
   beginFile(src, len);
-  lx.begin(src, len);
+  const lx$ = lx;
+  lx$.begin(src, len);
   beginParse(isDeclarationFile, isJsx, isJavascript, isJson, awaitIsAName, isModuleOrScript, dialect, recovers);
   sourceFile();
   reportWhatTheScannerFlagged();
-  if (lx.privateNames.len > 0) hir.rareSyntax = hir.rareSyntax | RARE_ODD_PRIVATE_NAME;
+  const hir$ = hir;
+  if (lx$.privateNames.len > 0) hir$.rareSyntax = hir$.rareSyntax | RARE_ODD_PRIVATE_NAME;
   // (`note_odd_exports` is for oxc.)
-  if (lx.refusal !== 0) return lx.refusal | 0;
-  const errors = hir.diagnosticsLen;
-  if (!processPragmasIntoFields(src, lx.leadingComments, recovers, names)) return R_REPORTED;
-  if (hir.diagnosticsLen > errors) hir.hasParseDiagnostics = true;
+  if (lx$.refusal !== 0) return lx$.refusal | 0;
+  const errors = hir$.diagnosticsLen;
+  if (!processPragmasIntoFields(src, lx$.leadingComments, recovers, names)) return R_REPORTED;
+  if (hir$.diagnosticsLen > errors) hir$.hasParseDiagnostics = true;
   finishHir();
   return 0;
 }
@@ -301,8 +310,9 @@ export function parseFile(src: Uint8Array, len: number, path: string, isScript: 
 }
 
 function hasImportMeta(): boolean {
-  const n = hir.nExprs;
-  for (let i = 0; i < n; i++) if ((hir.exprTag[i] | 0) === EXPR_IMPORT_META) return true;
+  const hir$ = hir;
+  const n = hir$.nExprs;
+  for (let i = 0; i < n; i++) if ((hir$.exprTag[i] | 0) === EXPR_IMPORT_META) return true;
   return false;
 }
 

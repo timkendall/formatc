@@ -388,7 +388,8 @@ function tokenSpanIs(m: number, word: string): boolean {
   const s = SP[0] | 0;
   const e = SP[1] | 0;
   if (e - s !== word.length) return false;
-  for (let i = 0; i < word.length; i++) if ((hir.text[s + i] | 0) !== word.charCodeAt(i)) return false;
+  const hir$ = hir;
+  for (let i = 0; i < word.length; i++) if ((hir$.text[s + i] | 0) !== word.charCodeAt(i)) return false;
   return true;
 }
 
@@ -499,13 +500,16 @@ const childScratch = new I32Vec(32);
 /** Prettier's `includesFunctionTypeInObjectType`. `isInObjectType`: `node` is. */
 function includesFunctionTypeInObjectType(node: number, isInObjectType: boolean): boolean {
   // What is in it and has not been looked at.
-  const baseN = stackNodes.len;
-  stackNodes.push(node);
-  stackFlags.push(isInObjectType ? 1 : 0);
+  const stackNodes$ = stackNodes;
+  const baseN = stackNodes$.len;
+  stackNodes$.push(node);
+  const stackFlags$ = stackFlags;
+  stackFlags$.push(isInObjectType ? 1 : 0);
   let result = false;
-  while (stackNodes.len > baseN) {
-    const n = stackNodes.pop();
-    const inObject = stackFlags.pop() !== 0;
+  const childScratch$ = childScratch;
+  while (stackNodes$.len > baseN) {
+    const n = stackNodes$.pop();
+    const inObject = stackFlags$.pop() !== 0;
     let isFunctionType = false;
     let isObjectType = false;
     let operand = -1;
@@ -522,20 +526,20 @@ function includesFunctionTypeInObjectType(node: number, isInObjectType: boolean)
     }
     const now = inObject || isObjectType;
     if (operand >= 0) {
-      stackNodes.push(nodeOfType(operand));
-      stackFlags.push(now ? 1 : 0);
+      stackNodes$.push(nodeOfType(operand));
+      stackFlags$.push(now ? 1 : 0);
     } else {
-      const base = childScratch.len;
-      nodeChildren(n, -1, childScratch);
-      for (let i = base; i < childScratch.len; i++) {
-        stackNodes.push(childScratch.data[i] | 0);
-        stackFlags.push(now ? 1 : 0);
+      const base = childScratch$.len;
+      nodeChildren(n, -1, childScratch$);
+      for (let i = base; i < childScratch$.len; i++) {
+        stackNodes$.push(childScratch$.data[i] | 0);
+        stackFlags$.push(now ? 1 : 0);
       }
-      childScratch.len = base;
+      childScratch$.len = base;
     }
   }
-  stackNodes.len = baseN;
-  stackFlags.len = baseN;
+  stackNodes$.len = baseN;
+  stackFlags$.len = baseN;
   return result;
 }
 
@@ -1176,7 +1180,8 @@ export function isOpaqueType(statement: number, f: Formatter): boolean {
 function boundFollows(bound: number, word: string): boolean {
   const end = fileEndOfTokenBefore(typeOuterStart(bound));
   if (end < word.length) return false;
-  for (let i = 0; i < word.length; i++) if ((hir.text[end - word.length + i] | 0) !== word.charCodeAt(i)) return false;
+  const hir$ = hir;
+  for (let i = 0; i < word.length; i++) if ((hir$.text[end - word.length + i] | 0) !== word.charCodeAt(i)) return false;
   return true;
 }
 
@@ -1308,9 +1313,10 @@ function writeDeclaredClassOrRecord(cls: number, isRecordClass: boolean, f: Form
   // `Class::body_span` knows nothing of `mixins`.
   let bodyStart = 0;
   let bodyEnd = 0;
+  const hir$ = hir;
   if (mixinsLen > 0 && implLen === 0) {
     typeSpan(listAt(mixinsStart, mixinsLen - 1));
-    bodyStart = skipTrivia(hir.text, hir.sourceLen | 0, SP[1] | 0);
+    bodyStart = skipTrivia(hir$.text, hir$.sourceLen | 0, SP[1] | 0);
     classSpan(cls);
     bodyEnd = SP[1] | 0;
   } else {
@@ -1474,7 +1480,8 @@ export function writeExplicitTypeOfEnum(declaration: number, f: Formatter): void
 export function isUnknownMembersMark(member: number): boolean {
   // `member.text() == b"..."`
   const s = enumMemberStartOf(member);
-  return (hir.text[s] | 0) === 46 && (hir.text[s + 1] | 0) === 46 && (hir.text[s + 2] | 0) === 46 && enumMemberEndOf(member) - s === 3;
+  const hir$ = hir;
+  return (hir$.text[s] | 0) === 46 && (hir$.text[s + 1] | 0) === 46 && (hir$.text[s + 2] | 0) === 46 && enumMemberEndOf(member) - s === 3;
 }
 
 import { enumMemberSpan } from "../../../lint/ast/index.ts";
@@ -1491,7 +1498,8 @@ function enumMemberEndOf(member: number): number {
 export function importKind(start: number, f: Formatter): string {
   void f;
   const t = "typeof";
-  for (let i = 0; i < t.length; i++) if ((hir.text[start + i] | 0) !== t.charCodeAt(i)) return "type ";
+  const hir$ = hir;
+  for (let i = 0; i < t.length; i++) if ((hir$.text[start + i] | 0) !== t.charCodeAt(i)) return "type ";
   return "typeof ";
 }
 
@@ -1590,7 +1598,8 @@ export function writeMatchStatement(statement: number, head: number, casesStart:
   const stmtStart = SP[0] | 0;
   if (headCall < 0 || exprStart(head) !== stmtStart) return false;
   const headEnd = exprEnd(head);
-  const openBrace = skipTrivia(hir.text, hir.sourceLen | 0, headEnd);
+  const hir$ = hir;
+  const openBrace = skipTrivia(hir$.text, hir$.sourceLen | 0, headEnd);
   writeMatch(headCall, openBrace, casesLen === 0, 2, statement, casesStart, f, casesLen);
   return true;
 }
@@ -1882,9 +1891,10 @@ const alternativesScratch = new I32Vec(16);
 
 /** Prettier's `printMatchOrPattern`. */
 function writeMatchOrPattern(pattern: number, parent: number, count: number, f: Formatter): void {
-  const base = alternativesScratch.len;
-  alternatives(pattern, alternativesScratch);
-  const end = alternativesScratch.len;
+  const alternativesScratch$ = alternativesScratch;
+  const base = alternativesScratch$.len;
+  alternatives(pattern, alternativesScratch$);
+  const end = alternativesScratch$.len;
   const cx = cxOf(f);
   exprSpan(pattern);
   const ps = SP[0] | 0;
@@ -1893,7 +1903,7 @@ function writeMatchOrPattern(pattern: number, parent: number, count: number, f: 
   let objects = 0;
   let allSimple = true;
   for (let i = base; i < end; i++) {
-    const it = alternativesScratch.data[i] | 0;
+    const it = alternativesScratch$.data[i] | 0;
     if (exprTag(it) === EXPR_OBJECT) objects = objects + 1;
     else if (!isSimpleMatchPattern(it)) allSimple = false;
   }
@@ -1901,9 +1911,9 @@ function writeMatchOrPattern(pattern: number, parent: number, count: number, f: 
   if (shouldHug) {
     for (let i = base; i < end; i++) {
       if (i > base) f.token(T_PIPE_SPACES);
-      writeMatchPattern(alternativesScratch.data[i] | 0, PP_OTHER, 0, f);
+      writeMatchPattern(alternativesScratch$.data[i] | 0, PP_OTHER, 0, f);
     }
-    alternativesScratch.len = base;
+    alternativesScratch$.len = base;
     return;
   }
   const shouldIndent = !(parent === PP_CASE || parent === PP_ARRAY || parent === PP_PROPERTY) && !cx.comments.hasLeadingOwnLineComment(ps);
@@ -1944,14 +1954,15 @@ function writeMatchOrPattern(pattern: number, parent: number, count: number, f: 
     writeAlternatives(base, end, f);
     f.endGroup();
   }
-  alternativesScratch.len = base;
+  alternativesScratch$.len = base;
 }
 
 function writeAlternatives(base: number, end: number, f: Formatter): void {
   // The scratch can grow while the patterns are written (they are nested): the alternatives are copied first.
   const n = end - base;
   const copy: number[] = [];
-  for (let i = 0; i < n; i++) copy.push(alternativesScratch.data[base + i] | 0);
+  const alternativesScratch$ = alternativesScratch;
+  for (let i = 0; i < n; i++) copy.push(alternativesScratch$.data[base + i] | 0);
   f.startIfGroupBreaks();
   f.token(T_PIPE_SPACE);
   f.endConditional();

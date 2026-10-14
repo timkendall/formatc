@@ -204,8 +204,9 @@ class Tidy {
   find(span: Span, byte: number): number {
     if (span.end < span.start) return -1;
     commentsWithin(span.start, span.end);
-    const from0 = commentRange.from;
-    const to0 = commentRange.to;
+    const commentRange$ = commentRange;
+    const from0 = commentRange$.from;
+    const to0 = commentRange$.to;
     let from = span.start;
     for (let k = from0; k < to0; k++) {
       const cs = commentStartAt(k);
@@ -263,6 +264,7 @@ class Tidy {
     if (close < 0) return null;
     const chunks: Chunk[] = [];
     let from = open + 1;
+    const commentRange$ = commentRange;
     for (let index = 0; index < n; index++) {
       const spec = listAt(ns, index);
       const sp = specSpan(spec);
@@ -273,8 +275,8 @@ class Tidy {
       // Comments on the rest of the line trail this name, but only if nothing else follows them on that line.
       let reached = after;
       commentsWithin(after, limit);
-      const cf = commentRange.from;
-      const ct = commentRange.to;
+      const cf = commentRange$.from;
+      const ct = commentRange$.to;
       for (let k = cf; k < ct; k++) {
         if (hasJsLineBreakIn(this.text, reached, commentStartAt(k))) break;
         reached = commentEndAt(k);
@@ -340,8 +342,9 @@ class Tidy {
   hasIgnore(span: Span): boolean {
     if (span.end < span.start) return false;
     commentsWithin(span.start, span.end);
-    const from = commentRange.from;
-    const to = commentRange.to;
+    const commentRange$ = commentRange;
+    const from = commentRange$.from;
+    const to = commentRange$.to;
     for (let k = from; k < to; k++) {
       let s = commentStartAt(k);
       let e = commentEndAt(k);
@@ -455,8 +458,9 @@ class Tidy {
   pushComments(span: Span, leads: boolean, out: Pieces): void {
     if (span.end < span.start) return;
     commentsWithin(span.start, span.end);
-    const from = commentRange.from;
-    const to = commentRange.to;
+    const commentRange$ = commentRange;
+    const from = commentRange$.from;
+    const to = commentRange$.to;
     for (let k = from; k < to; k++) {
       const isLine = commentKindAt(k) === TK_LINE;
       // A leading line comment needs its own line, or it would attach to the previous name.
@@ -468,8 +472,9 @@ class Tidy {
   hasLineComment(span: Span): boolean {
     if (span.end < span.start) return false;
     commentsWithin(span.start, span.end);
-    const from = commentRange.from;
-    const to = commentRange.to;
+    const commentRange$ = commentRange;
+    const from = commentRange$.from;
+    const to = commentRange$.to;
     for (let k = from; k < to; k++) if (commentKindAt(k) === TK_LINE) return true;
     return false;
   }
@@ -554,6 +559,7 @@ class Tidy {
     const names = new Pieces();
     const ownDefault = importDefault(target.imp);
     const braces = target.braces;
+    const commentRange$ = commentRange;
     if (braces !== null) {
       // These comments are part of `chunks` now.
       if (braces.chunks.length > 0) {
@@ -562,7 +568,7 @@ class Tidy {
           const sp = spans[s] as Span;
           if (sp.end < sp.start) continue;
           commentsWithin(sp.start, sp.end);
-          for (let k = commentRange.from; k < commentRange.to; k++) {
+          for (let k = commentRange$.from; k < commentRange$.to; k++) {
             this.changes.push(new Change(new Span(commentStartAt(k), commentEndAt(k)), EMPTY_BYTES));
           }
         }
@@ -582,7 +588,7 @@ class Tidy {
       const from = this.find(new Span(d.end, source.start), 102);
       const aboutDefault = new Span(d.end, from >= 0 ? from : d.end);
       let lastComment = -1;
-      if (aboutDefault.end >= aboutDefault.start && commentsWithin(aboutDefault.start, aboutDefault.end) > 0) lastComment = commentRange.to - 1;
+      if (aboutDefault.end >= aboutDefault.start && commentsWithin(aboutDefault.start, aboutDefault.end) > 0) lastComment = commentRange$.to - 1;
       names.endsInLineComment = lastComment >= 0 && commentKindAt(lastComment) === TK_LINE;
       names.pushAscii(", {", false);
       this.writeNames(chunks, names);
@@ -688,7 +694,8 @@ class Tidy {
 
 /** Returns the text of the file with sorted names and merged imports, or null if nothing changes. */
 export function preprocess(): Uint8Array | null {
-  const text = hir.text.subarray(0, hir.sourceLen | 0);
+  const hir$ = hir;
+  const text = hir$.text.subarray(0, hir$.sourceLen | 0);
   const tidy = new Tidy(text);
   if (!tidy.mayBeUntidy()) return null;
   const n = fileBodyLen();
@@ -745,7 +752,8 @@ export class Summary {
 }
 
 export function summary(): Summary {
-  const text = hir.text.subarray(0, hir.sourceLen | 0);
+  const hir$ = hir;
+  const text = hir$.text.subarray(0, hir$.sourceLen | 0);
   const out = new Summary();
   const n = fileBodyLen();
   const bs = fileBodyStart();
@@ -779,7 +787,7 @@ export function summary(): Summary {
       add("default", bytesString(text, sp.start, sp.end), false);
     }
     if (ns >= 0) {
-      const sp = identSpanOf(ns, hir.importNamespacePos[imp] | 0);
+      const sp = identSpanOf(ns, hir$.importNamespacePos[imp] | 0);
       add("*", bytesString(text, sp.start, sp.end), false);
     }
     const start = importNamedStart(imp);

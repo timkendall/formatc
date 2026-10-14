@@ -31,63 +31,69 @@ import { SP } from "../span.ts";
  * source type is "module" (`!is_script`).
  */
 export function fileBegin(names: Names, parserIsTypeScript: boolean, isModule: boolean): void {
-  F.names = names;
-  F.isEspree = !parserIsTypeScript;
-  F.isModuleSource = isModule;
-  F.parentsComplete = fillParents();
+  const F$ = F;
+  F$.names = names;
+  F$.isEspree = !parserIsTypeScript;
+  F$.isModuleSource = isModule;
+  F$.parentsComplete = fillParents();
   buildParenthesized();
-  F.unicodeEscapes.reset();
-  F.unicodeFirst = 0;
-  F.unicodeLast = 0x7fffffff;
+  F$.unicodeEscapes.reset();
+  F$.unicodeFirst = 0;
+  F$.unicodeLast = 0x7fffffff;
   buildUnicodeEscapes();
-  F.jsxDotTags.reset();
-  F.jsxDotTagsBuilt = false;
-  F.bodyOpenBuilt = false;
-  F.paramsFn = -1;
-  F.directivesKnown = false;
-  F.jsdocBuilt = false;
+  F$.jsxDotTags.reset();
+  F$.jsxDotTagsBuilt = false;
+  F$.bodyOpenBuilt = false;
+  F$.paramsFn = -1;
+  F$.directivesKnown = false;
+  F$.jsdocBuilt = false;
   TP.built = false;
   // `Dialect::of(file)`: espree for JavaScript unless the parser is TypeScript's.
   commentsBegin(!(hir.isJs && !parserIsTypeScript), isModule);
 }
 
 function buildParenthesized(): void {
-  const words = ((hir.nExprs >> 5) + 1) | 0;
-  if (F.parenBits.length < words) {
-    let c = F.parenBits.length;
+  const hir$ = hir;
+  const words = ((hir$.nExprs >> 5) + 1) | 0;
+  const F$ = F;
+  if (F$.parenBits.length < words) {
+    let c = F$.parenBits.length;
     while (c < words) c = c * 2;
-    F.parenBits = new Int32Array(c);
+    F$.parenBits = new Int32Array(c);
   }
-  F.parenBits.fill(0, 0, words);
-  const bits = F.parenBits;
-  const n = hir.nParens | 0;
+  F$.parenBits.fill(0, 0, words);
+  const bits = F$.parenBits;
+  const n = hir$.nParens | 0;
   for (let i = 0; i < n; i++) {
-    const e = hir.parenExpr[i] | 0;
+    const e = hir$.parenExpr[i] | 0;
     bits[e >> 5] = (bits[e >> 5] | 0) | (1 << (e & 31));
   }
 }
 
 function buildUnicodeEscapes(): void {
-  const text = hir.text;
-  const n = hir.sourceLen | 0;
-  const v = F.unicodeEscapes;
+  const hir$ = hir;
+  const text = hir$.text;
+  const n = hir$.sourceLen | 0;
+  const F$ = F;
+  const v = F$.unicodeEscapes;
   const last = (n - 1) | 0;
   for (let i = 0; i < last; i++) {
     if ((text[i] | 0) === 92 && (text[i + 1] | 0) === 117) v.push(i);
   }
   if (v.len > 0) {
-    F.unicodeFirst = v.data[0] | 0;
-    F.unicodeLast = v.data[v.len - 1] | 0;
+    F$.unicodeFirst = v.data[0] | 0;
+    F$.unicodeLast = v.data[v.len - 1] | 0;
   } else {
-    F.unicodeFirst = 0x7fffffff;
-    F.unicodeLast = 0;
+    F$.unicodeFirst = 0x7fffffff;
+    F$.unicodeLast = 0;
   }
 }
 
 /** `File::program_span` into `SP`: from the first token, after a `#!` line and comments, to the end of the text. */
 export function fileProgramSpan(): void {
-  SP[0] = skipTrivia(hir.text, hir.sourceLen | 0, 0);
-  SP[1] = hir.sourceLen | 0;
+  const hir$ = hir;
+  SP[0] = skipTrivia(hir$.text, hir$.sourceLen | 0, 0);
+  SP[1] = hir$.sourceLen | 0;
 }
 
 /** `File::span` into `SP`: the whole text. */
@@ -118,7 +124,8 @@ export function fileIsModule(): boolean {
 
 /** The parser reported an error (`hir.has_errors || hir.has_parse_diagnostics`). */
 export function fileHasParseErrors(): boolean {
-  return hir.hasErrors || hir.hasParseDiagnostics;
+  const hir$ = hir;
+  return hir$.hasErrors || hir$.hasParseDiagnostics;
 }
 
 /** The statements at the top level: a list `(fileBodyStart(), fileBodyLen())` of StmtIds in `hir.ids`. */
@@ -131,8 +138,9 @@ export function fileBodyLen(): number {
 
 /** `File::has_bom`: the text starts with a byte order mark. */
 export function fileHasBom(): boolean {
-  const t = hir.text;
-  return hir.sourceLen >= 3 && (t[0] | 0) === 0xef && (t[1] | 0) === 0xbb && (t[2] | 0) === 0xbf;
+  const hir$ = hir;
+  const t = hir$.text;
+  return hir$.sourceLen >= 3 && (t[0] | 0) === 0xef && (t[1] | 0) === 0xbb && (t[2] | 0) === 0xbf;
 }
 
 /** `File::slice` is `hir.text.subarray(start, end)`; the formatter works on `(hir.text, start, end)`. */

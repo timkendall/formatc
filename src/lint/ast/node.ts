@@ -227,6 +227,8 @@ export function nodeParent(n: number): number {
 
 /** The node that the binder has as `parent`: `(tag, a)` of the tables of `bound`. */
 function ofParent(tag: number, a: number): number {
+  const hir$ = hir;
+  const bound$ = bound;
   switch (tag) {
     case P_NONE:
     case P_FILE:
@@ -234,7 +236,7 @@ function ofParent(tag: number, a: number): number {
     case P_EXPR:
       return nodeOfExpr(a);
     case P_STMT: {
-      if ((hir.stmtTag[a] | 0) === STMT_EXPR) {
+      if ((hir$.stmtTag[a] | 0) === STMT_EXPR) {
         const w = stmtWrappedIn(a);
         return nodeOfStmt(w >= 0 ? w : a);
       }
@@ -264,10 +266,10 @@ function ofParent(tag: number, a: number): number {
     case P_MODULE: {
       let m = a;
       while (true) {
-        if (m < 0 || m >= hir.nModules) return NODE_FILE;
-        const s = hir.moduleStmt[m] | 0;
+        if (m < 0 || m >= hir$.nModules) return NODE_FILE;
+        const s = hir$.moduleStmt[m] | 0;
         // From the `C` of `namespace A.B.C` to the `A`.
-        if (s >= 0 && (bound.stmtParentTag[s] | 0) === P_MODULE && isNestedNamespace(s)) m = bound.stmtParentA[s] | 0;
+        if (s >= 0 && (bound$.stmtParentTag[s] | 0) === P_MODULE && isNestedNamespace(s)) m = bound$.stmtParentA[s] | 0;
         else return s >= 0 ? nodeOfStmt(s) : NODE_FILE;
       }
     }
@@ -323,13 +325,14 @@ function exprParentInRareCases(e: number, tag: number, a: number): number {
     const ty = typeOfTypeQueryOperand(e);
     if (ty >= 0) return nodeOfType(ty);
   }
+  const hir$ = hir;
   if (tag === P_EXPR) {
     // The substitutions of a tagged template are in the template.
-    if ((hir.exprTag[a] | 0) === EXPR_TAGGED_TEMPLATE) {
-      const call = hir.exprA[a] | 0;
+    if ((hir$.exprTag[a] | 0) === EXPR_TAGGED_TEMPLATE) {
+      const call = hir$.exprA[a] | 0;
       if (call >= 0) {
-        const callee = hir.callCallee[call] | 0;
-        const template = hir.callTemplate[call] | 0;
+        const callee = hir$.callCallee[call] | 0;
+        const template = hir$.callTemplate[call] | 0;
         if (callee !== e && template !== e) return nodeOfExpr(template);
       }
     }
@@ -340,21 +343,25 @@ function exprParentInRareCases(e: number, tag: number, a: number): number {
 
 /** `File::is_plainly_no_wrapper`: whether it shows from the kind of its parent that the expression statement `id` is not a wrapper. */
 function isPlainlyNoWrapper(id: number): boolean {
-  if ((bound.stmtParentTag[id] | 0) !== P_STMT) return true;
-  const parent = bound.stmtParentA[id] | 0;
-  const t = hir.stmtTag[parent] | 0;
+  const bound$ = bound;
+  if ((bound$.stmtParentTag[id] | 0) !== P_STMT) return true;
+  const parent = bound$.stmtParentA[id] | 0;
+  const hir$ = hir;
+  const t = hir$.stmtTag[parent] | 0;
   if (t === STMT_FOR || t === STMT_FOR_IN || t === STMT_FOR_OF) return false;
-  if (t === STMT_BLOCK) return hir.withBodiesLen === 0;
+  if (t === STMT_BLOCK) return hir$.withBodiesLen === 0;
   return true;
 }
 
 /** `Stmt::parent`. */
 export function stmtParent(s: number): number {
-  const tag = bound.stmtParentTag[s] | 0;
-  const a = bound.stmtParentA[s] | 0;
+  const bound$ = bound;
+  const tag = bound$.stmtParentTag[s] | 0;
+  const a = bound$.stmtParentA[s] | 0;
   if (tag === P_FN_BODY) return nodeOfFunc(a);
+  const hir$ = hir;
   if (tag === P_STMT) {
-    const t = hir.stmtTag[a] | 0;
+    const t = hir$.stmtTag[a] | 0;
     if (t === STMT_BLOCK) return nodeOfStmt(a);
     if (t !== STMT_EXPR && t !== STMT_SWITCH) return nodeOfStmt(a);
   } else if (tag === P_FILE) {
@@ -364,9 +371,9 @@ export function stmtParent(s: number): number {
   const parent = ofParent(tag, a);
   if (nodeKind(parent) === N_STMT) {
     const p = nodeId(parent);
-    if ((hir.stmtTag[p] | 0) === STMT_SWITCH) {
+    if ((hir$.stmtTag[p] | 0) === STMT_SWITCH) {
       stmtSpan(s);
-      const c = listAroundCase(hir.stmtB[p] | 0, hir.stmtC[p] | 0, SP[0] | 0);
+      const c = listAroundCase(hir$.stmtB[p] | 0, hir$.stmtC[p] | 0, SP[0] | 0);
       return c >= 0 ? nodeOfCase(c) : parent;
     }
   }
@@ -378,19 +385,22 @@ function stmtOrFile(s: number): number {
 }
 
 function ownerOfPattern(inner: number): number {
+  const bound$ = bound;
   if (inner >= 0) {
-    const t = bound.patParentTag[inner] | 0;
-    if (t === PP_PROP || t === PP_ELEM) return nodeOfPat(bound.patParentB[inner] | 0);
+    const t = bound$.patParentTag[inner] | 0;
+    if (t === PP_PROP || t === PP_ELEM) return nodeOfPat(bound$.patParentB[inner] | 0);
   }
   return NODE_FILE;
 }
 
 /** `Node::parent_of_any` for everything but an expression and a statement. */
 function parentOfNeitherExprNorStmt(kind: number, id: number): number {
+  const bound$ = bound;
+  const hir$ = hir;
   switch (kind) {
     case N_PAT: {
-      const t = bound.patParentTag[id] | 0;
-      const a = bound.patParentA[id] | 0;
+      const t = bound$.patParentTag[id] | 0;
+      const a = bound$.patParentA[id] | 0;
       if (t === PP_VAR) return nodeOfVarDecl(a);
       if (t === PP_PARAM) return nodeOfParam(a);
       if (t === PP_PROP) return nodeOfPatProp(a);
@@ -398,9 +408,9 @@ function parentOfNeitherExprNorStmt(kind: number, id: number): number {
       return parentThatTheBinderHasNot(kind, id);
     }
     case N_PAT_PROP:
-      return ownerOfPattern(hir.patPropValue[id] | 0);
+      return ownerOfPattern(hir$.patPropValue[id] | 0);
     case N_PAT_ELEM:
-      return ownerOfPattern(hir.patElemPat[id] | 0);
+      return ownerOfPattern(hir$.patElemPat[id] | 0);
     case N_FUNC:
       return funcOwner(id);
     case N_CLASS:
@@ -412,20 +422,20 @@ function parentOfNeitherExprNorStmt(kind: number, id: number): number {
     case N_MEMBER:
       return memberParent(id);
     case N_PROP:
-      if (hir.importAttributesLen !== 0) return parentThatTheBinderHasNot(kind, id);
+      if (hir$.importAttributesLen !== 0) return parentThatTheBinderHasNot(kind, id);
       return propOwnerNode(id);
     case N_VAR_DECL:
-      return stmtOrFile(bound.varStmt[id] | 0);
+      return stmtOrFile(bound$.varStmt[id] | 0);
     case N_CASE:
-      return stmtOrFile(bound.caseStmt[id] | 0);
+      return stmtOrFile(bound$.caseStmt[id] | 0);
     case N_ENUM_MEMBER: {
-      const en = bound.enumMemberOwner[id] | 0;
-      return en >= 0 ? stmtOrFile(hir.enumStmt[en] | 0) : NODE_FILE;
+      const en = bound$.enumMemberOwner[id] | 0;
+      return en >= 0 ? stmtOrFile(hir$.enumStmt[en] | 0) : NODE_FILE;
     }
     case N_IMPORT_SPEC:
-      return stmtOrFile(hir.importStmt[hir.importSpecImport[id] | 0] | 0);
+      return stmtOrFile(hir$.importStmt[hir$.importSpecImport[id] | 0] | 0);
     case N_EXPORT_SPEC:
-      return stmtOrFile(hir.exportStmt[hir.exportSpecExport[id] | 0] | 0);
+      return stmtOrFile(hir$.exportStmt[hir$.exportSpecExport[id] | 0] | 0);
     default:
       return parentThatTheBinderHasNot(kind, id);
   }
@@ -438,8 +448,9 @@ function propOwnerNode(p: number): number {
 
 /** `Member::parent`: the `Class`, the `Stmt` of the interface, or the `TypeNode` of the type literal. */
 export function memberParent(m: number): number {
-  const t = bound.memberOwnerTag[m] | 0;
-  const a = bound.memberOwnerA[m] | 0;
+  const bound$ = bound;
+  const t = bound$.memberOwnerTag[m] | 0;
+  const a = bound$.memberOwnerA[m] | 0;
   if (t === MO_CLASS) return nodeOfClass(a);
   if (t === MO_INTERFACE) return stmtOrFile(hir.interfaceStmt[a] | 0);
   if (t === MO_TYPE_LITERAL) return nodeOfType(a);
@@ -505,13 +516,15 @@ function oneType(child: number, parent: number): void {
   if (child >= 0) TP.types[child] = parent | 0;
 }
 function listTypes(start: number, len: number, parent: number): void {
-  for (let i = 0; i < len; i++) oneType(hir.ids[(start + i) | 0] | 0, parent);
+  const hir$ = hir;
+  for (let i = 0; i < len; i++) oneType(hir$.ids[(start + i) | 0] | 0, parent);
 }
 function oneTypeParam(p: number, parent: number): void {
   if (p >= 0) TP.typeParams[p] = parent | 0;
 }
 function listTypeParams(start: number, len: number, parent: number): void {
-  for (let i = 0; i < len; i++) oneTypeParam(hir.ids[(start + i) | 0] | 0, parent);
+  const hir$ = hir;
+  for (let i = 0; i < len; i++) oneTypeParam(hir$.ids[(start + i) | 0] | 0, parent);
 }
 
 function sortRows(v: I32Vec, width: number): void {
@@ -535,16 +548,17 @@ function sortRows(v: I32Vec, width: number): void {
 
 /** `Parents::new` */
 export function buildTypeParents(): void {
-  if (TP.built) return;
-  TP.built = true;
+  const TP$ = TP;
+  if (TP$.built) return;
+  TP$.built = true;
   const h = hir;
   const nt = h.nTypes | 0;
-  TP.types = growFill(TP.types, nt);
-  TP.typeParams = growFill(TP.typeParams, h.nTypeParams);
-  TP.tupleElems = growFill(TP.tupleElems, h.nTupleElems);
-  TP.queryOperands.reset();
-  TP.thisNames.reset();
-  TP.hasErrors = false;
+  TP$.types = growFill(TP$.types, nt);
+  TP$.typeParams = growFill(TP$.typeParams, h.nTypeParams);
+  TP$.tupleElems = growFill(TP$.tupleElems, h.nTupleElems);
+  TP$.queryOperands.reset();
+  TP$.thisNames.reset();
+  TP$.hasErrors = false;
   const ids = h.ids;
 
   for (let i = 0; i < nt; i++) {
@@ -561,7 +575,7 @@ export function buildTypeParents(): void {
         break;
       case TYPE_TYPEOF:
         listTypes(h.typeC[i] | 0, h.typeD[i] | 0, parent);
-        TP.queryOperands.push2(h.typeE[i] | 0, i);
+        TP$.queryOperands.push2(h.typeE[i] | 0, i);
         break;
       case TYPE_TEMPLATE:
       case TYPE_UNION:
@@ -575,7 +589,7 @@ export function buildTypeParents(): void {
         oneType(h.typeA[i] | 0, parent);
         break;
       case TYPE_JSDOC:
-        TP.hasErrors = true;
+        TP$.hasErrors = true;
         oneType(h.typeA[i] | 0, parent);
         break;
       case TYPE_PREDICATE:
@@ -586,7 +600,7 @@ export function buildTypeParents(): void {
         const len = h.typeB[i] | 0;
         for (let k = 0; k < len; k++) {
           const e = ids[(start + k) | 0] | 0;
-          if (e >= 0) TP.tupleElems[e] = parent;
+          if (e >= 0) TP$.tupleElems[e] = parent;
         }
         break;
       }
@@ -628,9 +642,9 @@ export function buildTypeParents(): void {
     oneType(h.fnRet[i] | 0, nodeOfFunc(i));
     listTypeParams(h.fnTypeParamsStart[i] | 0, h.fnTypeParamsLen[i] | 0, nodeOfFunc(i));
     const tp = h.fnThisParam[i] | 0;
-    if (tp >= 0) TP.thisNames.push2(h.paramPat[tp] | 0, tp);
+    if (tp >= 0) TP$.thisNames.push2(h.paramPat[tp] | 0, tp);
   }
-  sortRows(TP.thisNames, 2);
+  sortRows(TP$.thisNames, 2);
   for (let i = 0; i < h.nParams; i++) oneType(h.paramTy[i] | 0, nodeOfParam(i));
   for (let i = 0; i < h.nVarDecls; i++) oneType(h.varDeclTy[i] | 0, nodeOfVarDecl(i));
   for (let i = 0; i < h.nMembers; i++) {
@@ -660,6 +674,7 @@ export function buildTypeParents(): void {
   }
   // Few expressions have a type in them. This goes through all of them, so what tells that from the expression alone comes first.
   const ne = h.nExprs | 0;
+  const bound$ = bound;
   for (let i = 0; i < ne; i++) {
     const tag = h.exprTag[i] | 0;
     let ty = -1;
@@ -687,35 +702,37 @@ export function buildTypeParents(): void {
     }
     if (ty < 0 && argsLen === 0) continue;
     // What the parser has left behind can share its type arguments with a node.
-    if ((bound.exprParentTag[i] | 0) === P_NONE) continue;
+    if ((bound$.exprParentTag[i] | 0) === P_NONE) continue;
     const parent = nodeOfExpr(i);
     oneType(ty, parent);
     listTypes(argsStart, argsLen, parent);
   }
-  sortRows(TP.queryOperands, 2);
+  sortRows(TP$.queryOperands, 2);
   ownersOfImportAttributes();
 }
 
 /** The type whose `typeof` operand is `e` (an operand of `typeof`), or -1. */
 function typeOfTypeQueryOperand(e: number): number {
   buildTypeParents();
-  const d = TP.queryOperands.data;
+  const TP$ = TP;
+  const d = TP$.queryOperands.data;
   let lo = 0;
-  let hi = (TP.queryOperands.len / 2) | 0;
+  let hi = (TP$.queryOperands.len / 2) | 0;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
     if ((d[mid * 2] | 0) < e) lo = mid + 1;
     else hi = mid;
   }
-  if (lo < ((TP.queryOperands.len / 2) | 0) && (d[lo * 2] | 0) === e) return d[lo * 2 + 1] | 0;
+  if (lo < ((TP$.queryOperands.len / 2) | 0) && (d[lo * 2] | 0) === e) return d[lo * 2 + 1] | 0;
   return -1;
 }
 
 /** `Parents::of_this`: the parameter whose `this` pattern is `pat`, or -1. */
 function ofThis(pat: number): number {
-  const d = TP.thisNames.data;
+  const TP$ = TP;
+  const d = TP$.thisNames.data;
   let lo = 0;
-  const n = (TP.thisNames.len / 2) | 0;
+  const n = (TP$.thisNames.len / 2) | 0;
   let hi = n;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
@@ -730,20 +747,21 @@ function ofThis(pat: number): number {
 
 /** `File::index_of_import_attributes`: the row of `hir.importAttributes` whose `{ .. }` is `object`, or -1. */
 export function importAttributesRowOfObject(object: number): number {
-  const n = (hir.importAttributesLen / 2) | 0;
+  const hir$ = hir;
+  const n = (hir$.importAttributesLen / 2) | 0;
   if (n === 0 || object < 0) return -1;
-  const start = hir.exprPos[object] | 0;
+  const start = hir$.exprPos[object] | 0;
   // partition_point(|it| it.0 < start) - 1
   let lo = 0;
   let hi = n;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
-    if ((hir.importAttributes[mid * 2] | 0) < start) lo = mid + 1;
+    if ((hir$.importAttributes[mid * 2] | 0) < start) lo = mid + 1;
     else hi = mid;
   }
   const row = lo - 1;
   if (row < 0) return -1;
-  return (hir.importAttributes[row * 2 + 1] | 0) === object ? row : -1;
+  return (hir$.importAttributes[row * 2 + 1] | 0) === object ? row : -1;
 }
 
 /** `File::is_import_attribute`: the prop is a `key: "value"` of `with { .. }`, which is not a property of an object. */
@@ -769,15 +787,16 @@ function ofImportAttribute(prop: number): number {
 
 /** `ImportAttributes::index_within`: the first row whose keyword is in `[start, end)`, or -1. */
 export function importAttributesIndexWithin(start: number, end: number): number {
-  const n = (hir.importAttributesLen / 2) | 0;
+  const hir$ = hir;
+  const n = (hir$.importAttributesLen / 2) | 0;
   let lo = 0;
   let hi = n;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
-    if ((hir.importAttributes[mid * 2] | 0) < start) lo = mid + 1;
+    if ((hir$.importAttributes[mid * 2] | 0) < start) lo = mid + 1;
     else hi = mid;
   }
-  return lo < n && (hir.importAttributes[lo * 2] | 0) < end ? lo : -1;
+  return lo < n && (hir$.importAttributes[lo * 2] | 0) < end ? lo : -1;
 }
 
 /**
@@ -785,35 +804,38 @@ export function importAttributesIndexWithin(start: number, end: number): number 
  * argument that isn't a string, which can have options of its own. Returns false for a type without options.
  */
 export function importAttributesSearchSpanOfType(t: number): boolean {
-  if ((hir.typeTag[t] | 0) !== TYPE_IMPORT) return false;
-  if ((((hir.typeAux[t] | 0) >> 3) & 3) === 0) return false;
+  const hir$ = hir;
+  if ((hir$.typeTag[t] | 0) !== TYPE_IMPORT) return false;
+  if ((((hir$.typeAux[t] | 0) >> 3) & 3) === 0) return false;
   // The parser keeps the argument that is not a string in `args`.
   let argEnd = -1;
-  if ((hir.typeA[t] | 0) < 0 && (hir.typeE[t] | 0) > 0) {
-    const first = hir.ids[hir.typeD[t] | 0] | 0;
-    if (first >= 0) argEnd = hir.typeEnd[first] | 0;
+  if ((hir$.typeA[t] | 0) < 0 && (hir$.typeE[t] | 0) > 0) {
+    const first = hir$.ids[hir$.typeD[t] | 0] | 0;
+    if (first >= 0) argEnd = hir$.typeEnd[first] | 0;
   }
-  SP[0] = argEnd >= 0 ? argEnd : hir.typePos[t] | 0;
-  SP[1] = hir.typeEnd[t] | 0;
+  SP[0] = argEnd >= 0 ? argEnd : hir$.typePos[t] | 0;
+  SP[1] = hir$.typeEnd[t] | 0;
   return true;
 }
 
 function ownersOfImportAttributes(): void {
-  const n = (hir.importAttributesLen / 2) | 0;
-  TP.importAttributes = growFill(TP.importAttributes, n);
+  const hir$ = hir;
+  const n = (hir$.importAttributesLen / 2) | 0;
+  const TP$ = TP;
+  TP$.importAttributes = growFill(TP$.importAttributes, n);
   if (n === 0) return;
   // The first owner wins: a type in a JSDoc comment is parsed once for each node that it annotates.
-  for (let i = 0; i < hir.nTypes; i++) {
+  for (let i = 0; i < hir$.nTypes; i++) {
     if (importAttributesSearchSpanOfType(i)) {
       const row = importAttributesIndexWithin(SP[0] | 0, SP[1] | 0);
-      if (row >= 0 && (TP.importAttributes[row] | 0) === 0) TP.importAttributes[row] = nodeOfType(i);
+      if (row >= 0 && (TP$.importAttributes[row] | 0) === 0) TP$.importAttributes[row] = nodeOfType(i);
     }
   }
-  for (let i = 0; i < hir.nStmts; i++) {
-    const t = hir.stmtTag[i] | 0;
+  for (let i = 0; i < hir$.nStmts; i++) {
+    const t = hir$.stmtTag[i] | 0;
     if (t === STMT_IMPORT || t === STMT_EXPORT_NAMED || t === STMT_EXPORT_STAR) {
-      const row = importAttributesIndexWithin(hir.stmtStart[i] | 0, hir.stmtLocEnd[i] | 0);
-      if (row >= 0 && (TP.importAttributes[row] | 0) === 0) TP.importAttributes[row] = nodeOfStmt(i);
+      const row = importAttributesIndexWithin(hir$.stmtStart[i] | 0, hir$.stmtLocEnd[i] | 0);
+      if (row >= 0 && (TP$.importAttributes[row] | 0) === 0) TP$.importAttributes[row] = nodeOfStmt(i);
     }
   }
 }
@@ -821,12 +843,14 @@ function ownersOfImportAttributes(): void {
 /** `File::is_in_type_that_is_an_error`: the type `t` is in a type that is an error with no children (`T?`). */
 export function typeIsInError(t: number): boolean {
   buildTypeParents();
-  if (!TP.hasErrors) return false;
+  const TP$ = TP;
+  if (!TP$.hasErrors) return false;
   let at = t;
+  const hir$ = hir;
   while (true) {
-    const p = TP.types[at] | 0;
+    const p = TP$.types[at] | 0;
     if (p <= 0 || nodeKind(p) !== N_TYPE) return false;
     at = nodeId(p);
-    if ((hir.typeTag[at] | 0) === TYPE_JSDOC) return true;
+    if ((hir$.typeTag[at] | 0) === TYPE_JSDOC) return true;
   }
 }

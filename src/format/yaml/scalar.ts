@@ -78,23 +78,26 @@ function foldLines(src: Uint8Array, start: number, end: number, out: ByteBuf): v
 
 /** `scalar.source`, for a scalar of `kind` that is written src[start, end): written to `scalarOut`, which is reset. */
 export function scalarSource(kind: number, src: Uint8Array, start: number, end: number): void {
-  scalarOut.reset();
+  const scalarOut$ = scalarOut;
+  scalarOut$.reset();
   if (kind === K_QUOTE_SINGLE) singleQuotedValue(src, start, end);
   else if (kind === K_QUOTE_DOUBLE) doubleQuotedValue(src, start, end);
-  else foldLines(src, start, end, scalarOut);
+  else foldLines(src, start, end, scalarOut$);
 }
 
 function singleQuotedValue(src: Uint8Array, start: number, end: number): void {
-  scalarTmp.reset();
+  const scalarTmp$ = scalarTmp;
+  scalarTmp$.reset();
   const inner0 = start + 1;
   const inner1 = end > start + 1 ? end - 1 : end;
-  if (inner0 <= inner1) foldLines(src, inner0, inner1, scalarTmp);
-  const n = scalarTmp.len;
-  const d = scalarTmp.data;
+  if (inner0 <= inner1) foldLines(src, inner0, inner1, scalarTmp$);
+  const n = scalarTmp$.len;
+  const d = scalarTmp$.data;
   let i = 0;
+  const scalarOut$ = scalarOut;
   while (i < n) {
     const b = d[i] | 0;
-    scalarOut.push(b);
+    scalarOut$.push(b);
     i = i + (b === 39 && i + 1 < n && (d[i + 1] | 0) === 39 ? 2 : 1);
   }
 }

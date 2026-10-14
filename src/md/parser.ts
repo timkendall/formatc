@@ -126,13 +126,14 @@ export function renderToHtml(text: Uint8Array, options: Options, out: ByteBuf): 
   if (input.length > MAX_INPUT_LEN) return ERR_INPUT_TOO_LARGE;
   const p = acquireParser();
   options.toFlags(p.flags);
-  options.toRenderOptions(renderOptionsScratch);
+  const renderOptionsScratch$ = renderOptionsScratch;
+  options.toRenderOptions(renderOptionsScratch$);
   let hr = htmlRenderer;
   if (hr === null) {
     hr = new HtmlRenderer();
     htmlRenderer = hr;
   }
-  hr.init(input, renderOptionsScratch, out);
+  hr.init(input, renderOptionsScratch$, out);
   init(p, input, hr);
   processDoc(p);
   releaseParser();

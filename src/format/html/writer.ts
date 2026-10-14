@@ -248,14 +248,15 @@ export class Writer {
     const f = this.f;
     const buf = f.textBuf();
     if (buf.len <= start) return;
+    const stash$ = stash;
     if (this.pendMode >= 0) {
       // The line breaks that are due come first: they may write a text of their own.
-      stash.reset();
-      stash.append(buf.data, start, buf.len);
+      stash$.reset();
+      stash$.append(buf.data, start, buf.len);
       buf.len = start;
       this.flush();
       const at = buf.len;
-      buf.append(stash.data, 0, stash.len);
+      buf.append(stash$.data, 0, stash$.len);
       this.emptyKind = (buf.data[buf.len - 1] | 0) === 10 ? EL_YES : EL_NO;
       f.endBuiltText(at);
       return;

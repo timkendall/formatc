@@ -65,10 +65,11 @@ export function spanThatCommentsLead(e: number, f: Formatter): void {
   const end = SP[1] | 0;
   // A type cast comment is about the parentheses behind it, which stay.
   if (cxOf(f).comments.isCastParenthesis(start)) return;
-  const base = scratch.len;
-  exprSequence(e, scratch);
-  const first = scratch.len > base ? scratch.data[base] | 0 : -1;
-  scratch.len = base;
+  const scratch$ = scratch;
+  const base = scratch$.len;
+  exprSequence(e, scratch$);
+  const first = scratch$.len > base ? scratch$.data[base] | 0 : -1;
+  scratch$.len = base;
   if (first < 0) return;
   exprSpan(first);
   SP[1] = end;
@@ -77,9 +78,10 @@ export function spanThatCommentsLead(e: number, f: Formatter): void {
 /** `a, b, c` */
 export function writeSequenceExpression(e: number, f: Formatter): void {
   const parent = exprAstParent(e);
-  const base = scratch.len;
-  exprSequence(e, scratch);
-  const n = scratch.len - base;
+  const scratch$ = scratch;
+  const base = scratch$.len;
+  exprSequence(e, scratch$);
+  const n = scratch$.len - base;
   if (n === 0) return;
   // The sequence may contain sequences of its own in the HIR (each `fmtExpr` below uses `scratch` above `end`), so `base` is kept.
   const pt = anTag(parent);
@@ -87,16 +89,16 @@ export function writeSequenceExpression(e: number, f: Formatter): void {
   // Where it is not in parentheses, what follows the first expression is indented.
   if (pt === AN_FOR_STATEMENT || pt === AN_EXPRESSION_STATEMENT) {
     f.startGroup();
-    fmtExpr(scratch.data[base] | 0, f);
+    fmtExpr(scratch$.data[base] | 0, f);
     for (let i = 1; i < n; i++) {
       f.token(COMMA);
       f.startIndent();
       f.softLineBreakOrSpace();
-      fmtExpr(scratch.data[(base + i) | 0] | 0, f);
+      fmtExpr(scratch$.data[(base + i) | 0] | 0, f);
       f.endIndent();
     }
     f.endGroup();
-    scratch.len = base;
+    scratch$.len = base;
     return;
   }
 
@@ -121,9 +123,9 @@ export function writeSequenceExpression(e: number, f: Formatter): void {
       f.token(COMMA);
       f.softLineBreakOrSpace();
     }
-    fmtExpr(scratch.data[(base + i) | 0] | 0, f);
+    fmtExpr(scratch$.data[(base + i) | 0] | 0, f);
   }
-  scratch.len = base;
+  scratch$.len = base;
   writeCommentsBeforeClosingParenthesis(e, f);
   if (wrapper === 0) f.endGroup();
   else if (wrapper === 1) {
