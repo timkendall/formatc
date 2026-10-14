@@ -20,3 +20,5 @@ They are validated only against this program: `tools/perf/gate.sh` (byte-identic
 conformance). scriptc's own test suite is not run.
 
 Patch 97 (`97-no-stack-guard.patch`): setting `SCRIPTC_NO_STACK_GUARD=1` omits the stack-overflow guard entirely (default keeps it); the parser and dispatcher already bound nesting, and the guard cost 3.7% of instructions even after patch 40.
+
+Patch 99 (`99-trap-runtime-errors.patch`): setting `SCRIPTC_TRAP_RUNTIME_ERRORS=1` makes errors the runtime raises for an operation (typed-array length/bounds/DataView/`set`, `with`, and the compiler-inserted Node TypeErrors of `x!`, union narrowing and class casts) abort with the uncaught-error report instead of being catchable, so functions whose only throws are those are not may-throw and their callers emit no pending check; explicit `throw` stays catchable (default unchanged).

@@ -1,0 +1,199 @@
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/emitter.js b/dist/backend/llvm/emitter.js
+--- a/dist/backend/llvm/emitter.js	2026-10-14 12:06:47
++++ b/dist/backend/llvm/emitter.js	2026-10-14 12:06:48
+@@ -773,7 +773,16 @@
+         // and per async fiber; WASI, Windows and library builds have none.
+         const triple = (options.targetTriple ?? "").toLowerCase();
+         const windows = triple === "" ? process.platform === "win32" : triple.includes("windows");
++        // SCRIPTC_TRAP_RUNTIME_ERRORS=1 (patch 99): errors the runtime raises for an operation
++        // (typed-array length/bounds, compiler-inserted Node TypeErrors) abort instead of
++        // unwinding. Executables only; worker programs that can be terminated keep exceptions
++        // (a stop request is also a nonzero pending word).
++        this.trapRuntime = process.env.SCRIPTC_TRAP_RUNTIME_ERRORS === "1" &&
++            mod.lib === undefined &&
++            !this.wasi &&
++            (mod.workers !== true || mod.workerNoTermination === true);
+         const mt = computeMayThrow(mod, {
++            trapRuntimeErrors: this.trapRuntime,
+             stackChecks: !this.wasi && mod.lib === undefined && !windows && !process.env.SCRIPTC_NO_STACK_GUARD,
+         });
+         this.mayThrow = mt.fns;
+@@ -1901,7 +1910,7 @@
+             // order-free — the scr_error_set_traced precedent). Only the
+             // printer emits here (nothing else declares it); scr_exc_pending
+             // and the loop entry points rode the Set before the flush.
+-            out.push(`declare void @scr_exc_print_uncaught()`, `declare zeroext i1 @scr_exc_handle_uncaught(i1 zeroext)`, ``);
++            out.push(...(this.decls.has(`declare void @scr_exc_print_uncaught()`) ? [] : [`declare void @scr_exc_print_uncaught()`]), `declare zeroext i1 @scr_exc_handle_uncaught(i1 zeroext)`, ``);
+         }
+         if (this.mod.lib !== undefined) {
+             // LIBRARY mode: no @main — the profile-declared external
+@@ -3476,7 +3485,7 @@
+      * call result of the function's return type may be passed as the unwind's
+      * dummy value (see emitUnwind). `poll` marks a worker termination poll
+      * (function entry or loop budget), whose test must stay ordered. */
+-    emitPendingCheck(passThrough, poll = false) {
++    emitPendingCheck(passThrough, poll = false, trap = false) {
+         const through = passThrough !== undefined &&
+             this.llType(passThrough.type) === this.llType(this.currentReturnType) &&
+             (passThrough.type.kind === "f64" || passThrough.type.kind === "bool")
+@@ -3569,19 +3578,41 @@
+             B.condBr(cold, lu, lk);
+         }
+         B.startBlock(lu);
+-        this.emitUnwind(through);
++        if (trap)
++            this.emitTrapAbort();
++        else
++            this.emitUnwind(through);
+         B.startBlock(lk);
+     }
++    /** Pending check after a runtime operation whose error is fatal under
++     * SCRIPTC_TRAP_RUNTIME_ERRORS (patch 99); an ordinary check otherwise. */
++    emitTrapCheck() {
++        this.emitPendingCheck(undefined, false, this.trapRuntime);
++    }
++    /** Reports the pending error like an uncaught exception, then exits with code 1 (abort). */
++    emitTrapAbort() {
++        this.declare(`declare void @scr_exc_print_uncaught()`);
++        this.declare(`declare void @scr_process_exit(double)`);
++        this.declare(`declare void @llvm.trap()`);
++        this.B.line(`call void @scr_exc_print_uncaught()`);
++        // Exit code 1 through the runtime's flushing exit; the trap covers a worker thread, where it only stops the context.
++        this.B.line(`call void @scr_process_exit(double ${f64Lit(1)})`);
++        this.B.line(`call void @llvm.trap()`);
++        this.B.terminate("unreachable");
++    }
+     /** After a runtime call that ALWAYS leaves an exception pending (the
+      * compiler-resolved Node throws): the pending test would always answer
+      * true, so unwind unconditionally. Emission continues in a block with no
+      * predecessors so the caller's remaining instructions stay well-formed;
+      * LLVM deletes it. */
+-    emitAlwaysPendingUnwind() {
++    emitAlwaysPendingUnwind(trap = false) {
+         const B = this.B;
+         if (B.isTerminated())
+             return;
+-        this.emitUnwind();
++        if (trap && this.trapRuntime)
++            this.emitTrapAbort();
++        else
++            this.emitUnwind();
+         B.startBlock(B.newLabel("exc.dead"));
+     }
+     /** A recursive function's entry check: below the running stack's guard,
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/expr-bytes.js b/dist/backend/llvm/expr-bytes.js
+--- a/dist/backend/llvm/expr-bytes.js	2026-10-14 12:06:47
++++ b/dist/backend/llvm/expr-bytes.js	2026-10-14 12:06:48
+@@ -383,14 +383,14 @@
+         if (retTy === "void") {
+             B.line(`call void @${sym}(${argText})`);
+             if (fallible)
+-                host.emitPendingCheck();
++                host.emitTrapCheck();
+             return { name: "", type: e.type };
+         }
+         const t = B.tmp();
+         B.line(`${t} = call ${retTy} @${sym}(${argText})`);
+         const out = owned ? host.own({ name: t, type: e.type }) : { name: t, type: e.type };
+         if (fallible)
+-            host.emitPendingCheck();
++            host.emitTrapCheck();
+         return out;
+     };
+     if (e.method === "readNum" ||
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/expr-containers.js b/dist/backend/llvm/expr-containers.js
+--- a/dist/backend/llvm/expr-containers.js	2026-10-14 12:06:47
++++ b/dist/backend/llvm/expr-containers.js	2026-10-14 12:06:48
+@@ -649,7 +649,7 @@
+             B.line(`${t} = call ptr @scr_arr_with_${acc}(ptr ${r.name}, double ${index.name}, ` +
+                 `${accTy} ${value.name})`);
+             const out = host.own({ name: t, type: e.type });
+-            host.emitPendingCheck();
++            host.emitTrapCheck();
+             return out;
+         }
+         case "withUndefined": {
+@@ -658,7 +658,7 @@
+             const t = B.tmp();
+             B.line(`${t} = call ptr @scr_arr_with_undefined(ptr ${r.name}, double ${index.name})`);
+             const out = host.own({ name: t, type: e.type });
+-            host.emitPendingCheck();
++            host.emitTrapCheck();
+             return out;
+         }
+         case "splice": {
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/expr-primitives.js b/dist/backend/llvm/expr-primitives.js
+--- a/dist/backend/llvm/expr-primitives.js	2026-10-14 12:06:47
++++ b/dist/backend/llvm/expr-primitives.js	2026-10-14 12:06:48
+@@ -797,7 +797,7 @@
+                 host.declare(`declare ptr @scr_bytes_new(i32, double)`);
+                 B.line(`${t} = call ptr @scr_bytes_new(i32 ${kind}, double ${src.name})`);
+                 const out = host.own({ name: t, type: e.type });
+-                host.emitPendingCheck();
++                host.emitTrapCheck();
+                 return out;
+             }
+             if (e.source.type.kind === "bytes") {
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/lib-process.js b/dist/backend/llvm/lib-process.js
+--- a/dist/backend/llvm/lib-process.js	2026-10-14 12:06:47
++++ b/dist/backend/llvm/lib-process.js	2026-10-14 12:06:48
+@@ -635,12 +635,12 @@
+         B.line(`call void @scr_throw_node_coded(double ${kind.name}, ptr ${code.name}, ptr ${msg.name})`);
+         const ty = host.llType(e.type);
+         if (ty === "void") {
+-            host.emitAlwaysPendingUnwind();
++            host.emitAlwaysPendingUnwind(true);
+             return { name: "", type: e.type };
+         }
+         const dummy = ty === "double" ? f64Lit(0) : ty === "i1" ? "false" : "null";
+         const out = host.own({ name: dummy, type: e.type });
+-        host.emitAlwaysPendingUnwind();
++        host.emitAlwaysPendingUnwind(true);
+         return out;
+     }
+     if (e.fn === "emitter.on") {
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/may-throw.js b/dist/backend/may-throw.js
+--- a/dist/backend/may-throw.js	2026-10-14 12:06:47
++++ b/dist/backend/may-throw.js	2026-10-14 12:06:48
+@@ -28,6 +28,8 @@
+     const stackChecks = stackPlan ? stackPlan.checks : null;
+     // Stores that can reach a published object throw the frozen TypeError.
+     const published = computePublishedTypes(mod);
++    // Patch 99: runtime-raised errors are fatal (see the emitter's emitTrapCheck), so they seed nothing.
++    const trap = options.trapRuntimeErrors === true;
+     const explain = options.explain === true;
+     const facts = new Map();
+     const closureTargets = new Set();
+@@ -238,7 +240,7 @@
+                 case "libCall":
+                     // The may-throw seed hook: throwing library calls (fs.*,
+                     // json.parse) count exactly like a `throw` statement.
+-                    if (MAY_THROW_LIB_FNS.has(rec.fn))
++                    if (MAY_THROW_LIB_FNS.has(rec.fn) && !(trap && rec.fn === "error.nodeThrow"))
+                         f.throws = true;
+                     break;
+                 case "ffiCall":
+@@ -256,7 +258,7 @@
+                     // after the whole body is seen, see boundedLength).
+                     const source = rec.source;
+                     if (source && source.type?.kind === "f64") {
+-                        if (guarded === 0)
++                        if (guarded === 0 && !trap)
+                             sizeForms.push(rec);
+                     }
+                     else if (source && source.type?.kind === "dyn")
+@@ -267,12 +269,12 @@
+                     // setFrom and the numeric read/write families throw catchable
+                     // RangeErrors (Node's bounds discipline); the rest trap or
+                     // cannot fail.
+-                    if (MAY_THROW_BYTES_METHODS.has(rec.method)) {
++                    if (!trap && MAY_THROW_BYTES_METHODS.has(rec.method)) {
+                         f.throws = true;
+                     }
+                     break;
+                 case "arrIntrinsic":
+-                    if (MAY_THROW_ARR_METHODS.has(rec.method)) {
++                    if (MAY_THROW_ARR_METHODS.has(rec.method) && !(trap && (rec.method === "with" || rec.method === "withUndefined"))) {
+                         f.throws = true;
+                     }
+                     break;
