@@ -1,0 +1,27 @@
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/expr-bytes.js b/dist/backend/llvm/expr-bytes.js
+--- a/dist/backend/llvm/expr-bytes.js	2026-10-14 10:36:11
++++ b/dist/backend/llvm/expr-bytes.js	2026-10-14 10:36:12
+@@ -68,7 +68,7 @@
+     const B = host.B;
+     const index = value.name;
+     const integer = exactInteger(host, value, expr);
+-    if (inBounds && integer) {
++    if (integer) {
+         const wide = widenInteger(host, integer);
+         if (host.sizeType === "i64")
+             return wide;
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/string-reads.js b/dist/backend/llvm/string-reads.js
+--- a/dist/backend/llvm/string-reads.js	2026-10-14 10:36:11
++++ b/dist/backend/llvm/string-reads.js	2026-10-14 10:36:12
+@@ -89,10 +89,7 @@
+             ...asciiTest(),
+             `  br i1 %ascii, label %bounds, label %slow`,
+             `bounds:`,
+-            ...loadLength(sz),
+-            ...(sz === "i64" ? [] : [`  %len64 = zext ${sz} %len to i64`]),
+-            `  %ok = icmp ult i64 %i, ${sz === "i64" ? "%len" : "%len64"}`,
+-            `  br i1 %ok, label %read, label %slow`,
++            `  br label %read`, // ABLATION V2: no bounds check
+             `read:`,
+             `  %data = getelementptr inbounds %ScrStr, ptr %s, i32 1`,
+             `  %p = getelementptr inbounds i8, ptr %data, i64 %i`,

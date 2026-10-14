@@ -921,3 +921,8 @@ Fix (source only, `| 0`): cursor.ts operandsInRightSide (`stack.pop()`, `operand
 - Instructions/cycles, 1 thread, vscode --check, min of 3 interleaved (machine load avg ~65, so cycles are noisy): stock 0.3.0 125.8G/27.2G, stock 0.3.2 122.5G/25.8G, patched 0.3.0 (main) 83.25G/29.1G, patched 0.3.2 (30,40,50,60,70,85,95,96-bounds) 83.21G/28.5G. Net: parity with main; the upstream int32 work replaces two of our patches.
 - Gate: vscode byte mismatches (excl .html): 0, no GATE FAILED, conformance at baseline. 8 threads: 3.4-3.5s vs 3.3-3.6s for main, both inflated by machine load; no difference measurable.
 - make-patch.sh now passes --no-backup-if-mismatch when stacking the base (fuzz left .orig files that leaked into regenerated patches).
+### ablation bounds
+Measurement only (patches in scratch/ablations/bounds-V1.patch, bounds-V2.patch (cumulative)); base 83.2 G instr, cycles noisy (~29-31 G, machine loaded).
+- V1: expr-bytes.js:71 `if (integer)` (drop compare-and-branch for every integer-index typed-array get/set). `^bytes.index.invalid` blocks in IR 12090 -> 5689 (rest are non-integer indices). 83.2 -> 75.9 G (-7.3 G, 8.8%); cycles within noise (~-1 G, 29.0-30.5 vs 28.3-29.5). Output identical (0 mismatches), no crashes.
+- V2: V1 + string-reads.js `sc_str_char_code_at_int` without length compare (the double-index helper keeps its check). 75.9 -> 75.9 G (no further gain, within noise); 0 mismatches.
+- V3 not done.

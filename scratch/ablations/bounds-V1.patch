@@ -1,0 +1,12 @@
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/expr-bytes.js b/dist/backend/llvm/expr-bytes.js
+--- a/dist/backend/llvm/expr-bytes.js	2026-10-14 10:30:34
++++ b/dist/backend/llvm/expr-bytes.js	2026-10-14 10:30:36
+@@ -68,7 +68,7 @@
+     const B = host.B;
+     const index = value.name;
+     const integer = exactInteger(host, value, expr);
+-    if (inBounds && integer) {
++    if (integer) {
+         const wide = widenInteger(host, integer);
+         if (host.sizeType === "i64")
+             return wide;
