@@ -11,7 +11,7 @@ BIN=/tmp/fmt-$N
 T=/tmp/gate-$N
 cd "$ROOT" || exit 2
 start=$(date +%s)
-if ! SCRIPTC_NO_STACK_GUARD=1 SCRIPTC_CACHE_DIR=/tmp/scriptc-cache-$N ${SCRIPTC:-scriptc} build src/main.ts -o "$BIN" > "$T-build.txt" 2>&1; then
+if ! SCRIPTC_NO_STACK_GUARD=1 SCRIPTC_TRAP_RUNTIME_ERRORS=1 SCRIPTC_CACHE_DIR=/tmp/scriptc-cache-$N ${SCRIPTC:-scriptc} build src/main.ts -o "$BIN" > "$T-build.txt" 2>&1; then
   echo "BUILD FAILED"; grep -m5 "error SC" "$T-build.txt" | sed "s|$ROOT/||" | cut -c1-200; exit 1
 fi
 echo "build ok ($(( $(date +%s) - start )) s): $BIN"
