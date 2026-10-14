@@ -1,16 +1,12 @@
-// The consumer: claims files from the queue (pipe.ts), reads, formats, compares, writes if asked, and reports once at the
-// end. It runs in the worker threads, and in the main thread when that has nothing more to find.
+// The consumer: reads a file, formats it, compares, writes if asked, and reports. It runs in the main process (one thread) and in
+// the child processes (child.ts).
 import * as fs from "node:fs";
-import { parentPort, workerData } from "node:worker_threads";
-import { publish } from "@scriptc/threads";
 import { ByteBuf } from "../base/bytebuf.ts";
 import * as dispatch from "./dispatch.ts";
 import { OptionSet } from "./dispatch.ts";
 import * as fsx from "./fsx.ts";
 import * as pipe from "./pipe.ts";
-import type { PipeBufs } from "./pipe.ts";
 import { problemAt, problemOfFile, Problem } from "./problem.ts";
-import { runScan, ScanTask } from "./scan.ts";
 
 // Result codes of a file (`Done` of mod.rs).
 export const D_NONE = 0;
@@ -156,7 +152,7 @@ function shownOf(path: string, cwd: string): string {
 }
 
 // One file. Returns the status byte for the queue (pipe.ST_*).
-function formatOne(cfg: LoopCfg, report: Report, out: ByteBuf, key: number, path: string, set: OptionSet, size: number): number {
+export function formatOne(cfg: LoopCfg, report: Report, out: ByteBuf, key: number, path: string, set: OptionSet, size: number): number {
   fileStart = cfg.detail ? performance.now() : 0;
   const got = readInto(path, size);
   if (got < 0) {
@@ -207,94 +203,6 @@ function formatOne(cfg: LoopCfg, report: Report, out: ByteBuf, key: number, path
   return pipe.ST_OTHER;
 }
 
-// The consumer loop: until the producer is done and the queue is empty.
-export function consume(b: PipeBufs, cfg: LoopCfg): Report {
-  const t0 = performance.now();
-  if (FAKE_NS > 0 && fakeItersPerByte === 0) calibrateFake();
-  const report = new Report();
-  const out = new ByteBuf(1 << 20);
-  const ctl = new Int32Array(b.ctl);
-  const meta0 = new Int32Array(b.meta0);
-  const arena0 = Buffer.from(b.arena0);
-  const status0 = new Uint8Array(b.status0);
-  const meta1 = new Int32Array(b.meta1);
-  const arena1 = Buffer.from(b.arena1);
-  const status1 = new Uint8Array(b.status1);
-  const setMeta = new Int32Array(b.setMeta);
-  const setArena = Buffer.from(b.setArena);
-  const sets: OptionSet[] = [];
-  const chunk = cfg.chunk > 0 ? cfg.chunk : 1;
-  const rows = new Int32Array(4 * chunk);
-  const marks = new Uint8Array(chunk);
-  // wait for the gate
-  while (true) {
-    const ev = Atomics.load(ctl, pipe.C_EVENT);
-    if (Atomics.load(ctl, pipe.C_GATE) === 1) break;
-    Atomics.add(ctl, pipe.C_WAITERS, 1);
-    Atomics.wait(ctl, pipe.C_EVENT, ev, 20);
-    Atomics.sub(ctl, pipe.C_WAITERS, 1);
-  }
-  while (true) {
-    const ev = Atomics.load(ctl, pipe.C_EVENT);
-    const done = Atomics.load(ctl, pipe.C_DONE);
-    // lane 1 (big files) first
-    let lane = 1;
-    let first = -1;
-    let k = 0;
-    while (true) {
-      const commit = Atomics.load(ctl, lane === 1 ? pipe.C_COMMIT1 : pipe.C_COMMIT0);
-      const claimIdx = lane === 1 ? pipe.C_CLAIM1 : pipe.C_CLAIM0;
-      let c = Atomics.load(ctl, claimIdx);
-      while (c < commit) {
-        // the big lane: one by one
-        let take = lane === 1 ? 1 : commit - c;
-        if (take > chunk) take = chunk;
-        const prev = Atomics.compareExchange(ctl, claimIdx, c, c + take);
-        if (prev === c) {
-          first = c;
-          k = take;
-          break;
-        }
-        c = prev;
-      }
-      if (k > 0 || lane === 0) break;
-      lane = 0;
-    }
-    if (k === 0) {
-      if (done === 1) {
-        // the producer was done before the queues were looked at: they are empty
-        break;
-      }
-      Atomics.add(ctl, pipe.C_WAITERS, 1);
-      Atomics.wait(ctl, pipe.C_EVENT, ev, 10);
-      Atomics.sub(ctl, pipe.C_WAITERS, 1);
-      continue;
-    }
-    const meta = lane === 1 ? meta1 : meta0;
-    const arena = lane === 1 ? arena1 : arena0;
-    const status = lane === 1 ? status1 : status0;
-    rows.set(meta.subarray(first * 4, (first + k) * 4));
-    // the sets this chunk needs
-    let maxSet = -1;
-    for (let i = 0; i < k; i++) if ((rows[i * 4 + 2] | 0) > maxSet) maxSet = rows[i * 4 + 2] | 0;
-    while (sets.length <= maxSet) {
-      const id = sets.length;
-      const text = setArena.toString("utf8", setMeta[id * 2] | 0, (setMeta[id * 2] | 0) + (setMeta[id * 2 + 1] | 0));
-      const resolved = pipe.decodeSet(text);
-      sets.push(new OptionSet(id, resolved, pipe.decodedVerifies));
-    }
-    for (let i = 0; i < k; i++) {
-      const off = rows[i * 4] | 0;
-      const len = rows[i * 4 + 1] | 0;
-      const path = arena.toString("utf8", off, off + len);
-      marks[i] = formatOne(cfg, report, out, (first + i) * 2 + lane, path, sets[rows[i * 4 + 2] | 0], rows[i * 4 + 3] | 0);
-    }
-    status.set(marks.subarray(0, k), first);
-  }
-  report.ms = performance.now() - t0;
-  return report;
-}
-
 // `--compare-to=<dir>`: the output against `<dir>/<relative path>`. `column` carries 0 for a match, 1 for a mismatch.
 let compareBuf: Buffer = Buffer.alloc(1 << 20);
 
@@ -338,45 +246,4 @@ function dumpOutput(cfg: LoopCfg, rel: string, out: ByteBuf): void {
   } catch (e) {
     // ignore
   }
-}
-
-// What a worker is started with.
-export interface WorkerInit {
-  // 0: format files (the queue `bufs`), 1: walk directories (`scan`)
-  kind: number;
-  scan: ScanTask | null;
-  ctrl: SharedArrayBuffer;
-  bufs: PipeBufs | null;
-  id: number;
-  cwd: string;
-  writes: boolean;
-  detail: boolean;
-  chunk: number;
-  compareTo: string;
-  compareRoot: string;
-  dumpTo: string;
-}
-
-export function runWorker(): void {
-  const data = workerData as WorkerInit;
-  const ctrl = new Int32Array(data.ctrl);
-  if (data.kind === 1) {
-    const out = runScan(data.scan as ScanTask, ctrl);
-    (parentPort as NonNullable<typeof parentPort>).postMessage(publish(out));
-    return;
-  }
-  const cfg = new LoopCfg(data.writes, data.detail, data.chunk, data.compareTo, data.compareRoot, data.dumpTo, data.cwd);
-  const report = consume(data.bufs as PipeBufs, cfg);
-  (parentPort as NonNullable<typeof parentPort>).postMessage({
-    idx: report.idx,
-    code: report.code,
-    message: report.message,
-    line: report.line,
-    column: report.column,
-    lineText: report.lineText,
-    took: report.took,
-    bytes: report.bytes,
-    files: report.files,
-    ms: report.ms,
-  });
 }

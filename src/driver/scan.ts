@@ -1,12 +1,10 @@
-// The walk of a directory tree, on all threads: `search` of vendor/bun/src/lint/driver/fmt/files.rs.
+// The walk of a directory tree: `search` of vendor/bun/src/lint/driver/fmt/files.rs.
 //
 // The main thread walks the top of the tree breadth first until there are enough directories to share out; workers
 // (claiming those directories atomically) walk everything below them, each directory in one piece: list it, leave out
 // what is ignored, take the size of the files that are found. A worker reports the directories it has been in (with the
 // entries that matter for configuration files) and the files, as plain arrays. The main thread then gives each
 // directory its `Scope` (configuration files and `.editorconfig`, parents first) and each file its Target.
-import { Worker } from "node:worker_threads";
-import { publish, sharesPublishedGraphs } from "@scriptc/threads";
 import { Configs, NAMES, Scope } from "./config.ts";
 import * as fsx from "./fsx.ts";
 import * as gitignore from "./gitignore.ts";
@@ -172,123 +170,14 @@ export function scanDirectory(ctx: ScanCtx, path: string, rel: string, parent: n
   out.candEnd.push(out.candNames.length);
 }
 
-// ---- the worker ----
-
-// What a worker is given: strings, numbers and flat arrays of them. (Objects with methods and arrays of objects are not
-// shared between threads: a worker that reads a published array of objects through a recursive function sees
-// corrupted elements, so the worker makes its own objects from this.)
-export class ScanTask {
-  cwd: string;
-  directories: string[];
-  sourceDirs: string[];
-  sourceTexts: string[];
-  negativeSources: string[];
-  // the testers: whether all paths, the glob source, `isAbsolute`, `writtenBase0`, `base`
-  testAll: boolean;
-  testGlob: string;
-  testIsAbsolute: boolean;
-  testWrittenBase0: string;
-  testBase: string;
-  needsSizes: boolean;
-  roots: string[];
-  rels: string[];
-  // How many directories a worker lists below a root before it hands the rest back.
-  budget: number;
-  constructor(ctx: ScanCtx, roots: string[], rels: string[], budget: number) {
-    const ig = ctx.ignored;
-    this.cwd = ctx.cwd;
-    this.directories = ig.directories;
-    this.sourceDirs = ig.sourceDirs;
-    this.sourceTexts = ig.sourceTexts;
-    this.negativeSources = ig.negativeSources;
-    const m = ctx.matches;
-    this.testAll = m.all;
-    this.testGlob = m.glob === null ? "" : m.glob.source;
-    this.testIsAbsolute = m.isAbsolute;
-    this.testWrittenBase0 = m.writtenBase0;
-    this.testBase = m.base;
-    this.needsSizes = ctx.needsSizes;
-    this.roots = roots;
-    this.rels = rels;
-    this.budget = budget;
-  }
-}
-
-function buildCtx(task: ScanTask): ScanCtx {
-  const ignored = Ignored.rebuild(task.directories, task.sourceDirs, task.sourceTexts, task.negativeSources, task.cwd);
-  let glob: Glob | null = null;
-  if (!task.testAll) glob = new Glob(task.testGlob);
-  const matches = new Tester(task.testAll, glob, task.testIsAbsolute, task.testWrittenBase0, task.testBase, task.cwd, false);
-  const enters = new Tester(task.testAll, glob, task.testIsAbsolute, task.testWrittenBase0, task.testBase, task.cwd, true);
-  return new ScanCtx(ignored, matches, enters, task.cwd, task.needsSizes);
-}
-
-// Walks the subtrees `task.roots` that this worker claims (each for at most `task.budget` directories), and returns
-// what it found and what is left.
-export function runScan(task: ScanTask, ctrl: Int32Array): ScanOut {
-  const out = new ScanOut();
-  const tStart = performance.now();
-  const ctx = buildCtx(task);
-  out.buildMs = performance.now() - tStart;
-  const n = task.roots.length;
-  while (true) {
-    const r = Atomics.add(ctrl, 0, 1);
-    if (r >= n) break;
-    out.roots = out.roots + 1;
-    walkRoot(ctx, task.roots[r], task.rels[r], -(r + 1), task.budget, out);
-  }
-  out.ms = performance.now() - tStart;
-  return out;
-}
-
-// The subtree of `root`: depth first, for at most `budget` directories.
-function walkRoot(ctx: ScanCtx, root: string, rel: string, parent: number, budget: number, out: ScanOut): void {
-  const qPaths: string[] = [root];
-  const qRels: string[] = [rel];
-  const qParents: number[] = [parent];
-  let processed = 0;
-  while (qPaths.length > 0) {
-    if (processed >= budget) {
-      for (let i = 0; i < qPaths.length; i++) {
-        out.leftPaths.push(qPaths[i]);
-        out.leftRels.push(qRels[i]);
-        out.leftParents.push(qParents[i]);
-      }
-      return;
-    }
-    const path = qPaths.pop() as string;
-    const r = qRels.pop() as string;
-    const p = qParents.pop() as number;
-    scanDirectory(ctx, path, r, p, out, qPaths, qRels, qParents);
-    processed = processed + 1;
-  }
-}
-
-// How the entry module starts a scan worker.
-export let spawnScanWorker: ((task: ScanTask, ctrl: SharedArrayBuffer) => Worker) | null = null;
-
-export function setSpawnScanWorker(f: (task: ScanTask, ctrl: SharedArrayBuffer) => Worker): void {
-  spawnScanWorker = f;
-}
-
 export let searchError = "";
 
-// The directories searched in one round: workers claim them one by one.
-function runRound(task: ScanTask, nthreads: number): Promise<ScanOutShape[]> {
-  const published = publish(task);
-  const ctrl = new SharedArrayBuffer(64);
-  const outs: ScanOutShape[] = [];
-  return new Promise<ScanOutShape[]>((resolve) => {
-    let finished = 0;
-    for (let i = 0; i < nthreads; i++) {
-      const worker = (spawnScanWorker as (task: ScanTask, ctrl: SharedArrayBuffer) => Worker)(published, ctrl);
-      worker.on("message", (m: ScanOutShape) => {
-        outs.push(m);
-        finished = finished + 1;
-        if (finished === nthreads) resolve(outs);
-      });
-    }
-  });
+// Whether the walk gives the event loop a turn now and then (when child processes format the files while it goes on).
+let yieldTurns = false;
+const YIELD_EVERY = Number(process.env["FMT_YIELD"] === undefined ? "8" : (process.env["FMT_YIELD"] as string));
+
+export function setYieldTurns(on: boolean): void {
+  yieldTurns = on;
 }
 
 // Where the scopes of the directories and the targets of the files are made.
@@ -367,11 +256,9 @@ export async function search(configs: Configs, ignored: Ignored, base: string, m
   const cwd = ignored.cwd;
   const trace = process.env["FMT_TRACE"] !== undefined;
   const t0 = performance.now();
-  // Under Node the workers get copies without methods: the walk is all here.
-  if (!sharesPublishedGraphs) threads = 1;
   const ctx = new ScanCtx(ignored, matches, enters, cwd, needsSizes);
   const merge = new Merge(configs, above.scope);
-  if (threads <= 1) {
+  {
     // One thread walks, directory by directory (breadth first), and every file is handed to `hook` as soon as its directory is
     // done, so that the formatting starts while the walk goes on.
     const qPaths: string[] = [base];
@@ -404,92 +291,10 @@ export async function search(configs: Configs, ignored: Ignored, base: string, m
         }
         if (batch !== null) batch();
       }
+      // let the event loop deliver what the child processes have reported
+      if (yieldTurns && head % YIELD_EVERY === 0) await new Promise<void>((resolve) => setImmediate(resolve));
     }
     if (trace) process.stderr.write("scan: " + head + " dirs in one thread " + (performance.now() - t0).toFixed(1) + "ms\n");
     return merge.targets;
   }
-  // the top of the tree, breadth first, here
-  const prelude = new ScanOut();
-  let qPaths: string[] = [base];
-  let qRels: string[] = [paths.relative(cwd, base)];
-  let qParents: number[] = [-1];
-  const wanted = threads > 1 ? threads * 2 : 1 << 30;
-  let processed = 0;
-  while (qPaths.length > 0 && !(qPaths.length >= wanted || (processed >= 100 && threads > 1))) {
-    const nPaths: string[] = [];
-    const nRels: string[] = [];
-    const nParents: number[] = [];
-    for (let i = 0; i < qPaths.length; i++) {
-      scanDirectory(ctx, qPaths[i], qRels[i], qParents[i], prelude, nPaths, nRels, nParents);
-      processed = processed + 1;
-    }
-    qPaths = nPaths;
-    qRels = nRels;
-    qParents = nParents;
-  }
-  if (prelude.hasLeftOut) ignored.hasLeftOut = true;
-  const preludeBase = merge.add(prelude, [-1]);
-  if (merge.failed) return null;
-  // the directories that are left are the roots of the first round
-  let rootParents: number[] = [];
-  for (let r = 0; r < qParents.length; r++) rootParents.push(preludeBase + qParents[r]);
-  const t1 = performance.now();
-  let rounds = 0;
-  let hooked = 0;
-  while (qPaths.length > 0) {
-    rounds = rounds + 1;
-    const nthreads = Math.min(threads, qPaths.length);
-    const tr0 = performance.now();
-    const task = new ScanTask(ctx, qPaths, qRels, 40);
-    const pending = runRound(task, nthreads);
-    // while the workers walk, the main thread has a look at the files found so far
-    if (hook !== null) {
-      while (hooked < merge.targets.length) {
-        hook(merge.targets[hooked]);
-        hooked = hooked + 1;
-      }
-      if (batch !== null) batch();
-    }
-    const outs = await pending;
-    const tr1 = performance.now();
-    qPaths = [];
-    qRels = [];
-    const nextParents: number[] = [];
-    for (let w = 0; w < outs.length; w++) {
-      const o = outs[w];
-      if (o.hasLeftOut) ignored.hasLeftOut = true;
-      const oBase = merge.add(o, rootParents);
-      if (merge.failed) return null;
-      for (let i = 0; i < o.leftPaths.length; i++) {
-        qPaths.push(o.leftPaths[i]);
-        qRels.push(o.leftRels[i]);
-        nextParents.push(oBase + o.leftParents[i]);
-      }
-    }
-    rootParents = nextParents;
-    if (trace) {
-      let maxMs = 0;
-      let sumMs = 0;
-      let buildMs = 0;
-      let dirs = 0;
-      let files = 0;
-      for (let w = 0; w < outs.length; w++) {
-        if (outs[w].ms > maxMs) maxMs = outs[w].ms;
-        sumMs = sumMs + outs[w].ms;
-        buildMs = buildMs + outs[w].buildMs;
-        dirs = dirs + outs[w].dirPaths.length;
-        files = files + outs[w].filePaths.length;
-      }
-      process.stderr.write("  round " + rounds + ": " + nthreads + " threads, " + dirs + " dirs " + files + " files, sum " + sumMs.toFixed(1) + "ms (build " + buildMs.toFixed(1) + "), wait " + (tr1 - tr0).toFixed(1) + "ms (slowest worker " + maxMs.toFixed(1) + "ms), merge " + (performance.now() - tr1).toFixed(1) + "ms, left " + qPaths.length + "\n");
-    }
-  }
-  if (hook !== null) {
-    while (hooked < merge.targets.length) {
-      hook(merge.targets[hooked]);
-      hooked = hooked + 1;
-    }
-    if (batch !== null) batch();
-  }
-  if (trace) process.stderr.write("scan: prelude " + (t1 - t0).toFixed(1) + "ms (" + processed + " dirs), " + rounds + " rounds " + (performance.now() - t1).toFixed(1) + "ms\n");
-  return merge.targets;
 }

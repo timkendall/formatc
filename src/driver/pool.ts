@@ -1,172 +1,347 @@
-// The threads that format, and the queue that feeds them (pipe.ts). The files are added while they are found.
-import { Worker } from "node:worker_threads";
+// The processes that format, and the queue that feeds them. The files are added while they are found. With one thread (or few
+// files) the main process formats them itself, when the walk is done. With more, child processes of the same executable
+// (child.ts) get the files in chunks over their pipes, a few chunks at a time each, so that a big file never holds up the others.
+import { spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
+import * as fs from "node:fs";
+import { ByteBuf } from "../base/bytebuf.ts";
+import { CHILD_ARG } from "./child.ts";
 import type { OptionSet } from "./dispatch.ts";
 import * as pipe from "./pipe.ts";
-import { Producer } from "./pipe.ts";
-import type { PipeBufs } from "./pipe.ts";
 import { Target } from "./target.ts";
-import * as w from "./worker.ts";
-import { LoopCfg, Report } from "./worker.ts";
-import type { WorkerInit } from "./worker.ts";
+import { LoopCfg, Report, formatOne } from "./worker.ts";
+import { M_CONFIG, M_JOBS, M_RESULT, M_SET, Reader, Wire, frameSize } from "./wire.ts";
 
-// How the entry module starts a worker (which runs the entry module again).
-export let spawnWorker: ((data: WorkerInit) => Worker) | null = null;
-
-export function setSpawnWorker(f: (data: WorkerInit) => Worker): void {
-  spawnWorker = f;
-}
-
-export interface WorkerMessage {
-  idx: number[];
-  code: number[];
-  message: string[];
-  line: number[];
-  column: number[];
-  lineText: string[];
-  took: number[];
-  bytes: number;
-  files: number;
-  ms: number;
-}
-
-// Files of at least this many bytes go to the lane that the workers look at first.
+// Files of at least this many bytes go to the lane that is looked at first (and are sent one by one).
 const BIG = Number(process.env["FMT_BIG"] === undefined ? "262144" : (process.env["FMT_BIG"] as string));
+// A new child process while this many files wait for each of those that run.
+const SPAWN_BACKLOG = Number(process.env["FMT_SPAWN"] === undefined ? "32" : (process.env["FMT_SPAWN"] as string));
+// The first child process is started when this many files wait. With fewer files than that in all, the main process does it.
+const FIRST = Number(process.env["FMT_FIRST"] === undefined ? "48" : (process.env["FMT_FIRST"] as string));
+// The most files in a chunk, and the chunks in flight to one child.
+const CHUNK = Number(process.env["FMT_CHUNK"] === undefined ? "16" : (process.env["FMT_CHUNK"] as string));
+const DEPTH = Number(process.env["FMT_DEPTH"] === undefined ? "2" : (process.env["FMT_DEPTH"] as string));
 
-const SPAWN_BACKLOG = Number(process.env["FMT_SPAWN"] === undefined ? "128" : (process.env["FMT_SPAWN"] as string));
+class Kid {
+  proc: ChildProcess;
+  inflight = 0;
+  setsSent = 0;
+  ended = false;
+  pending: Buffer = Buffer.alloc(0);
+  report = new Report();
+  spawnAt = 0;
+  firstAt = 0;
+  lastAt = 0;
+  // bytes written to its stdin, bytes read from its stdout, chunks sent and results received (diagnostics: FMT_HANGDUMP)
+  bytesOut = 0;
+  bytesIn = 0;
+  sent = 0;
+  got = 0;
+  constructor(proc: ChildProcess) {
+    this.proc = proc;
+  }
+}
+
+function fail(why: string): void {
+  try {
+    fs.writeSync(2, Buffer.from("error: a worker failed: " + why + "\n"));
+  } catch (e) {
+    // ignore
+  }
+  process.exit(2);
+}
 
 export class Pool {
-  // the shared buffers (a field of an interface type with SharedArrayBuffers does not compile: a one-element array does)
-  held: PipeBufs[] = [];
-  producer: Producer;
+  // the files by lane: path, option set, size; and the status of each (0 not formatted, pipe.ST_*)
+  paths0: string[] = [];
+  sets0: number[] = [];
+  sizes0: number[] = [];
+  status0: number[] = [];
+  next0 = 0;
+  paths1: string[] = [];
+  sets1: number[] = [];
+  sizes1: number[] = [];
+  status1: number[] = [];
+  next1 = 0;
   // the targets by lane and index in the lane
   targets0: Target[] = [];
   targets1: Target[] = [];
-  setsAdded = 0;
+  optionSets: OptionSet[] = [];
+  kids: Kid[] = [];
   threads: number;
   spawned = 0;
-  finished = 0;
+  gate: boolean;
   closed = false;
   reports: Report[] = [];
   cfg: LoopCfg;
+  wire = new Wire();
   onJoined: (() => void) | null = null;
   joined: Promise<void>;
   constructor(threads: number, cfg: LoopCfg) {
-    const b = pipe.newBufs();
-    this.held.push(b);
-    this.producer = new Producer(b);
-    // When nothing is written, the workers may start with the first file; otherwise they wait for `finish` (the search can still fail).
-    if (!cfg.writes) Atomics.store(new Int32Array(b.ctl), pipe.C_GATE, 1);
     this.threads = threads;
     this.cfg = cfg;
+    // When nothing is written, the files may be formatted from the first one; otherwise they wait for `finish` (the search can still fail).
+    this.gate = !cfg.writes;
     this.joined = new Promise<void>((resolve) => {
       this.onJoined = resolve;
     });
+    // FMT_HANGDUMP=<ms>: while the run is not joined, the state of the pool is written to stderr every <ms>. Off by default.
+    if (process.env["FMT_HANGDUMP"] !== undefined) {
+      const every = Number(process.env["FMT_HANGDUMP"] as string);
+      const t = setInterval((): void => this.dump(), every > 0 ? every : 5000);
+      t.unref();
+    }
   }
 
-  // Adds a file to format. false if the queue is full.
-  add(t: Target, optionSets: OptionSet[]): boolean {
-    while (this.setsAdded <= t.setId) {
-      const s = optionSets[this.setsAdded];
-      this.producer.addSet(pipe.encodeSet(s.resolved, s.verifies));
-      this.setsAdded = this.setsAdded + 1;
+  // The state that decides whether the run can go on: what is queued, and per child what was sent and what came back.
+  dump(): void {
+    const now = performance.now();
+    let line = "pool @" + now.toFixed(0) + "ms: closed=" + this.closed + " joined=" + (this.onJoined === null) + " spawned=" + this.spawned + " backlog=" + this.backlog() + " files=" + (this.paths0.length + this.paths1.length) + " sent=" + (this.next0 + this.next1) + "\n";
+    for (let i = 0; i < this.kids.length; i++) {
+      const k = this.kids[i];
+      line += "  kid " + i + " pid=" + k.proc.pid + " inflight=" + k.inflight + " chunks=" + k.sent + "/" + k.got + " out=" + k.bytesOut + "B in=" + k.bytesIn + "B pending=" + k.pending.length + "B ended=" + k.ended + " lastData=" + (k.lastAt === 0 ? "never" : (now - k.lastAt).toFixed(0) + "ms ago") + "\n";
     }
-    const lane = t.size >= BIG ? 1 : 0;
-    const idx = this.producer.add(lane, t.path, t.setId, t.size);
-    if (idx < 0) return false;
-    if (lane === 1) this.targets1[idx] = t;
-    else this.targets0[idx] = t;
-    t.jobKey = idx * 2 + lane;
+    process.stderr.write(line);
+  }
+
+  // Adds a file to format. false if there are too many.
+  add(t: Target, optionSets: OptionSet[]): boolean {
+    this.optionSets = optionSets;
+    if (t.size >= BIG) {
+      const idx = this.paths1.length;
+      this.paths1.push(t.path);
+      this.sets1.push(t.setId);
+      this.sizes1.push(t.size);
+      this.status1.push(0);
+      this.targets1[idx] = t;
+      t.jobKey = idx * 2 + 1;
+    } else {
+      const idx = this.paths0.length;
+      this.paths0.push(t.path);
+      this.sets0.push(t.setId);
+      this.sizes0.push(t.size);
+      this.status0.push(0);
+      this.targets0[idx] = t;
+      t.jobKey = idx * 2;
+    }
     return true;
   }
 
-  // Makes the files that were added visible, and starts more workers if there is enough to do.
-  flush(): void {
-    this.producer.flush();
-    // More workers while the files pile up faster than they are taken: with little to do, few workers keep the kernel (which
-    // serializes the opening of files and directories) free for the walk.
-    const queued = this.producer.lane0.count + this.producer.lane1.count;
-    if (queued === 0) return;
-    if (this.spawned === 0) this.spawnOne();
-    while (this.spawned < this.threads && this.backlog() > SPAWN_BACKLOG * this.spawned) this.spawnOne();
+  // Files added and not sent.
+  backlog(): number {
+    return this.paths0.length - this.next0 + this.paths1.length - this.next1;
   }
 
-  bufsOf(): PipeBufs {
-    return this.held[0];
+  // Starts more children if there is enough to do, and sends what can be sent.
+  flush(): void {
+    if (this.threads <= 1) return;
+    const queued = this.backlog();
+    // With little to do, few children keep the kernel (which serializes the opening of files and directories) free for the walk.
+    if (this.spawned === 0 && queued >= FIRST) this.spawnOne();
+    while (this.spawned > 0 && this.spawned < this.threads && queued > SPAWN_BACKLOG * this.spawned) this.spawnOne();
+    this.pump();
   }
 
   spawnOne(): void {
     const cfg = this.cfg;
-    const data: WorkerInit = {
-      kind: 0,
-      scan: null,
-      ctrl: this.held[0].ctl,
-      bufs: this.bufsOf(),
-      id: this.spawned,
-      cwd: cfg.cwd,
-      writes: cfg.writes,
-      detail: cfg.detail,
-      chunk: cfg.chunk,
-      compareTo: cfg.compareTo,
-      compareRoot: cfg.compareRoot,
-      dumpTo: cfg.dumpTo,
-    };
+    const proc = spawn(process.execPath, [CHILD_ARG], { stdio: ["pipe", "pipe", "inherit"] });
+    const kid = new Kid(proc);
+    kid.spawnAt = performance.now();
     this.spawned = this.spawned + 1;
-    const worker = (spawnWorker as (data: WorkerInit) => Worker)(data);
-    worker.on("message", (m: WorkerMessage) => {
-      const r = new Report();
-      r.idx = m.idx;
-      r.code = m.code;
-      r.message = m.message;
-      r.line = m.line;
-      r.column = m.column;
-      r.lineText = m.lineText;
-      r.took = m.took;
-      r.bytes = m.bytes;
-      r.files = m.files;
-      r.ms = m.ms;
-      this.reports.push(r);
-      this.finished = this.finished + 1;
-      this.checkJoined();
+    this.kids.push(kid);
+    this.reports.push(kid.report);
+    (proc.stdout as NonNullable<typeof proc.stdout>).on("data", (d: Buffer): void => this.onData(kid, d));
+    proc.on("exit", (code: number | null): void => {
+      if (!kid.ended) fail("a child process exited with " + code);
     });
+    proc.on("error", (e: Error): void => fail(e.message));
+    // a child that is gone while jobs are written to it: a failed run (otherwise the runtime ends the process with "Unhandled 'error' event")
+    (proc.stdin as NonNullable<typeof proc.stdin>).on("error", (e: Error): void => fail("the pipe to a child process: " + e.message));
+    const w = this.wire;
+    w.begin(M_CONFIG);
+    w.u8(cfg.writes ? 1 : 0);
+    w.u8(cfg.detail ? 1 : 0);
+    w.u32(cfg.chunk);
+    w.str(cfg.compareTo);
+    w.str(cfg.compareRoot);
+    w.str(cfg.dumpTo);
+    w.str(cfg.cwd);
+    w.end();
+    const first = w.take();
+    kid.bytesOut = kid.bytesOut + first.length;
+    (proc.stdin as NonNullable<typeof proc.stdin>).write(first);
   }
 
-  checkJoined(): void {
-    if (this.closed && this.finished === this.spawned && this.onJoined !== null) {
-      const f = this.onJoined;
-      this.onJoined = null;
-      f();
+  // Gives every child that has room a chunk of files.
+  pump(): void {
+    if (!this.gate) return;
+    const kids = this.kids;
+    let progress = true;
+    while (progress && this.backlog() > 0) {
+      progress = false;
+      for (let i = 0; i < kids.length; i++) {
+        const kid = kids[i];
+        if (kid.inflight < DEPTH && this.backlog() > 0) {
+          this.send(kid);
+          progress = true;
+        }
+      }
     }
   }
 
-  // Files committed and not yet claimed (for FMT_TRACE).
-  backlog(): number {
-    const ctl = new Int32Array(this.held[0].ctl);
-    return Atomics.load(ctl, pipe.C_COMMIT0) - Atomics.load(ctl, pipe.C_CLAIM0) + Atomics.load(ctl, pipe.C_COMMIT1) - Atomics.load(ctl, pipe.C_CLAIM1);
+  send(kid: Kid): void {
+    const w = this.wire;
+    let lane = 0;
+    let first = this.next0;
+    let take = 0;
+    if (this.next1 < this.paths1.length) {
+      lane = 1;
+      first = this.next1;
+      take = 1;
+    } else {
+      const left = this.paths0.length - this.next0;
+      take = Math.floor(left / (this.kids.length * 2));
+      if (take > CHUNK) take = CHUNK;
+      if (take < 1) take = 1;
+    }
+    const setIds = lane === 1 ? this.sets1 : this.sets0;
+    const paths = lane === 1 ? this.paths1 : this.paths0;
+    const sizes = lane === 1 ? this.sizes1 : this.sizes0;
+    let maxSet = -1;
+    for (let i = 0; i < take; i++) if (setIds[first + i] > maxSet) maxSet = setIds[first + i];
+    while (kid.setsSent <= maxSet) {
+      const s = this.optionSets[kid.setsSent];
+      w.begin(M_SET);
+      w.str(pipe.encodeSet(s.resolved, s.verifies));
+      w.end();
+      kid.setsSent = kid.setsSent + 1;
+    }
+    w.begin(M_JOBS);
+    w.u32(take);
+    for (let i = 0; i < take; i++) {
+      w.u32((first + i) * 2 + lane);
+      w.u32(setIds[first + i]);
+      w.u32(sizes[first + i]);
+      w.str(paths[first + i]);
+    }
+    w.end();
+    if (lane === 1) this.next1 = this.next1 + take;
+    else this.next0 = this.next0 + take;
+    kid.inflight = kid.inflight + 1;
+    kid.sent = kid.sent + 1;
+    const out = w.take();
+    kid.bytesOut = kid.bytesOut + out.length;
+    (kid.proc.stdin as NonNullable<typeof kid.proc.stdin>).write(out);
   }
 
-  // The files are found: the last ones are made visible, the gate opens, and the workers stop when the queue is empty.
-  finish(): void {
-    if (this.closed) return;
-    this.flush();
-    this.producer.finish();
-    this.closed = true;
+  onData(kid: Kid, d: Buffer): void {
+    kid.lastAt = performance.now();
+    kid.bytesIn = kid.bytesIn + d.length;
+    if (kid.firstAt === 0) kid.firstAt = kid.lastAt;
+    let b = d;
+    if (kid.pending.length > 0) b = Buffer.concat([kid.pending, d]);
+    let at = 0;
+    while (true) {
+      const have = b.length - at;
+      const size = frameSize(b, at, have);
+      if (size < 0 || have < size) break;
+      if ((b[at] | 0) === M_RESULT) this.result(kid, new Reader(b, at + 5));
+      at = at + size;
+    }
+    kid.pending = at === b.length ? Buffer.alloc(0) : Buffer.from(b.subarray(at));
+    this.pump();
     this.checkJoined();
   }
 
-  // The calling thread takes files from the queue too, until it is empty.
-  consumeHere(): void {
-    this.reports.push(w.consume(this.bufsOf(), this.cfg));
+  result(kid: Kid, r: Reader): void {
+    const n = r.u32();
+    for (let i = 0; i < n; i++) {
+      const key = r.u32();
+      const mark = r.u8();
+      if ((key & 1) === 1) this.status1[key >> 1] = mark;
+      else this.status0[key >> 1] = mark;
+    }
+    const rep = kid.report;
+    rep.bytes = rep.bytes + r.u32();
+    rep.files = rep.files + r.u32();
+    const m = r.u32();
+    for (let i = 0; i < m; i++) {
+      rep.idx.push(r.u32());
+      rep.code.push(r.u32());
+      rep.line.push(r.u32());
+      rep.column.push(r.u32());
+      rep.took.push(Number(r.str()));
+      rep.message.push(r.str());
+      rep.lineText.push(r.str());
+    }
+    kid.inflight = kid.inflight - 1;
+    kid.got = kid.got + 1;
   }
 
-  // Waits for the workers, and returns the status of every file by lane: 0 not formatted, ST_* of pipe.ts.
+  checkJoined(): void {
+    if (!this.closed || this.onJoined === null || this.backlog() > 0) return;
+    for (let i = 0; i < this.kids.length; i++) if (this.kids[i].inflight > 0) return;
+    for (let i = 0; i < this.kids.length; i++) {
+      const kid = this.kids[i];
+      kid.ended = true;
+      (kid.proc.stdin as NonNullable<typeof kid.proc.stdin>).end();
+    }
+    if (process.env["FMT_TRACE"] !== undefined) {
+      let line = "kids (spawn/first/last ms):";
+      for (let i = 0; i < this.kids.length; i++) line += " " + this.kids[i].spawnAt.toFixed(0) + "/" + this.kids[i].firstAt.toFixed(0) + "/" + this.kids[i].lastAt.toFixed(0);
+      process.stderr.write(line + " now " + performance.now().toFixed(0) + "\n");
+    }
+    const f = this.onJoined;
+    this.onJoined = null;
+    f();
+  }
+
+  // The files are found: the last ones are sent, the gate opens, and the children stop when they have what is sent.
+  finish(): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.gate = true;
+    this.flush();
+    if (this.kids.length === 0) {
+      this.formatHere();
+      const f = this.onJoined as () => void;
+      this.onJoined = null;
+      f();
+      return;
+    }
+    this.checkJoined();
+  }
+
+  // The main process formats what was not sent (all files, when there are few or one thread).
+  formatHere(): void {
+    const t0 = performance.now();
+    const report = new Report();
+    this.reports.push(report);
+    const out = new ByteBuf(1 << 20);
+    const sets = this.optionSets;
+    for (let lane = 1; lane >= 0; lane--) {
+      const paths = lane === 1 ? this.paths1 : this.paths0;
+      const setIds = lane === 1 ? this.sets1 : this.sets0;
+      const sizes = lane === 1 ? this.sizes1 : this.sizes0;
+      const status = lane === 1 ? this.status1 : this.status0;
+      let i = lane === 1 ? this.next1 : this.next0;
+      for (; i < paths.length; i++) status[i] = formatOne(this.cfg, report, out, i * 2 + lane, paths[i], sets[setIds[i]], sizes[i]);
+    }
+    this.next0 = this.paths0.length;
+    this.next1 = this.paths1.length;
+    report.ms = performance.now() - t0;
+  }
+
+  // Waits for the children.
   async join(): Promise<void> {
     await this.joined;
   }
 
+  // The status of every file of a lane: 0 not formatted, ST_* of pipe.ts.
   statusOf(lane: number): Uint8Array {
-    const n = this.producer.count(lane);
-    const out = new Uint8Array(n);
-    if (n > 0) out.set(new Uint8Array(lane === 1 ? this.held[0].status1 : this.held[0].status0).subarray(0, n));
+    const s = lane === 1 ? this.status1 : this.status0;
+    const out = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) out[i] = s[i] | 0;
     return out;
   }
 
