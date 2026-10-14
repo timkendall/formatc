@@ -1,0 +1,153 @@
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/emitter.js b/dist/backend/llvm/emitter.js
+--- a/dist/backend/llvm/emitter.js	2026-10-13 18:51:34
++++ b/dist/backend/llvm/emitter.js	2026-10-13 18:51:35
+@@ -111,6 +111,138 @@
+             return "i32 0";
+     }
+ }
++
++/** Fold every program-owned thread-local global (module globals, their
++ * run-once flags, regex literal caches, fn-value closures) into ONE
++ * thread-local struct, @scr_program_tls. Each use becomes a GEP from a
++ * `llvm.threadlocal.address` call emitted right at the use; LLVM shares that
++ * (readnone) call across every global a function touches, so a function using
++ * k distinct globals pays one TLV lookup instead of k. */
++function foldProgramTls(parts) {
++    const defRe = /^(@sc_[-$._A-Za-z0-9]+) = internal thread_local global (double|i1|ptr|%Scr[A-Za-z]+) (.*)$/;
++    const index = new Map();
++    const types = [];
++    const inits = [];
++    const lines = parts.map((part) => part.split("\n"));
++    for (const ls of lines) {
++        for (let i = 0; i < ls.length; i++) {
++            const line = ls[i];
++            if (line.charCodeAt(0) !== 64 || !line.includes(" internal thread_local global "))
++                continue;
++            const m = defRe.exec(line);
++            if (!m || line.includes("!dbg") || line.includes(", align"))
++                continue;
++            let init;
++            if (m[2].startsWith("%")) {
++                if (m[3][0] !== "{")
++                    continue;
++                let depth = 0;
++                let end = -1;
++                for (let k = 0; k < m[3].length; k++) {
++                    const ch = m[3][k];
++                    if (ch === "{")
++                        depth++;
++                    else if (ch === "}" && --depth === 0) {
++                        end = k;
++                        break;
++                    }
++                }
++                if (end < 0)
++                    continue;
++                init = m[3].slice(0, end + 1);
++                if (m[3].slice(end + 1).trim() !== "" && !m[3].slice(end + 1).trim().startsWith(";"))
++                    continue;
++            }
++            else {
++                const sm = /^(\S+)\s*(;.*)?$/.exec(m[3]);
++                if (!sm)
++                    continue;
++                init = sm[1];
++            }
++            index.set(m[1], types.length);
++            types.push(m[2]);
++            inits.push(`${m[2]} ${init}`);
++            ls[i] = "";
++        }
++    }
++    if (index.size === 0)
++        return parts;
++    const tokenRe = /@sc_[-$._A-Za-z0-9]+/g;
++    let counter = 0;
++    let bad = false;
++    let inFn = false;
++    const out = lines.map((ls) => {
++        const res = [];
++        for (const line of ls) {
++            if (line.startsWith("define ")) {
++                inFn = true;
++                res.push(line);
++                continue;
++            }
++            if (line === "}") {
++                inFn = false;
++                res.push(line);
++                continue;
++            }
++            if (!line.includes("@sc_")) {
++                res.push(line);
++                continue;
++            }
++            let hit = null;
++            tokenRe.lastIndex = 0;
++            let m;
++            while ((m = tokenRe.exec(line)) !== null) {
++                if (index.has(m[0])) {
++                    hit ??= new Map();
++                    hit.set(m[0], null);
++                }
++            }
++            if (hit === null) {
++                res.push(line);
++                continue;
++            }
++            if (!inFn || /=\s*phi\b/.test(line)) {
++                bad = true;
++                res.push(line);
++                continue;
++            }
++            const n = counter++;
++            res.push(`  %tpb.${n} = call ptr @llvm.threadlocal.address.p0(ptr @scr_program_tls)`);
++            let k = 0;
++            for (const name of hit.keys()) {
++                const reg = `%tpg.${n}.${k++}`;
++                res.push(`  ${reg} = getelementptr inbounds %ScrProgTls, ptr %tpb.${n}, i32 0, i32 ${index.get(name)}`);
++                hit.set(name, reg);
++            }
++            let rewritten = line;
++            let ce = 0;
++            if (line.includes("getelementptr")) {
++                // Constant-expression GEPs over a moved global become instructions.
++                rewritten = rewritten.replace(/getelementptr (inbounds )?\(([^,()]+), ptr (@sc_[-$._A-Za-z0-9]+)((?:, [^()]*)?)\)/g, (all, ib, ty, name, idx) => {
++                    if (!hit.has(name))
++                        return all;
++                    const r = `%tpe.${n}.${ce++}`;
++                    res.push(`  ${r} = getelementptr ${ib ?? ""}${ty}, ptr ${hit.get(name)}${idx}`);
++                    return r;
++                });
++            }
++            res.push(rewritten.replace(tokenRe, (t) => hit.get(t) ?? t));
++        }
++        return res.join("\n");
++    });
++    if (bad)
++        return parts;
++    const declared = out.some((p) => p.includes("declare nonnull ptr @llvm.threadlocal.address.p0"));
++    // The struct type must precede the first function that GEPs into it.
++    let typeAt = 0;
++    for (let i = 0; i < out.length && !out[i].startsWith("define "); i++)
++        if (/^%[-$._A-Za-z0-9]+ = type /.test(out[i]))
++            typeAt = i + 1;
++    out.splice(typeAt, 0, `%ScrProgTls = type { ${types.join(", ")} }`);
++    out.push(`@scr_program_tls = internal thread_local global %ScrProgTls { ${inits.join(", ")} }`, ...(declared ? [] : [`declare nonnull ptr @llvm.threadlocal.address.p0(ptr nonnull)`]), ``);
++    return out;
++}
++
+ export function emitLlvmModule(input, options = {}) {
+     // Facts are keyed by node identity: emit the same module whether it was
+     // lowered in memory or read back from its serialized form.
+@@ -1057,7 +1189,9 @@
+         return this.emitParts().join("\n");
+     }
+     emitParts() {
+-        const parts = this.emitModuleParts();
++        let parts = this.emitModuleParts();
++        if (this.mod.workers === true && this.mod.lib === undefined && !process.env.SCRIPTC_NO_PROG_TLS)
++            parts = foldProgramTls(parts);
+         if (!this.executableTls)
+             return parts;
+         // A worker executable's thread-locals all live in the executable's own

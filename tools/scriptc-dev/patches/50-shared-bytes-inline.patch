@@ -1,0 +1,68 @@
+diff -ruN -x *.map -x *.d.ts -x *.test.js a/dist/backend/llvm/expr-bytes.js b/dist/backend/llvm/expr-bytes.js
+--- a/dist/backend/llvm/expr-bytes.js	2026-10-13 18:45:50
++++ b/dist/backend/llvm/expr-bytes.js	2026-10-13 18:45:51
+@@ -156,44 +156,7 @@
+ }
+ export function emitBytesGet(host, elem, receiver, index, expr, inBounds = false, invalidNaN = false) {
+     const B = host.B;
+-    if (host.mod.workers) {
+-        const fn = invalidNaN ? "scr_bytes_get_or_nan" : "scr_bytes_get";
+-        host.declare(`declare double @${fn}(ptr, double)`);
+-        const local = emitSharedBytesSplit(host, receiver);
+-        const result = B.tmp();
+-        B.line(`${result} = call double @${fn}(ptr ${receiver}, double ${index.name})`);
+-        // Integer elements read as integers in int32/uint32 range, or NaN for a
+-        // missing one: ToUint32 is the integer, or 0. Keeping it lets the join
+-        // carry the local path's integer hint.
+-        let sharedU32;
+-        if (elem !== "f32" && elem !== "f64") {
+-            const missing = B.tmp(), present = B.tmp(), wide = B.tmp();
+-            sharedU32 = B.tmp();
+-            B.line(`${missing} = fcmp uno double ${result}, ${result}`);
+-            B.line(`${present} = select i1 ${missing}, double 0.0, double ${result}`);
+-            B.line(`${wide} = fptosi double ${present} to i64`);
+-            B.line(`${sharedU32} = trunc i64 ${wide} to i32`);
+-        }
+-        const shared = B.newLabel("bytes.shared.done");
+-        B.br(shared);
+-        B.startBlock(local);
+-        const own = emitBytesGetLocal(host, elem, receiver, index, expr, inBounds, invalidNaN);
+-        const owned = B.newLabel("bytes.local.done");
+-        B.br(owned);
+-        B.startBlock(owned);
+-        const join = B.newLabel("bytes.join");
+-        B.br(join);
+-        B.startBlock(shared);
+-        B.br(join);
+-        B.startBlock(join);
+-        const out = B.tmp();
+-        B.line(`${out} = phi double [ ${own.name}, %${owned} ], [ ${result}, %${shared} ]`);
+-        if (own.uint32 === undefined || sharedU32 === undefined)
+-            return { name: out, type: F64 };
+-        const u32 = B.tmp();
+-        B.line(`${u32} = phi i32 [ ${own.uint32}, %${owned} ], [ ${sharedU32}, %${shared} ]`);
+-        return { name: out, type: F64, uint32: u32 };
+-    }
++    // Shared and thread-owned views take the same inline access (see patch 50).
+     return emitBytesGetLocal(host, elem, receiver, index, expr, inBounds, invalidNaN);
+ }
+ /** Worker programs: a view of a SharedArrayBuffer (`shared` is fixed before
+@@ -350,18 +313,6 @@
+ }
+ export function emitBytesSet(host, elem, receiver, index, value, indexExpr, expr, inBounds = false) {
+     const B = host.B;
+-    if (host.mod.workers) {
+-        host.declare(`declare void @scr_bytes_set(ptr, double, double)`);
+-        const local = emitSharedBytesSplit(host, receiver);
+-        B.line(`call void @scr_bytes_set(ptr ${receiver}, double ${index.name}, double ${value.name})`);
+-        const join = B.newLabel("bytes.join");
+-        B.br(join);
+-        B.startBlock(local);
+-        emitBytesSetLocal(host, elem, receiver, index, value, indexExpr, expr, inBounds);
+-        B.br(join);
+-        B.startBlock(join);
+-        return;
+-    }
+     emitBytesSetLocal(host, elem, receiver, index, value, indexExpr, expr, inBounds);
+ }
+ function emitBytesSetLocal(host, elem, receiver, index, value, indexExpr, expr, inBounds) {
